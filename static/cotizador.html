@@ -222,6 +222,55 @@ a{color:inherit}
 .reportRow b{text-align:right}
 .reportRow small{text-align:right;color:var(--muted)}
 
+.reportDoc{margin-top:12px;border:1px solid var(--line);background:var(--surface);border-radius:8px;overflow:hidden;font-size:10px;color:var(--ink)}
+.docPage{padding:26px}
+.docPageBreak{border-top:2px dashed var(--line);margin-top:6px}
+.docHeader{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px}
+.docHeader .brandMark{width:34px;height:34px;font-size:15px}
+.docBrandRow{display:flex;align-items:center;gap:10px}
+.docBrandRow b{font-size:13px;letter-spacing:.04em}
+.docTitle{font-family:Georgia,serif;font-size:24px;margin:10px 0 0;letter-spacing:-.02em}
+.docMeta{text-align:right;font-size:9px;color:var(--muted);line-height:1.6}
+.docMeta b{color:var(--ink);font-weight:bold}
+.docIntro{font-size:9.5px;line-height:1.6;color:var(--muted);margin:0 0 16px;max-width:62ch}
+.docItem{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:16px}
+.docItemHead{background:color-mix(in srgb, var(--accent) 10%, var(--surface));padding:8px 12px;font-size:10px;font-weight:bold;color:var(--accent)}
+.docItemBody{display:grid;grid-template-columns:1.3fr 1fr;gap:0}
+.docSpecTable{border-collapse:collapse;width:100%;font-size:9px}
+.docSpecTable td{border-bottom:1px solid var(--line);padding:7px 10px}
+.docSpecTable td:first-child{color:var(--muted);width:38%}
+.docDiagramBox{display:flex;align-items:center;justify-content:center;padding:16px;background:var(--paper);border-left:1px solid var(--line)}
+.docDiagramBox .window{width:100%;max-width:220px;max-height:140px;min-height:70px}
+.docTable{border-collapse:collapse;width:100%;font-size:9px;margin-bottom:4px}
+.docTable th,.docTable td{border:1px solid var(--line);padding:6px 8px;text-align:left}
+.docTable th{background:color-mix(in srgb, var(--accent) 8%, var(--paper));font-size:8.5px;letter-spacing:.02em;color:var(--ink)}
+.docTable tfoot td{background:var(--paper);font-weight:bold}
+.docTotalRow{display:flex;justify-content:space-between;padding:10px 4px;font-size:10px;border-top:1px solid var(--line)}
+.docTotalRow.grand{font-weight:bold;font-size:12px}
+.docStatGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}
+.docStatGrid div{border:1px solid var(--line);border-radius:7px;padding:10px}
+.docStatGrid span{display:block;font-size:8px;color:var(--muted);letter-spacing:.06em}
+.docStatGrid b{font-size:14px}
+.docTerms h4{font-size:10px;margin:16px 0 6px;color:var(--accent)}
+.docTerms p,.docTerms li{font-size:9px;line-height:1.6;color:var(--ink);margin:4px 0}
+.docBank{background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:10px 12px;font-size:9px;line-height:1.7;margin:8px 0}
+.docSignatures{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:34px}
+.docSignatures div{border-top:1px solid var(--ink);padding-top:6px;font-size:9px;color:var(--muted)}
+.checkboxCell{width:16px;height:16px;border:1.5px solid var(--muted);border-radius:2px;display:inline-block}
+
+.cutGroup{margin-bottom:18px}
+.cutGroupHead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.cutGroupHead b{font-size:11px;color:var(--accent)}
+.cutGroupHead span{font-size:8.5px;color:var(--muted)}
+.cutBarRow{margin-bottom:10px}
+.cutBarLabel{display:flex;justify-content:space-between;font-size:8px;color:var(--muted);margin-bottom:3px}
+.cutBar{display:flex;height:28px;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.cutBarPiece{display:flex;align-items:center;justify-content:center;font-size:7.5px;color:#fff;border-right:1px solid var(--surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cutBarWaste{display:flex;align-items:center;justify-content:center;font-size:7.5px;color:var(--muted);background:repeating-linear-gradient(45deg,var(--paper),var(--paper) 5px,var(--line) 5px,var(--line) 10px)}
+.cutPieceTable{width:100%;border-collapse:collapse;font-size:8px;margin-top:4px}
+.cutPieceTable th,.cutPieceTable td{border:1px solid var(--line);padding:4px 6px;text-align:left}
+@media print{.reportDoc{border:0;border-radius:0}.docPage{padding:0}.docPageBreak{border-top:0;page-break-before:always;margin-top:0;padding-top:26px}}
+
 .sources{background:var(--surface);color:var(--muted);padding:18px 30px;font-size:9px;text-align:center;border-top:1px solid var(--line)}
 .sources a{color:var(--accent)}
 
@@ -681,7 +730,18 @@ const HANDLE_OPTIONS = ["Sin manilla", "Harmony con tetones", "Slim 479092 con t
 const MALLORQUINA_RATE_MXN_PER_M = 47;
 
 const TABS = ["Resumen", "Diseño", "Consumo", "Servicios", "Informes"];
-const REPORTS = ["Oferta", "Producción", "Perfiles", "Herrajes", "Vidrio", "Costos"];
+const REPORTS = ["Cotización", "Optimización de corte", "Pedido de vidrio", "Producción", "Herrajes", "Costos"];
+
+// Real commercial terms LUFT PVC already uses in production (seen verbatim across its
+// existing RA Workshop-generated quote PDFs) — reused here, not invented.
+const COMPANY = {
+  legalName: "Loud Ventures SAPI de CV",
+  bankName: "BBVA",
+  bankAccount: "011 928 0618",
+  clabe: "012 180 0011 9280618 4",
+  comercial: "Arq. Juan Manuel Saldaña Aguilar",
+  warranty: "2 años en Vidrios Condensación y 5 años en decoloración de color al contratar.",
+};
 
 const money = (v) => Number(v || 0).toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -829,6 +889,62 @@ function calcQuote(p) {
   return { w, h, area, perimeter, leaves, frameM, sashM, glassArea, profileCost, glassCost, reinforce, seals, accessories, addons, consumables, direct, sale, total: sale * p.qty, utility: (sale - direct) * p.qty, bars, waste };
 }
 
+// ---------- CUT-LIST OPTIMIZER (real 1D bin packing, first-fit-decreasing) ----------
+const BAR_LENGTH_MM = 5800;
+const KERF_MM = 5;
+
+function packBars(pieces, barLength, kerf) {
+  const sorted = [...pieces].sort((a, b) => b.length - a.length);
+  const bars = [];
+  for (const piece of sorted) {
+    let placed = false;
+    for (const bar of bars) {
+      const used = bar.pieces.reduce((a, p) => a + p.length, 0) + bar.pieces.length * kerf;
+      if (used + piece.length <= barLength) { bar.pieces.push(piece); placed = true; break; }
+    }
+    if (!placed) bars.push({ pieces: [piece] });
+  }
+  return bars.map((bar) => {
+    const used = bar.pieces.reduce((a, p) => a + p.length, 0) + Math.max(0, bar.pieces.length - 1) * kerf;
+    return { pieces: bar.pieces, used, waste: barLength - used };
+  });
+}
+
+// Derives real cut pieces from the tree: 4 outer marco pieces regardless of splits, one
+// travesaño per internal divider (its own actual cross-axis length), 4 hoja pieces per
+// operable leaf (fixed/inactive leaves glaze straight into marco/travesaño, no sash), and 4
+// junquillo (glazing bead) pieces per leaf.
+function buildCutList(tree, width, height) {
+  const marco = [
+    { label: "Marco: Abajo", length: width, angle: "45°" },
+    { label: "Marco: Arriba", length: width, angle: "45°" },
+    { label: "Marco: Izquierda", length: height, angle: "45°" },
+    { label: "Marco: Derecha", length: height, angle: "45°" },
+  ];
+  const travesanos = [];
+  (function walk(node, w, h) {
+    if (node.kind === "leaf") return;
+    const crossLen = Math.round(node.axis === "col" ? h : w);
+    for (let i = 0; i < node.children.length - 1; i++) travesanos.push({ label: "Travesaño", length: crossLen, angle: "90°" });
+    node.children.forEach((child, i) => {
+      const cw = node.axis === "col" ? w * node.ratios[i] : w;
+      const ch = node.axis === "row" ? h * node.ratios[i] : h;
+      walk(child, cw, ch);
+    });
+  })(tree, width, height);
+  const hojas = [];
+  const junquillos = [];
+  flattenToRects(tree, width, height).forEach((r, i) => {
+    const label = `Hoja ${String.fromCharCode(65 + i)}`;
+    const w = Math.round(r.w), h = Math.round(r.h);
+    if (r.wing !== "fixed" && r.wing !== "inactive") {
+      hojas.push({ label: `${label}: Arriba`, length: w, angle: "45°" }, { label: `${label}: Abajo`, length: w, angle: "45°" }, { label: `${label}: Izquierda`, length: h, angle: "45°" }, { label: `${label}: Derecha`, length: h, angle: "45°" });
+    }
+    junquillos.push({ label: `${label}: Arriba`, length: w, angle: "90°" }, { label: `${label}: Abajo`, length: w, angle: "90°" }, { label: `${label}: Izquierda`, length: h, angle: "90°" }, { label: `${label}: Derecha`, length: h, angle: "90°" });
+  });
+  return { marco, travesanos, hojas, junquillos };
+}
+
 // ---------- SELF-CHECK ----------
 function runSelfCheck() {
   const checks = [];
@@ -859,7 +975,7 @@ function runSelfCheck() {
 const state = {
   brand: "Aluplast", systemIndex: 0, rail: 2, width: 4000, height: 2200, qty: 1,
   glassIndex: 7, colorIndex: 1, face: "Ambas caras",
-  tab: "Diseño", view: "Frente", report: "Vidrio",
+  tab: "Diseño", view: "Frente", report: "Cotización",
   margin: 35, installation: 1200, transport: 450, discount: 0,
   code: "001", designation: "V01", location: "Cocina",
   tree: createDefaultTree(), selectedId: "", activeTool: { mode: "select" }, focusPart: null,
@@ -1020,19 +1136,154 @@ function renderProfileCatalog() {
     <div class="profileCatalog">${filtered.map((f) => `<div><span class="profileSketch">▥</span><section><b>${esc(f.code)}</b><p>${esc(f.name)}</p><small>${esc(f.system)} · €${f.priceEUR.toFixed(2)} (~${money(f.priceEUR * EUR_MXN)})</small></section></div>`).join("")}</div>`;
 }
 
+function fmtDate(iso) {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+function todayStr() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+function renderCotizacionDoc(calc, sys, glass, color) {
+  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}</div>`;
+  const specRows = [
+    ["Dimensiones", `${state.width.toLocaleString()} mm × ${state.height.toLocaleString()} mm`],
+    ["Perfil del sistema", `${esc(state.brand)} - ${esc(sys.name)} / ${esc(color.name)}`],
+    ["Configuración", esc(configSummary(calc))],
+    ["Fittings", `Herrajes ${esc(state.brand)} (Con instalación)`],
+    ["Vidrio", esc(glass.name)],
+    ["Cantidad", `${state.qty} pza.`],
+  ];
+  const iva = calc.total * 0.16;
+  return `<div class="reportDoc"><div class="docPage">
+    <div class="docHeader">
+      <div><div class="docBrandRow"><span class="brandMark">L</span><b>LUFT PVC</b></div><h1 class="docTitle">Cotización del cliente</h1></div>
+      <div class="docMeta">
+        <div>Cliente: <b>${esc(state.client || "—")}</b></div>
+        <div>Dirección: <b>${esc(state.clientAddress || "—")}</b></div>
+        <div>Proyecto: <b>${esc(state.designation)} · ${esc(state.location)}</b></div>
+        <div>Fecha: <b>${todayStr()}</b></div>
+        <div>Entrega: <b>${fmtDate(state.deliveryDate)}</b></div>
+      </div>
+    </div>
+    <p class="docIntro">Estimado/a, según sus indicaciones le presentamos la oferta de los productos solicitados. A continuación, el desglose de cada elemento:</p>
+    <div class="docItem">
+      <div class="docItemHead">${esc(state.code)} — Componente ${esc(state.designation)}</div>
+      <div class="docItemBody">
+        <table class="docSpecTable">${specRows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("")}</table>
+        <div class="docDiagramBox">${itemDiagram}</div>
+      </div>
+    </div>
+    <table class="docTable">
+      <thead><tr><th>Concepto</th><th>Cant.</th><th>Precio unitario</th><th>Importe</th></tr></thead>
+      <tbody><tr><td>${esc(state.designation)} · ${calc.area.toFixed(3)} m² c/u</td><td>${state.qty} pza.</td><td>${money(calc.sale)}</td><td>${money(calc.total)}</td></tr></tbody>
+    </table>
+    <div class="docTotalRow"><span>Subtotal</span><b>${money(calc.total)}</b></div>
+    <div class="docTotalRow"><span>IVA (16%)</span><b>${money(iva)}</b></div>
+    <div class="docTotalRow grand"><span>Presupuesto total</span><b>${money(calc.total + iva)}</b></div>
+    <div class="docStatGrid">
+      <div><span>COMPONENTES</span><b>1 pza.</b></div>
+      <div><span>SUPERFICIE TOTAL</span><b>${(calc.area * state.qty).toFixed(3)} m²</b></div>
+    </div>
+  </div>
+  <div class="docPage docPageBreak">
+    <div class="docTerms">
+      <h4>Condiciones comerciales de venta</h4>
+      <p>(La vista de la cancelería es vista por dentro)</p>
+      <p><b>Forma de pago:</b></p>
+      <p>A) 70% al momento de aprobación y firma del presente Contrato/Presupuesto.<br>B) 40% al aviso de embarque de cancelería o vidrio.</p>
+      <p>En caso de aceptación del proyecto, favor de efectuar los pagos mediante depósito a:</p>
+      <div class="docBank">
+        <div>Titular: <b>${esc(COMPANY.legalName)}</b></div>
+        <div>${esc(COMPANY.bankName)}: <b>${esc(COMPANY.bankAccount)}</b></div>
+        <div>CLABE: <b>${esc(COMPANY.clabe)}</b></div>
+      </div>
+      <p>La ejecución de trabajos no especificados en esta cotización deberá contratarse por separado. No se incluyen trabajos de albañilería ni desmantelamientos. Se solicita al cliente tener al 100% los vanos terminados y disponibles para el montaje en la fecha acordada. Estos precios incluyen instalación, la cual se realiza hasta que todos los vanos estén listos para montaje.</p>
+      <p><b>Garantía:</b> ${esc(COMPANY.warranty)}</p>
+      <p>Esta oferta es propiedad de ${esc(COMPANY.legalName)}; no debe reproducirse ni entregarse a terceros sin consentimiento.</p>
+      <div class="docSignatures">
+        <div>Comercial: ${esc(COMPANY.comercial)}</div>
+        <div>Cliente Vo.Bo. / Fecha</div>
+      </div>
+    </div>
+  </div></div>`;
+}
+
+function renderCorteCategory(title, pieces, qty) {
+  if (!pieces.length) return "";
+  const allPieces = [];
+  for (let i = 0; i < qty; i++) allPieces.push(...pieces);
+  const bars = packBars(allPieces, BAR_LENGTH_MM, KERF_MM);
+  const totalWaste = bars.reduce((a, b) => a + b.waste, 0);
+  const totalUsed = bars.reduce((a, b) => a + b.used, 0);
+  const wastePct = totalUsed + totalWaste > 0 ? (totalWaste / (totalUsed + totalWaste)) * 100 : 0;
+  const barsHtml = bars.map((bar, bi) => `
+    <div class="cutBarRow">
+      <div class="cutBarLabel"><span>Barra ${bi + 1} · ${BAR_LENGTH_MM} mm</span><span>Resto: ${Math.round(bar.waste)} mm</span></div>
+      <div class="cutBar">
+        ${bar.pieces.map((p, pi) => `<div class="cutBarPiece" style="flex:${p.length} 0 0%;background:${pi % 2 === 0 ? "var(--accent)" : "#14231c"}" title="${esc(p.label)} · ${p.length} mm · ${p.angle}">${p.length}</div>`).join("")}
+        ${bar.waste > 0 ? `<div class="cutBarWaste" style="flex:${bar.waste} 0 0%">${Math.round(bar.waste)}</div>` : ""}
+      </div>
+    </div>`).join("");
+  return `<div class="cutGroup">
+    <div class="cutGroupHead"><b>${esc(title)}</b><span>${bars.length} barra(s) de ${BAR_LENGTH_MM} mm · ${wastePct.toFixed(1)}% desperdicio</span></div>
+    ${barsHtml}
+  </div>`;
+}
+
+function renderCorteDoc() {
+  const cut = buildCutList(state.tree, state.width, state.height);
+  return `<div class="reportDoc"><div class="docPage">
+    <div class="docHeader">
+      <div><div class="docBrandRow"><span class="brandMark">L</span><b>LUFT PVC</b></div><h1 class="docTitle">Optimización del corte</h1></div>
+      <div class="docMeta"><div>Proyecto: <b>${esc(state.designation)} · ${esc(state.location)}</b></div><div>Fecha: <b>${todayStr()}</b></div><div>Tolerancia: <b>${KERF_MM} mm</b></div></div>
+    </div>
+    ${renderCorteCategory("Marco", cut.marco, state.qty)}
+    ${renderCorteCategory("Travesaño", cut.travesanos, state.qty)}
+    ${renderCorteCategory("Hoja", cut.hojas, state.qty)}
+    ${renderCorteCategory("Junquillo", cut.junquillos, state.qty)}
+    <p class="docIntro">Barra comercial de ${BAR_LENGTH_MM} mm, tolerancia de corte de ${KERF_MM} mm entre piezas. Optimización por primer ajuste descendente (first-fit-decreasing); valida ángulos, soldadura y reglas específicas del catálogo antes de fabricar.</p>
+  </div></div>`;
+}
+
+function renderVidrioDoc(calc, glass) {
+  const groups = {};
+  calc.leaves.forEach((l, i) => {
+    const name = l.spec.glass !== "Heredar vidrio general" ? l.spec.glass : glass.name;
+    (groups[name] = groups[name] || []).push({ ...l, posIndex: i });
+  });
+  let rowNum = 0;
+  const sections = Object.entries(groups).map(([name, items]) => {
+    const rows = items.map((l) => {
+      rowNum++;
+      const w = Math.max(0, Math.round(l.wMm - 120)), h = Math.max(0, Math.round(l.hMm - 120));
+      return `<tr><td>${rowNum}</td><td style="text-align:center"><span class="checkboxCell"></span></td><td>${esc(state.designation)}.${String.fromCharCode(65 + l.posIndex)}</td><td>${w}</td><td>${h}</td><td>${state.qty}</td><td>${l.glassArea.toFixed(3)}</td><td>${(l.glassArea * state.qty).toFixed(3)}</td></tr>`;
+    }).join("");
+    const groupArea = items.reduce((a, l) => a + l.glassArea * state.qty, 0);
+    return `<tr><td colspan="8" style="background:var(--paper);font-weight:bold">${esc(name)} — ${groupArea.toFixed(3)} m²</td></tr>${rows}`;
+  }).join("");
+  return `<div class="reportDoc"><div class="docPage">
+    <div class="docHeader">
+      <div><div class="docBrandRow"><span class="brandMark">L</span><b>LUFT PVC</b></div><h1 class="docTitle">Pedido de vidrio</h1></div>
+      <div class="docMeta"><div>Proyecto: <b>${esc(state.designation)} · ${esc(state.location)}</b></div><div>Fecha: <b>${todayStr()}</b></div></div>
+    </div>
+    <table class="docTable">
+      <thead><tr><th>No.</th><th></th><th>Posición</th><th>W (mm)</th><th>H (mm)</th><th>Cant.</th><th>m²</th><th>m² total</th></tr></thead>
+      <tbody>${sections}</tbody>
+      <tfoot><tr><td colspan="7">Superficie total</td><td>${(calc.glassArea * state.qty).toFixed(3)}</td></tr></tfoot>
+    </table>
+  </div></div>`;
+}
+
 function renderReportPreview(calc, sys, glass) {
   const r = state.report;
+  if (r === "Cotización") return renderCotizacionDoc(calc, sys, glass, colorsByBrand[state.brand][Math.min(state.colorIndex, colorsByBrand[state.brand].length - 1)]);
+  if (r === "Optimización de corte") return renderCorteDoc();
+  if (r === "Pedido de vidrio") return renderVidrioDoc(calc, glass);
   let body = "";
-  if (r === "Vidrio") {
-    body = `<h3>Orden de vidrio</h3><table><thead><tr><th>Pos.</th><th>Descripción</th><th>Cant.</th><th>Medidas</th><th>m²</th></tr></thead><tbody>
-      ${calc.leaves.map((l, i) => `<tr><td>${esc(state.designation)}.${String.fromCharCode(65 + i)}</td><td>${esc(l.spec.glass !== "Heredar vidrio general" ? l.spec.glass : glass.name)}</td><td>${state.qty}</td><td>${Math.max(0, Math.round(l.wMm - 120))} × ${Math.max(0, Math.round(l.hMm - 120))}</td><td>${(l.glassArea * state.qty).toFixed(3)}</td></tr>`).join("")}
-      </tbody><tfoot><tr><th colspan="4">Superficie total</th><th>${(calc.glassArea * state.qty).toFixed(3)}</th></tr></tfoot></table>`;
-  } else if (r === "Perfiles") {
-    body = `<h3>Orden total de perfiles</h3>
-      ${reportRow("Marco / riel", `${(calc.frameM * state.qty).toFixed(2)} m`, `${Math.ceil((calc.frameM * state.qty) / 6)} barras`)}
-      ${reportRow("Perfil de hoja", `${(calc.sashM * state.qty).toFixed(2)} m`, `${Math.ceil((calc.sashM * state.qty) / 6)} barras`)}
-      ${reportRow("Refuerzo", `${((calc.frameM + calc.sashM) * state.qty).toFixed(2)} m`, "Galvanizado")}`;
-  } else if (r === "Herrajes") {
+  if (r === "Herrajes") {
     body = `<h3>Accesorios y herrajes</h3>
       ${reportRow("Juego de herrajes", `${calc.leaves.length * state.qty} set`, configSummary(calc))}
       ${reportRow("Juntas EPDM", `${((calc.frameM + calc.sashM) * state.qty).toFixed(2)} m`, "Perimetral")}
@@ -1098,6 +1349,10 @@ function renderApp() {
         <label>Designación<input id="f-designation" type="text" value="${esc(state.designation)}" data-bind="designation"></label>
       </div>
       <label>Ubicación / descripción<input id="f-location" type="text" value="${esc(state.location)}" data-bind="location"></label>
+      ${block("02", "Datos para la cotización", "Aparecen en la Cotización del cliente imprimible.")}
+      <label>Cliente<input id="f-client" type="text" placeholder="Sr./Sra./Arq. ..." value="${esc(state.client)}" data-bind="client"></label>
+      <label>Dirección del proyecto<input id="f-clientAddress" type="text" value="${esc(state.clientAddress)}" data-bind="clientAddress"></label>
+      <label>Fecha de entrega<input id="f-deliveryDate" type="date" value="${esc(state.deliveryDate)}" data-bind="deliveryDate"></label>
       <div class="summaryCard"><span>Marca</span><b>${esc(state.brand)}</b><span>Sistema</span><b>${esc(sys.name)}</b><span>Configuración</span><b>${esc(summary)}</b><span>Superficie total</span><b>${(calc.area * state.qty).toFixed(3)} m²</b></div>`;
   } else if (state.tab === "Diseño") {
     configBody = `
@@ -1112,8 +1367,8 @@ function renderApp() {
       ${block("02", "Composición", "Haz clic en el marco, la hoja, el vidrio o el herraje del dibujo para seleccionar esa parte, o usa la paleta para dividir y asignar tipos de apertura.")}
       ${block("03", "Geometría", "Cotas generales en milímetros.")}
       <div class="inputGrid">
-        <label>Ancho<input id="f-width" type="number" value="${state.width}" data-bind="width" data-numeric="true"></label>
-        <label>Alto<input id="f-height" type="number" value="${state.height}" data-bind="height" data-numeric="true"></label>
+        <label>Ancho<input id="f-width" type="number" min="1" value="${state.width}" data-bind="width" data-numeric="true"></label>
+        <label>Alto<input id="f-height" type="number" min="1" value="${state.height}" data-bind="height" data-numeric="true"></label>
         <label>Cant.<input id="f-qty" type="number" min="1" value="${state.qty}" data-bind="qty" data-numeric="true"></label>
       </div>
       ${block("04", "Materiales", "Color, aplicación y vidrio.")}
@@ -1300,7 +1555,13 @@ root.addEventListener("click", (e) => {
 function handleFieldChange(e) {
   const t = e.target;
   if (t.dataset.action === "change-system") { changeSystem(Number(t.value)); render(); return; }
-  if (t.dataset.bind) { state[t.dataset.bind] = t.dataset.numeric === "true" ? Number(t.value) : t.value; render(); return; }
+  if (t.dataset.bind) {
+    let v = t.dataset.numeric === "true" ? Number(t.value) : t.value;
+    if (["width", "height", "qty"].includes(t.dataset.bind)) v = Math.max(1, v);
+    state[t.dataset.bind] = v;
+    render();
+    return;
+  }
   if (t.dataset.bindSpec) {
     const node = findNode(state.tree, state.selectedId);
     if (node && node.kind === "leaf") { state.tree = updateSpecFn(state.tree, node.id, { [t.dataset.bindSpec]: t.value }); render(); }
