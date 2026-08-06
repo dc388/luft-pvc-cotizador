@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState, type MouseEvent } from "react";
+import { useMemo, useState, type CSSProperties, type MouseEvent } from "react";
 import type { Brand, PaneSpec, Report, Tab, Tool, ViewMode } from "@/types/domain";
-import { catalog } from "@/data/catalog";
+import { catalog, EUR_MXN } from "@/data/catalog";
 import { glassCatalog } from "@/data/glass";
-import { colors } from "@/data/colors";
-import { ideal2000Profiles } from "@/data/profiles";
+import { colors, brandAccent } from "@/data/colors";
+import { profileFamilies } from "@/data/families";
 import { wingDefs } from "@/data/wings";
 import {
   createDefaultTree,
@@ -52,6 +52,8 @@ export default function Home() {
   const [code, setCode] = useState("001");
   const [designation, setDesignation] = useState("V01");
   const [location, setLocation] = useState("Cocina");
+  const [profileSearch, setProfileSearch] = useState("");
+  const [profileSystemFilter, setProfileSystemFilter] = useState("Todos");
 
   const [tree, setTree] = useState(() => createDefaultTree());
   const [selectedId, setSelectedId] = useState(() => firstLeafId(tree));
@@ -64,6 +66,16 @@ export default function Home() {
   const changeBrand = (b: Brand) => { setBrand(b); setSystemIndex(0); setColorIndex(0); setRail(catalog[b][0].rails[0]); };
   const changeSystem = (i: number) => { setSystemIndex(i); setRail(catalog[brand][i].rails[0]); };
   const changeTab = (t: Tab) => { setTab(t); if (t !== "Diseño") setActiveTool({ mode: "select" }); };
+
+  const profileSystems = useMemo(() => Array.from(new Set(profileFamilies.map((f) => f.system))).sort(), []);
+  const filteredFamilies = useMemo(() => {
+    const q = profileSearch.trim().toLowerCase();
+    return profileFamilies.filter(
+      (f) =>
+        (profileSystemFilter === "Todos" || f.system === profileSystemFilter) &&
+        (!q || f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q))
+    );
+  }, [profileSearch, profileSystemFilter]);
 
   const calc = useMemo(
     () => calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount }),
@@ -108,9 +120,9 @@ export default function Home() {
     setActiveTool({ mode: "select" });
   };
 
-  const updatePane = (key: keyof PaneSpec, value: string) => {
+  const updatePane = (key: keyof PaneSpec, value: string | boolean) => {
     if (!selectedLeaf) return;
-    setTree((prev) => updateSpec(prev, selectedLeaf.id, { [key]: value }));
+    setTree((prev) => updateSpec(prev, selectedLeaf.id, { [key]: value } as Partial<PaneSpec>));
   };
 
   const handleMerge = () => {
@@ -141,7 +153,7 @@ export default function Home() {
     : `Haz clic en una hoja para asignarle "${wingDefs.find((w) => w.id === activeTool.wing)?.name}"`;
 
   return (
-    <main>
+    <main style={{ "--accent": brandAccent[brand] } as CSSProperties}>
       <TopBar code={code} designation={designation} location={location} onPrint={() => window.print()} />
       <ModuleNav tabs={TABS} active={tab} onChange={changeTab} />
 
@@ -177,9 +189,14 @@ export default function Home() {
               </div>
               <label>Sistema
                 <select value={systemIndex} onChange={(e) => changeSystem(Number(e.target.value))}>
-                  {catalog[brand].map((x, i) => <option key={x.name} value={i}>{x.name}</option>)}
+                  {catalog[brand].map((x, i) => <option key={x.name} value={i}>{x.name}{x.sourced ? " ✓" : ""}</option>)}
                 </select>
               </label>
+              {sys.sourced ? (
+                <p className="sourceNote"><b>✓ Datos reales</b> — precio de marco/hoja tomado de la lista EXWORK Veracruz (rev. ABR_22), convertido a MXN @ {EUR_MXN}.</p>
+              ) : (
+                <p className="sourceNote">Precio de marco/hoja estimado (sin lista de precios de origen para este sistema).</p>
+              )}
               {hasRailOptions && (
                 <label>Tipo de riel
                   <select value={rail} onChange={(e) => setRail(Number(e.target.value))}>
@@ -241,19 +258,24 @@ export default function Home() {
                 })}
               </div>
               <p className="notice">La optimización definitiva depende de descuentos, ángulos, soldadura, refuerzos, sierra y reglas específicas del catálogo.</p>
-              {brand === "Aluplast" && (
-                <>
-                  <Block n="02" title="Perfiles IDEAL 2000" sub="Códigos identificados en catálogo y listas MX." />
-                  <div className="profileCatalog">
-                    {ideal2000Profiles.map((p) => (
-                      <div key={p.code}>
-                        <span className="profileSketch">{p.role === "Conector" ? "⊞" : p.role === "Junquillo" ? "⌝" : "▥"}</span>
-                        <section><b>{p.code}</b><p>{p.name}</p><small>{p.role} · {p.status}</small></section>
-                      </div>
-                    ))}
+              <Block n="02" title="Catálogo de perfiles y accesorios" sub="Datos reales Aluplast · lista EXWORK Veracruz, revisión ABR_22 (01/05/2022). 278 familias normalizadas." />
+              <div className="inputGrid two">
+                <label>Buscar<input type="text" value={profileSearch} onChange={(e) => setProfileSearch(e.target.value)} /></label>
+                <label>Sistema
+                  <select value={profileSystemFilter} onChange={(e) => setProfileSystemFilter(e.target.value)}>
+                    {["Todos", ...profileSystems].map((s) => <option key={s}>{s}</option>)}
+                  </select>
+                </label>
+              </div>
+              <p className="profileCount">Mostrando {filteredFamilies.length} de {profileFamilies.length} familias.</p>
+              <div className="profileCatalog">
+                {filteredFamilies.map((f) => (
+                  <div key={f.code}>
+                    <span className="profileSketch">▥</span>
+                    <section><b>{f.code}</b><p>{f.name}</p><small>{f.system} · €{f.priceEUR.toFixed(2)} (~{money(f.priceEUR * EUR_MXN)})</small></section>
                   </div>
-                </>
-              )}
+                ))}
+              </div>
             </>
           )}
 
@@ -367,6 +389,7 @@ export default function Home() {
                 <h2>Costos del elemento</h2>
                 <Cost label="Perfiles" value={calc.profileCost} />
                 <Cost label="Accesorios y herrajes" value={calc.accessories + calc.reinforce + calc.seals} />
+                {calc.addons > 0 && <Cost label="Persianas Mallorquina" value={calc.addons} />}
                 <Cost label="Vidrio" value={calc.glassCost} />
                 <Cost label="Servicios y consumibles" value={installation + transport + calc.consumables} />
                 <div className="direct"><span>Costo directo / pza.</span><b>{money(calc.direct)}</b></div>
@@ -385,13 +408,13 @@ export default function Home() {
                 <Item code="EPDM" name="Juntas y sellos" qty={`${(calc.frameM + calc.sashM).toFixed(2)} m`} />
                 <Item code="HERRAJE" name="Juego de herrajes" qty={`${calc.leaves.length} set`} />
               </details>
-              <p className="priceNote">Motor técnico v3 · Editor compositivo estilo RA Workshop. Valores en MXN. Los precios y límites deben validarse con la lista vigente y la ingeniería de cada proyecto.</p>
+              <p className="priceNote">Motor técnico v4 · Editor compositivo estilo RA Workshop + catálogo real Aluplast (EXWORK Veracruz, rev. ABR_22 2022). Valores en MXN. Los precios y límites deben validarse con la lista vigente y la ingeniería de cada proyecto.</p>
             </>
           )}
         </aside>
       </section>
       <footer className="sources">
-        <b>Base técnica:</b> documentación RA Workshop aportada, <a href="https://www.aluplast.net/eng-int/products/windows/ideal/" target="_blank">sistemas oficiales Aluplast</a> y <a href="https://www.deceuninck.com.mx/en/pdf/catalogo_tecnico.pdf" target="_blank">catálogo técnico Deceuninck México</a>.
+        <b>Base técnica:</b> documentación RA Workshop aportada, catálogo real Aluplast (lista EXWORK Veracruz, rev. ABR_22 2022), <a href="https://www.aluplast.net/eng-int/products/windows/ideal/" target="_blank">sistemas oficiales Aluplast</a> y <a href="https://www.deceuninck.com.mx/en/pdf/catalogo_tecnico.pdf" target="_blank">catálogo técnico Deceuninck México</a>.
       </footer>
     </main>
   );

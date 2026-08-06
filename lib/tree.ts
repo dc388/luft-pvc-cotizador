@@ -3,22 +3,36 @@ import type { FrameNode, LeafNode, PaneSpec, WingType } from "@/types/domain";
 const OPENING_BY_WING: Record<WingType, string> = {
   fixed: "Sin apertura",
   sliding: "Corredera",
+  "lift-slide": "Corredera elevadora",
+  "folding-sliding": "Plegable corrediza",
   "casement-in": "Abatible interior",
   "casement-out": "Abatible exterior",
   "tilt-turn": "Oscilobatiente",
   project: "Proyectante",
+  hopper: "Proyectante inferior",
+  jalousie: "Persiana de cristal",
+  pivot: "Pivotante",
   door: "Abatible interior",
   inactive: "Sin apertura",
 };
 
+const HARDWARE_BY_WING: Partial<Record<WingType, string>> = {
+  "lift-slide": "Roto · sistema elevador (lift-slide)",
+  pivot: "Bisagra pivote reforzada",
+};
+const HANDLE_BY_WING: Partial<Record<WingType, string>> = {
+  jalousie: "Manivela jalousie",
+};
+
 export function defaultSpecFor(wing: WingType): Partial<PaneSpec> {
   const fixed = wing === "fixed" || wing === "inactive";
+  const directional = wing === "sliding" || wing === "lift-slide" || wing === "folding-sliding";
   return {
     state: wing === "inactive" ? "Inactiva" : fixed ? "Fija" : "Móvil",
     opening: OPENING_BY_WING[wing],
-    direction: wing === "sliding" ? "Derecha" : "N/A",
-    hardware: fixed ? "Sin herraje" : "Roto · cierre multipunto",
-    handle: fixed ? "Sin manilla" : "Harmony con tetones",
+    direction: directional ? "Derecha" : "N/A",
+    hardware: fixed ? "Sin herraje" : HARDWARE_BY_WING[wing] ?? "Roto · cierre multipunto",
+    handle: fixed ? "Sin manilla" : HANDLE_BY_WING[wing] ?? "Harmony con tetones",
   };
 }
 
@@ -27,7 +41,7 @@ export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>): 
     kind: "leaf",
     id: crypto.randomUUID(),
     wing,
-    spec: { ...defaultSpecFor(wing), glass: "Heredar vidrio general", notes: "", ...spec } as PaneSpec,
+    spec: { ...defaultSpecFor(wing), glass: "Heredar vidrio general", notes: "", mallorquina: false, ...spec } as PaneSpec,
   };
 }
 

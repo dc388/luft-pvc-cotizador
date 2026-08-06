@@ -14,7 +14,7 @@ type Props = {
 };
 
 function motionGlyph(wing: WingType, spec: PaneSpec) {
-  if (wing === "sliding") return spec.direction === "Izquierda" ? "←" : "→";
+  if (wing === "sliding" || wing === "lift-slide" || wing === "folding-sliding") return spec.direction === "Izquierda" ? "←" : "→";
   if (wing === "fixed" || wing === "inactive") return "FIJO";
   return wingDefs.find((w) => w.id === wing)?.icon ?? "?";
 }
@@ -43,7 +43,7 @@ export function FrameNodeView({ node, widthMm, heightMm, selectedId, flexBasis, 
   }
 
   const wingDef = wingDefs.find((w) => w.id === node.wing);
-  const showOpeningLines = node.wing !== "fixed" && node.wing !== "inactive" && node.wing !== "sliding";
+  const showOpeningLines = node.wing !== "fixed" && node.wing !== "inactive" && node.wing !== "sliding" && node.wing !== "lift-slide" && node.wing !== "folding-sliding";
 
   return (
     <button

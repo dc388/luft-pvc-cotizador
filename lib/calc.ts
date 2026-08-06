@@ -1,6 +1,12 @@
 import type { ColorItem, FrameNode, GlassItem, PaneSpec, System, WingType } from "@/types/domain";
 import { flattenToRects } from "./tree";
 
+// Representative rate for the Mallorquina louvre-shutter accessory (avg. of the 5
+// Mallorquina families' base EUR/m prices * EUR_MXN) — modeled as a per-leaf add-on, not a
+// wing type, since it's an exterior shading accessory mounted over a window, not one of the
+// window's own opening mechanisms. See data/catalog.ts for EUR_MXN.
+const MALLORQUINA_RATE_MXN_PER_M = 47;
+
 export type LeafCalc = {
   id: string;
   wing: WingType;
@@ -25,6 +31,7 @@ export type QuoteCalc = {
   reinforce: number;
   seals: number;
   accessories: number;
+  addons: number;
   consumables: number;
   direct: number;
   sale: number;
@@ -92,15 +99,16 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
   const reinforce = (frameM + sashM) * 78;
   const seals = (frameM + sashM) * 24;
   const accessories = sys.hardware + leaves.length * 110 + rail * 165;
+  const addons = leaves.reduce((a, l) => a + (l.spec.mallorquina ? (l.wMm / 1000) * MALLORQUINA_RATE_MXN_PER_M * 2 : 0), 0);
   const consumables = (profileCost + glassCost) * 0.045;
-  const direct = profileCost + glassCost + reinforce + seals + accessories + consumables + installation + transport;
+  const direct = profileCost + glassCost + reinforce + seals + accessories + addons + consumables + installation + transport;
   const sale = (direct / (1 - margin / 100)) * (1 - discount / 100);
   const bars = Math.ceil((frameM + sashM) / 6);
   const waste = Math.max(0, bars * 6 - frameM - sashM);
 
   return {
     w, h, area, perimeter, leaves, frameM, sashM, glassArea,
-    profileCost, glassCost, reinforce, seals, accessories, consumables,
+    profileCost, glassCost, reinforce, seals, accessories, addons, consumables,
     direct, sale, total: sale * qty, utility: (sale - direct) * qty, bars, waste,
   };
 }

@@ -1,71 +1,76 @@
 <title>LUFT PVC · Cotizador</title>
-<meta name="description" content="Cotizador técnico de cancelería de PVC para Aluplast y Deceuninck, con editor compositivo de ventanas estilo RA Workshop.">
+<meta name="description" content="Cotizador técnico de cancelería de PVC con catálogo real Aluplast (EXWORK Veracruz, rev. ABR_22) y editor compositivo de ventanas estilo RA Workshop.">
 <style>
 :root{
-  --paper:#f4f5ef; --surface:#ffffff; --ink:#14231c; --green:#163f32; --mint:#d9ef3b;
-  --line:#d8ddd4; --muted:#66736c; --warn-bg:#fff5dc; --warn-fg:#795b1a; --warn-line:#f1d792;
-  --ok-bg:#e8f2e7; --ok-fg:#367558; --shadow:#14231c1f;
+  --paper:#eef1f2; --surface:#ffffff; --ink:#171b1e;
+  --line:#d7dee1; --muted:#5c6b72; --warn-bg:#fff5dc; --warn-fg:#795b1a; --warn-line:#f1d792;
+  --ok-bg:#e8f2e7; --ok-fg:#367558; --shadow:#14231c1f; --accent:#D10A11;
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --paper:#0f1713; --surface:#182420; --ink:#e9efe9; --green:#4caf8a; --mint:#d9ef3b;
-    --line:#2b3a33; --muted:#9db2a7; --warn-bg:#3a2f10; --warn-fg:#f0cf7a; --warn-line:#5b4a1c;
+    --paper:#12161a; --surface:#1b2126; --ink:#e6ecef;
+    --line:#2b3339; --muted:#8fa0a8; --warn-bg:#3a2f10; --warn-fg:#f0cf7a; --warn-line:#5b4a1c;
     --ok-bg:#183828; --ok-fg:#7fd8ab; --shadow:#00000055;
   }
 }
 :root[data-theme="dark"]{
-  --paper:#0f1713; --surface:#182420; --ink:#e9efe9; --green:#4caf8a; --mint:#d9ef3b;
-  --line:#2b3a33; --muted:#9db2a7; --warn-bg:#3a2f10; --warn-fg:#f0cf7a; --warn-line:#5b4a1c;
+  --paper:#12161a; --surface:#1b2126; --ink:#e6ecef;
+  --line:#2b3339; --muted:#8fa0a8; --warn-bg:#3a2f10; --warn-fg:#f0cf7a; --warn-line:#5b4a1c;
   --ok-bg:#183828; --ok-fg:#7fd8ab; --shadow:#00000055;
 }
 :root[data-theme="light"]{
-  --paper:#f4f5ef; --surface:#ffffff; --ink:#14231c; --green:#163f32; --mint:#d9ef3b;
-  --line:#d8ddd4; --muted:#66736c; --warn-bg:#fff5dc; --warn-fg:#795b1a; --warn-line:#f1d792;
+  --paper:#eef1f2; --surface:#ffffff; --ink:#171b1e;
+  --line:#d7dee1; --muted:#5c6b72; --warn-bg:#fff5dc; --warn-fg:#795b1a; --warn-line:#f1d792;
   --ok-bg:#e8f2e7; --ok-fg:#367558; --shadow:#14231c1f;
 }
 *{box-sizing:border-box}
 html{background:var(--paper)}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased}
 button{font:inherit;cursor:pointer;color:inherit}
-button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 select,input[type=number],input[type=text]{width:100%;height:40px;border:1px solid var(--line);background:var(--paper);border-radius:7px;padding:0 10px;color:var(--ink);font-size:12px}
 textarea{background:var(--paper);color:var(--ink)}
 a{color:inherit}
 
-.topbar{height:76px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:20}
+.topbar{height:76px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:20;gap:12px}
 .brand{color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:12px;letter-spacing:.08em;font-size:18px}
-.brand b{color:var(--green)}
-.brandMark{width:38px;height:38px;border-radius:50%;background:var(--green);color:var(--mint);display:grid;place-items:center;font-weight:900}
+.brand b{color:var(--accent);transition:color .2s}
+.brandMark{width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:900;transition:background .2s}
 .projectName{display:flex;flex-direction:column;text-align:center;gap:2px}
 .projectName span,.eyebrow,.quoteHead span,.metricRow span,.totalBox span,.priceNote{font-size:10px;letter-spacing:.12em;color:var(--muted)}
 .projectName strong{font-size:13px}
-.headerActions{display:flex;gap:8px}
-.primary{padding:11px 16px;border-radius:8px;border:1px solid var(--green);background:var(--green);color:#fff;font-size:12px;font-weight:bold}
+.headerActions{display:flex;gap:8px;align-items:center}
+.primary{padding:11px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:bold;transition:background .2s,border-color .2s}
+.selfCheckBadge{font-size:9px;padding:7px 11px;border-radius:20px;font-weight:bold;cursor:default;white-space:nowrap}
+.selfCheckBadge.ok{background:var(--ok-bg);color:var(--ok-fg)}
+.selfCheckBadge.warn{background:var(--warn-bg);color:var(--warn-fg)}
 
 .moduleNav{height:42px;display:flex;justify-content:center;gap:4px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:76px;z-index:19}
 .moduleNav button{border:0;background:transparent;padding:0 24px;font-size:11px;color:var(--muted);border-bottom:2px solid transparent}
-.moduleNav button.active{color:var(--green);font-weight:bold;border-bottom-color:var(--green)}
+.moduleNav button.active{color:var(--accent);font-weight:bold;border-bottom-color:var(--accent)}
 
 .workspace{display:grid;grid-template-columns:360px minmax(460px,1fr) 390px;min-height:calc(100vh - 76px)}
 .configPanel,.quotePanel{background:var(--surface);padding:28px;border-right:1px solid var(--line);overflow:auto}
 .quotePanel{border-right:0;border-left:1px solid var(--line);padding:0 26px 24px}
-.eyebrow{color:var(--green);font-weight:bold;margin-bottom:10px}
+.eyebrow{color:var(--accent);font-weight:bold;margin-bottom:10px}
 .configPanel h1{font-family:Georgia,serif;font-size:40px;line-height:1.02;margin:0 0 12px;letter-spacing:-.04em;text-wrap:balance}
 .lead{font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:24px}
 .step{display:flex;gap:12px;border-top:1px solid var(--line);padding-top:18px;margin-top:20px}
-.step>span{color:var(--green);font-size:11px;font-weight:bold}
+.step>span{color:var(--accent);font-size:11px;font-weight:bold}
 .step div{display:flex;flex-direction:column;gap:3px}
 .step b{font-size:13px}
 .step small{color:var(--muted);font-size:11px}
 .segmented{display:grid;grid-template-columns:1fr 1fr;margin:14px 0 12px;border:1px solid var(--line);border-radius:9px;padding:3px}
 .segmented button{border:0;background:transparent;padding:10px;font-size:10px;font-weight:800;color:var(--muted);border-radius:6px}
-.segmented button.selected{background:var(--green);color:#fff}
+.segmented button.selected{background:var(--accent);color:#fff}
 .configPanel label,.additional label{display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--muted);font-weight:bold;margin-top:10px}
 .inputGrid{display:grid;grid-template-columns:1fr 1fr 80px;gap:8px}
 .inputGrid.two{grid-template-columns:1fr 1fr}
 .summaryCard{margin-top:16px;display:grid;grid-template-columns:1fr 1.4fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .summaryCard span,.summaryCard b{padding:9px;font-size:10px;border-bottom:1px solid var(--line)}
 .summaryCard span{background:var(--paper);color:var(--muted)}
+.sourceNote{font-size:9px;color:var(--muted);line-height:1.4;margin:6px 0 0}
+.sourceNote b{color:var(--ok-fg)}
 
 .visualPanel{display:flex;flex-direction:column;min-width:0}
 .visualHeader{height:54px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:9px;letter-spacing:.09em;color:var(--muted);border-bottom:1px solid var(--line)}
@@ -85,21 +90,27 @@ a{color:inherit}
 .splitNode{display:flex;min-width:0;min-height:0;position:relative}
 .splitNode.axisCol{flex-direction:row}
 .splitNode.axisRow{flex-direction:column}
-.pane{flex:1;position:relative;border:5px solid #24352e;background:linear-gradient(145deg,#9cbec4cc,#e9f2f0cc 55%,#91b8c2cc);overflow:hidden;appearance:none;padding:0;cursor:pointer;text-align:left;min-width:0}
+.pane{flex:1;position:relative;border:5px solid #24352e;background:linear-gradient(145deg,#9cbec4cc,#e9f2f0cc 55%,#91b8c2cc);overflow:hidden;min-width:0}
 .whiteFrame .pane{border-color:#e8eae5}
-.pane:after{content:"";position:absolute;width:180%;height:22px;background:#fff5;transform:rotate(-35deg);top:26%;left:-40%}
-.pane .motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#2870a2;font-size:18px}
-.pane em{position:absolute;z-index:3;bottom:4px;left:6px;font-size:8px;font-style:normal;color:#325248}
-.openingLines{position:absolute;inset:0;display:block;background:linear-gradient(32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%),linear-gradient(-32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%)}
-.pane.selectedPane{outline:4px solid var(--mint);outline-offset:-4px;box-shadow:inset 0 0 0 2px var(--green)}
-.paneHardware{position:absolute;z-index:4;top:5px;left:5px;background:#ffffffd9;color:#274d3e;padding:3px 5px;border-radius:4px;font-size:7px}
-.paneDim{position:absolute;z-index:4;bottom:5px;right:5px;background:#ffffffd9;color:#274d3e;padding:3px 5px;border-radius:4px;font-size:7px;font-weight:normal;font-style:normal}
+.pane:after{content:"";position:absolute;width:180%;height:22px;background:#fff5;transform:rotate(-35deg);top:26%;left:-40%;pointer-events:none}
+.pane.selectedPane{outline:4px solid var(--accent);outline-offset:-4px;box-shadow:inset 0 0 0 2px #14231c}
+.hit{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer}
+.hit:hover{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent)}
+.hitMarco{inset:0;z-index:1}
+.hitHoja{inset:9%;z-index:2;display:grid;place-items:center}
+.hitVidrio{inset:17%;z-index:3}
+.hitHerraje{position:absolute;z-index:5;bottom:6px;left:6px;width:24px;height:24px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:12px;display:grid;place-items:center}
+.motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#2870a2;font-size:18px;pointer-events:none}
+.pane em{position:absolute;z-index:4;bottom:4px;right:34px;font-size:8px;font-style:normal;color:#325248;pointer-events:none}
+.openingLines{position:absolute;inset:0;display:block;background:linear-gradient(32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%),linear-gradient(-32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%);pointer-events:none}
+.paneHardware{position:absolute;z-index:4;top:5px;left:5px;background:#ffffffd9;color:#274d3e;padding:3px 5px;border-radius:4px;font-size:7px;pointer-events:none}
+.paneDim{position:absolute;z-index:4;bottom:5px;right:5px;background:#ffffffd9;color:#274d3e;padding:3px 5px;border-radius:4px;font-size:7px;font-weight:normal;font-style:normal;pointer-events:none}
 .dim{position:absolute;color:var(--muted);font-size:10px;letter-spacing:.07em}
 .dim.top{top:40px;left:19%;right:19%;border-top:1px solid var(--line);text-align:center}
 .dim.top span{background:var(--paper);padding:0 8px;position:relative;top:-7px}
 .dim.side{left:42px;top:20%;bottom:20%;border-left:1px solid var(--line);display:flex;align-items:center}
 .dim.side span{background:var(--paper);padding:6px;transform:rotate(-90deg);margin-left:-24px}
-.editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:7px 11px;border-radius:20px;font-size:8px;letter-spacing:.06em;text-align:center;max-width:70%}
+.editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:7px 11px;border-radius:20px;font-size:8px;letter-spacing:.06em;text-align:center;max-width:70%;z-index:7}
 .specChip{position:absolute;left:24px;bottom:22px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 13px;display:flex;flex-direction:column;font-size:10px;gap:3px;box-shadow:0 6px 18px var(--shadow)}
 .specChip span{color:var(--muted)}
 .metricRow{height:74px;display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line)}
@@ -110,8 +121,8 @@ a{color:inherit}
 .toolboxGroup{display:flex;flex-direction:column;gap:6px}
 .toolboxGroup>span{font-size:8px;letter-spacing:.08em;color:var(--muted);font-weight:bold}
 .toolboxGrid{display:grid;grid-template-columns:repeat(4,28px);gap:5px}
-.toolboxGrid button{width:28px;height:28px;border:1px solid var(--line);background:var(--paper);border-radius:6px;font-size:14px;color:var(--green);display:grid;place-items:center;padding:0}
-.toolboxGrid button.active{border-color:var(--green);background:var(--green);color:#fff}
+.toolboxGrid button{width:28px;height:28px;border:1px solid var(--line);background:var(--paper);border-radius:6px;font-size:14px;color:var(--accent);display:grid;place-items:center;padding:0}
+.toolboxGrid button.active{border-color:var(--accent);background:var(--accent);color:#fff}
 .toolboxAction{width:100%;border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:7px 8px;font-size:9px;text-align:left;color:var(--ink)}
 .toolboxAction:disabled{opacity:.4;cursor:not-allowed}
 
@@ -132,20 +143,23 @@ a{color:inherit}
 .warnings p{margin:3px;font-size:9px;color:var(--warn-fg)}
 
 .componentEditor{border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:10px 0 14px}
-.componentTitle{background:var(--green);color:#fff;padding:12px;display:grid;grid-template-columns:1fr auto;gap:3px}
-.componentTitle span{grid-column:1/3;font-size:7px;letter-spacing:.14em;color:#bcd2c8}
+.componentTitle{background:var(--accent);color:#fff;padding:12px;display:grid;grid-template-columns:1fr auto;gap:3px;transition:background .2s}
+.componentTitle span{grid-column:1/3;font-size:7px;letter-spacing:.14em;color:#ffffffbb}
 .componentTitle b{font-size:15px}
 .componentTitle small{font-size:8px;align-self:center}
 .componentGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px}
-.componentGrid label{font-size:8px;color:var(--muted)}
+.componentGrid label{font-size:8px;color:var(--muted);border-radius:6px;padding:3px;transition:background .25s,box-shadow .25s}
 .componentGrid select{height:32px;font-size:9px}
 .componentGrid .wide{grid-column:1/3}
 .componentGrid textarea{width:100%;min-height:55px;border:1px solid var(--line);border-radius:6px;padding:7px;font:9px Arial}
+.componentGrid .checkRow{grid-column:1/3;flex-direction:row!important;align-items:center;gap:7px;padding:7px 3px}
+.componentGrid .checkRow input{width:auto;height:auto}
+.partFocus{outline:2px solid var(--accent);outline-offset:1px;background:color-mix(in srgb, var(--accent) 10%, transparent)}
 .componentNote{font-size:8px;line-height:1.45;color:var(--warn-fg);background:var(--warn-bg);margin:0;padding:9px}
-.fullButton{width:100%;border:0;background:var(--mint);padding:14px;border-radius:8px;color:#14231c;font-size:11px;font-weight:bold;display:flex;justify-content:space-between;margin-top:10px}
+.fullButton{width:100%;border:0;background:var(--accent);padding:14px;border-radius:8px;color:#fff;font-size:11px;font-weight:bold;display:flex;justify-content:space-between;margin-top:10px;transition:background .2s}
 
 .propertyGroup{margin-bottom:14px}
-.propertyGroup h2,.costSummary h2{font-size:11px;background:color-mix(in srgb, var(--green) 12%, var(--surface));padding:7px 8px;margin:0;color:var(--green)}
+.propertyGroup h2,.costSummary h2{font-size:11px;background:color-mix(in srgb, var(--accent) 12%, var(--surface));padding:7px 8px;margin:0;color:var(--accent)}
 .prop{display:grid;grid-template-columns:1.15fr 1fr;border-bottom:1px solid var(--line);font-size:9px}
 .prop span,.prop b{padding:6px 8px}
 .prop span{color:var(--muted);background:var(--paper)}
@@ -153,23 +167,23 @@ a{color:inherit}
 .line{display:flex;justify-content:space-between;padding:7px 0;color:var(--muted);font-size:11px}
 .line b{color:var(--ink)}
 .direct{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding:10px 0;font-size:10px}
-.totalBox{background:var(--green);color:#fff;border-radius:10px;padding:16px;margin:12px 0}
-.totalBox>span{color:#bcd0c7;display:flex;justify-content:space-between}
+.totalBox{background:var(--accent);color:#fff;border-radius:10px;padding:16px;margin:12px 0;transition:background .2s}
+.totalBox>span{color:#ffffffcc;display:flex;justify-content:space-between}
 .totalBox small{font-size:8px}
 .totalBox>strong{display:block;font-family:Georgia,serif;font-size:28px;margin:8px 0 14px;font-variant-numeric:tabular-nums}
 .totalBox div{display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #ffffff33;font-size:11px}
-.totalBox div span{color:#d9e5df}
+.totalBox div span{color:#ffffffcc}
 .materials{border-top:1px solid var(--line);margin-top:12px}
 .materials summary{padding:10px 0;font-size:10px;font-weight:bold;cursor:pointer}
 .materialItem{display:grid;grid-template-columns:68px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
-.materialItem>span{font-size:9px;color:var(--green)}
+.materialItem>span{font-size:9px;color:var(--accent)}
 .materialItem div{display:flex;justify-content:space-between;gap:8px}
 .materialItem b,.materialItem small{font-size:10px}
 .materialItem small{color:var(--muted);white-space:nowrap}
 .priceNote{text-align:center;line-height:1.5;margin-top:12px;letter-spacing:.04em}
 
 .optimization{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;border:1px solid var(--line);border-radius:9px;padding:15px;margin:14px 0}
-.optimization strong{font-size:30px;grid-row:1/3;color:var(--green);font-variant-numeric:tabular-nums}
+.optimization strong{font-size:30px;grid-row:1/3;color:var(--accent);font-variant-numeric:tabular-nums}
 .optimization span{font-size:9px;color:var(--muted)}
 .optimization b{font-size:13px}
 .cutPlan{margin:14px 0;max-height:230px;overflow:auto}
@@ -180,20 +194,22 @@ a{color:inherit}
 .cutPlan i,.cutPlan em{display:grid;place-items:center;min-width:32px;padding:0 3px;border-right:1px solid var(--surface);background:#5e9e84;color:#fff;font-size:7px;font-style:normal}
 .cutPlan em{background:var(--paper);color:var(--muted);border:0}
 .notice{font-size:10px;line-height:1.5;color:var(--warn-fg);background:var(--warn-bg);padding:10px;border-radius:7px}
-.profileCatalog{display:grid;gap:6px;max-height:380px;overflow:auto}
+.profileFilters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.profileCount{font-size:9px;color:var(--muted);margin:4px 0 10px}
+.profileCatalog{display:grid;gap:6px;max-height:420px;overflow:auto}
 .profileCatalog>div{display:grid;grid-template-columns:44px 1fr;border:1px solid var(--line);border-radius:7px;overflow:hidden}
-.profileSketch{display:grid;place-items:center;background:var(--paper);font-size:20px;color:var(--green)}
+.profileSketch{display:grid;place-items:center;background:var(--paper);font-size:20px;color:var(--accent)}
 .profileCatalog section{padding:7px}
-.profileCatalog b{font-size:9px;color:var(--green)}
+.profileCatalog b{font-size:9px;color:var(--accent)}
 .profileCatalog p{font-size:9px;margin:3px 0}
 .profileCatalog small{font-size:8px;color:var(--muted)}
 
 .reportList{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}
 .reportList button{display:flex;justify-content:space-between;border:1px solid var(--line);background:var(--surface);padding:11px;border-radius:7px;font-size:9px;color:var(--ink)}
-.reportList button.selected{border-color:var(--green);background:color-mix(in srgb, var(--green) 12%, var(--surface));color:var(--green);font-weight:bold}
+.reportList button.selected{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 12%, var(--surface));color:var(--accent);font-weight:bold}
 .reportPreview{margin-top:12px;border:1px solid var(--line);background:var(--surface);border-radius:5px;overflow:hidden}
 .reportPreview>header{padding:15px;background:var(--paper);display:flex;flex-direction:column;gap:3px}
-.reportPreview>header span{font-size:8px;letter-spacing:.12em;color:var(--green)}
+.reportPreview>header span{font-size:8px;letter-spacing:.12em;color:var(--accent)}
 .reportPreview>header b{font-size:18px}
 .reportPreview>header small{font-size:8px;color:var(--muted)}
 .reportPreview h3{font-size:11px;margin:15px}
@@ -205,8 +221,8 @@ a{color:inherit}
 .reportRow b{text-align:right}
 .reportRow small{text-align:right;color:var(--muted)}
 
-.sources{background:var(--green);color:#d5e5dd;padding:18px 30px;font-size:9px;text-align:center}
-.sources a{color:var(--mint)}
+.sources{background:var(--surface);color:var(--muted);padding:18px 30px;font-size:9px;text-align:center;border-top:1px solid var(--line)}
+.sources a{color:var(--accent)}
 
 @media(max-width:1150px){
   .workspace{grid-template-columns:330px 1fr}
@@ -215,7 +231,7 @@ a{color:inherit}
   .totalBox,.fullButton{align-self:end}
 }
 @media(max-width:760px){
-  .topbar{height:auto;padding:12px 15px}
+  .topbar{height:auto;padding:12px 15px;flex-wrap:wrap}
   .projectName{display:none}
   .workspace{display:block}
   .configPanel,.quotePanel{border:0;padding:22px}
@@ -226,11 +242,12 @@ a{color:inherit}
   .inputGrid{grid-template-columns:1fr 1fr}
   .inputGrid label:last-child{grid-column:1/3}
   .window{width:88%;border-width:9px}
-  .moduleNav{top:62px;overflow:auto;justify-content:flex-start}
+  .moduleNav{top:auto;overflow:auto;justify-content:flex-start}
   .moduleNav button{padding:0 16px}
   .toolbox{display:none}
   .sectionRender{width:95%;grid-template-columns:1fr}
   .view-3D .modelStage{transform:rotateY(-16deg) scale(.88)}
+  .profileFilters{grid-template-columns:1fr}
 }
 @media print{
   .topbar,.configPanel,.viewSwitch,.moduleNav,.toolbox,.fullButton,.priceNote,.sources{display:none!important}
@@ -244,20 +261,37 @@ a{color:inherit}
 <script>
 "use strict";
 
-// ---------- DATA (ported 1:1 from data/*.ts) ----------
+// ---------- BRAND IDENTITY (extracted from the brands' own live sites: aluplast.net logo SVG
+// fill = rgb(209,10,17); deceuninck.com.mx nav/logo dominant color ~ rgb(0,96,176)) ----------
+const BRAND_ACCENT = { Aluplast: "#D10A11", Deceuninck: "#0060B0" };
+function applyBrandTheme() {
+  document.documentElement.style.setProperty("--accent", BRAND_ACCENT[state.brand] || "#D10A11");
+}
+
+// Reference EUR->MXN rate used only to display/convert the Aluplast EXWORK Veracruz price
+// list (revision ABR_22, 01/05/2022, source: Catalogo_Perfiles_Aluplast_Base_Cotizacion.xlsx).
+// Update this if quoting against a materially different exchange rate.
+const EUR_MXN = 21.8;
+
+// ---------- DATA: catalog systems ----------
+// Aluplast: the 5 entries marked sourced:true use real base (white) EUR/m frame+sash prices
+// from the extracted "Familias_Precio" sheet (280 normalized families, 1279 SKUs), converted
+// to MXN at EUR_MXN. The remaining entries are estimates (kept for broader system coverage)
+// carried over from public technical literature, not from the price list.
 const catalog = {
   Aluplast: [
-    { name: "IDEAL 2000 MX · Corredera 2 rieles", category: "Corredera", depth: 60, chambers: "3 cámaras", glazing: 24, maxW: 4000, maxH: 2400, rails: [2], frame: 155, sash: 132, hardware: 980, uf: "1.6 W/m²K" },
-    { name: "IDEAL 2000 MX · Corredera 3 rieles", category: "Corredera", depth: 60, chambers: "3 cámaras", glazing: 24, maxW: 4800, maxH: 2400, rails: [3], frame: 178, sash: 132, hardware: 1360, uf: "1.6 W/m²K" },
-    { name: "IDEAL 2000 MX · Monorriel", category: "Corredera", depth: 60, chambers: "3 cámaras", glazing: 24, maxW: 4000, maxH: 2400, rails: [1], frame: 168, sash: 137, hardware: 1080, uf: "1.6 W/m²K" },
+    { name: "CORREDERA 60MM", category: "Corredera", depth: 60, chambers: "3 cámaras", glazing: 24, maxW: 4000, maxH: 2400, rails: [2, 3], frame: 74, sash: 75, hardware: 950, uf: "1.6 W/m²K", sourced: true },
+    { name: "CORREDERA 60MM · Monorriel", category: "Corredera", depth: 60, chambers: "3 cámaras", glazing: 24, maxW: 3600, maxH: 2400, rails: [1], frame: 92, sash: 68, hardware: 850, uf: "1.6 W/m²K", sourced: true },
+    { name: "CORREDERA 96MM", category: "Corredera", depth: 96, chambers: "multicámara", glazing: 28, maxW: 5200, maxH: 2600, rails: [1, 2], frame: 97, sash: 105, hardware: 1300, uf: "1.5 W/m²K", sourced: true },
+    { name: "IDEAL 2000 · Practicable", category: "Practicable", depth: 60, chambers: "3 cámaras", glazing: 33, maxW: 2800, maxH: 2400, rails: [0], frame: 84, sash: 128, hardware: 1700, uf: "1.6 W/m²K", sourced: true },
+    { name: "ELEVADORA 70MM · Corredera elevable", category: "Especial", depth: 70, chambers: "5 cámaras", glazing: 40, maxW: 5500, maxH: 2700, rails: [2], frame: 211, sash: 206, hardware: 6800, uf: "1.3 W/m²K", sourced: true },
     { name: "IDEAL 2000 Classic-line · Fijo", category: "Fijo", depth: 60, chambers: "3 cámaras", glazing: 33, maxW: 3000, maxH: 2600, rails: [0], frame: 172, sash: 0, hardware: 180, uf: "1.6 W/m²K" },
-    { name: "IDEAL 2000 Classic-line · Practicable", category: "Practicable", depth: 60, chambers: "3 cámaras", glazing: 33, maxW: 2800, maxH: 2400, rails: [0], frame: 188, sash: 172, hardware: 1850, uf: "1.6 W/m²K" },
-    { name: "IDEAL 2000 Round-line · Practicable", category: "Practicable", depth: 60, chambers: "3 cámaras", glazing: 33, maxW: 2800, maxH: 2400, rails: [0], frame: 196, sash: 180, hardware: 1850, uf: "1.6 W/m²K" },
     { name: "IDEAL 2000 · Puerta interior/exterior", category: "Puerta", depth: 60, chambers: "3 cámaras", glazing: 33, maxW: 2400, maxH: 2600, rails: [0], frame: 205, sash: 198, hardware: 2480, uf: "1.6 W/m²K" },
-    { name: "IDEAL 2000 · Osciloparalela", category: "Especial", depth: 60, chambers: "3 cámaras", glazing: 33, maxW: 3600, maxH: 2400, rails: [1], frame: 218, sash: 192, hardware: 3900, uf: "1.6 W/m²K" },
     { name: "IDEAL 4000 70", category: "Practicable", depth: 70, chambers: "5 cámaras", glazing: 41, maxW: 3000, maxH: 2600, rails: [0], frame: 208, sash: 191, hardware: 2150, uf: "1.3 W/m²K" },
-    { name: "smart-slide 70", category: "Especial", depth: 70, chambers: "cierre perimetral", glazing: 41, maxW: 5800, maxH: 2400, rails: [1, 2], frame: 245, sash: 218, hardware: 4200, uf: "1.3 W/m²K" },
-    { name: "Lift-slide 85", category: "Especial", depth: 85, chambers: "umbral especial", glazing: 52, maxW: 6500, maxH: 2800, rails: [2], frame: 320, sash: 285, hardware: 7600, uf: "1.1 W/m²K" },
+    { name: "IDEAL 7000 85", category: "Practicable", depth: 85, chambers: "6 cámaras", glazing: 44, maxW: 3200, maxH: 2700, rails: [0], frame: 236, sash: 205, hardware: 2400, uf: "1.2 W/m²K" },
+    { name: "IDEAL 8000 85", category: "Premium", depth: 85, chambers: "6 cámaras · triple junta", glazing: 44, maxW: 3200, maxH: 2700, rails: [0], frame: 258, sash: 224, hardware: 2650, uf: "1.0 W/m²K" },
+    { name: "neo smart-slide", category: "Especial", depth: 70, chambers: "cierre perimetral", glazing: 41, maxW: 6000, maxH: 2500, rails: [1, 2], frame: 245, sash: 218, hardware: 4200, uf: "1.3 W/m²K" },
+    { name: "Lift-slide 85 (HS)", category: "Especial", depth: 85, chambers: "umbral especial", glazing: 52, maxW: 6500, maxH: 2800, rails: [2], frame: 320, sash: 285, hardware: 7600, uf: "1.1 W/m²K" },
   ],
   Deceuninck: [
     { name: "Sliding 2 rieles", category: "Corredera", depth: 60, chambers: "multicámara", glazing: 24, maxW: 4000, maxH: 2400, rails: [2], frame: 148, sash: 126, hardware: 930, uf: "según configuración" },
@@ -284,14 +318,34 @@ const glassCatalog = [
   { name: "Laminado 6+6 mm", thickness: 12.7, price: 1890, type: "Seguridad" },
 ];
 
+// Aluplast colors: real HEX + price factor computed from the actual per-SKU price list
+// (factor = average of price/base-white-price across all SKUs sharing that color code).
+// Source: data/colores.json + data/base_plataforma.json extracted from
+// Catalogo_Perfiles_Aluplast_Base_Cotizacion.xlsx. Entries whose commercial name wasn't
+// present in the source (only a code) keep the code as their name, flagged via `note`.
+const aluplastColors = [
+  { code: "bl", name: "Blanco", hex: "#F3F3EF", factor: 1.0, note: null },
+  { code: "jb", name: "JB / Negro", hex: "#171717", factor: 1.47, note: null },
+  { code: "negro", name: "Negro", hex: "#111111", factor: 1.15, note: null },
+  { code: "ag", name: "Gris antracita", hex: "#3E4347", factor: 1.48, note: null },
+  { code: "mar", name: "Marrón", hex: "#6E4A32", factor: 1.2, note: null },
+  { code: "br", name: "BR", hex: "#6B4939", factor: 1.4, note: "Código comercial sin nombre descriptivo en la lista de origen." },
+  { code: "bd", name: "BD", hex: "#4A342A", factor: 1.39, note: "Código comercial sin nombre descriptivo en la lista de origen." },
+  { code: "nb", name: "NB", hex: "#5B4638", factor: 1.39, note: "Código comercial sin nombre descriptivo en la lista de origen." },
+  { code: "dc", name: "DC", hex: "#65493E", factor: 1.35, note: "Código comercial sin nombre descriptivo en la lista de origen." },
+  { code: "go", name: "GO", hex: "#B07A3A", factor: 1.4, note: "Código comercial sin nombre descriptivo en la lista de origen." },
+  { code: "sh", name: "SH", hex: "#B9AA8D", factor: 1.47, note: "Código comercial sin nombre descriptivo en la lista de origen." },
+  { code: "sil", name: "Silver", hex: "#B9BEC3", factor: 1.47, note: null },
+  { code: "soa", name: "SOA", hex: "#92704D", factor: 1.48, note: "Código comercial sin nombre descriptivo en la lista de origen." },
+  { code: "soc", name: "SOC", hex: "#574338", factor: 1.48, note: "Código comercial sin nombre descriptivo en la lista de origen." },
+  { code: "tom", name: "TOM", hex: "#8A6749", factor: 1.47, note: "Código comercial sin nombre descriptivo en la lista de origen." },
+  { code: "ceylon", name: "Ceylon", hex: "#86715E", factor: 1.5, note: null },
+  { code: "azul", name: "Azul", hex: "#315A8C", factor: 1.0, note: "Sin suficientes datos de variación de precio; se usa 1.0 como referencia." },
+  { code: "rojo", name: "Rojo", hex: "#B33A32", factor: 1.0, note: "Sin suficientes datos de variación de precio; se usa 1.0 como referencia." },
+];
+
 const colorsByBrand = {
-  Aluplast: [
-    { name: "Blanco", code: "BL", factor: 1 },
-    { name: "Negro JB", code: "JB", factor: 1.18 },
-    { name: "Antracita", code: "ANT", factor: 1.22 },
-    { name: "Nogal", code: "NOG", factor: 1.24 },
-    { name: "Roble dorado", code: "RD", factor: 1.24 },
-  ],
+  Aluplast: aluplastColors,
   Deceuninck: [
     { name: "Blanco", code: "M3", factor: 1 },
     { name: "Roble Dorado", code: "190", factor: 1.21 },
@@ -308,29 +362,319 @@ const colorsByBrand = {
   ],
 };
 
-const ideal2000Profiles = [
-  { code: "102071171", name: "Marco 3 rieles para ventana corrediza 60 mm con junta · JB", role: "Marco", status: "Código de lista MX" },
-  { code: "102372171", name: "Hoja para ventana corrediza 60 mm con junta · JB", role: "Hoja", status: "Código de lista MX" },
-  { code: "620116", name: "Unión mecánica para travesaño / montante", role: "Conector", status: "IDEAL 2000 / 4000" },
-  { code: "120x07", name: "Marco Classic-line 70 × 60 mm", role: "Marco", status: "Catálogo técnico" },
-  { code: "120x18", name: "Marco Round-line 70 × 60 mm", role: "Marco", status: "Catálogo técnico" },
-  { code: "120x41", name: "Poste / travesaño Classic-line 80 mm", role: "Travesaño", status: "Catálogo técnico" },
-  { code: "120x45", name: "Poste / travesaño Round-line 80 mm", role: "Travesaño", status: "Catálogo técnico" },
-  { code: "120x35", name: "Hoja exterior Classic-line 120 mm", role: "Hoja", status: "Catálogo técnico" },
-  { code: "120x86", name: "Hoja de encuentro Round-line 49 mm", role: "Hoja", status: "Catálogo técnico" },
-  { code: "120833/120863", name: "Junquillo para combinaciones de 24 mm", role: "Junquillo", status: "Según acristalamiento" },
+// 278 normalized profile/accessory families (of 280 extracted; PERGOLA and POSTE PARA
+// PERGOLA excluded — confirmed via research to be a separate structural aluminum product
+// line, not a window/door component). Source: Familias_Precio sheet, same workbook as above.
+const profileFamilies = [
+  { system: "ACCESORIOS", name: "anclaje p/pared", code: "620410", priceEUR: 0.24, variants: 1 },
+  { system: "ACCESORIOS", name: "angulo de montaje der.p/120218/140218", code: "622331", priceEUR: 2.86, variants: 1 },
+  { system: "ACCESORIOS", name: "angulo de montaje izq. p/120218", code: "622330", priceEUR: 2.86, variants: 1 },
+  { system: "ACCESORIOS", name: "angulo de montaje recto p/120218/140218", code: "622332", priceEUR: 2.86, variants: 1 },
+  { system: "ACCESORIOS", name: "antipalanca", code: "601092", priceEUR: 0.51, variants: 1 },
+  { system: "ACCESORIOS", name: "antipalanca blanca", code: "600092", priceEUR: 0.46, variants: 1 },
+  { system: "ACCESORIOS", name: "antipalanca gris oscuro", code: "602092", priceEUR: 0.44, variants: 1 },
+  { system: "ACCESORIOS", name: "broca escalonada p/m5 5.3x10mm", code: "620920", priceEUR: 26.78, variants: 1 },
+  { system: "ACCESORIOS", name: "calzo acristalar 2x25x90mm,bl", code: "659906", priceEUR: 0.1, variants: 1 },
+  { system: "ACCESORIOS", name: "calzo de acristalar 1x25x90mm", code: "659905", priceEUR: 0.1, variants: 1 },
+  { system: "ACCESORIOS", name: "calzo de acristalar 20x100x3mm,azul", code: "669919", priceEUR: 0.07, variants: 1 },
+  { system: "ACCESORIOS", name: "calzo de acristalar 2x12x100mm", code: "660911", priceEUR: 0.05, variants: 1 },
+  { system: "ACCESORIOS", name: "calzo de acristalar 2x20x100mm", code: "660916", priceEUR: 0.08, variants: 1 },
+  { system: "ACCESORIOS", name: "calzo de acristalar 2x30x100mm", code: "660901", priceEUR: 0.1, variants: 1 },
+  { system: "ACCESORIOS", name: "calzo de acristalar 3x12x100mm,azul", code: "669922", priceEUR: 0.08, variants: 1 },
+  { system: "ACCESORIOS", name: "calzo de acristalar 3x30x100mm,azul", code: "660902", priceEUR: 0.1, variants: 1 },
+  { system: "ACCESORIOS", name: "calzo de acristalar 3x34x100mm,azul", code: "659936", priceEUR: 0.11, variants: 1 },
+  { system: "ACCESORIOS", name: "calzo de acristalar 5x25x90mm,bl,verde", code: "659907", priceEUR: 0.11, variants: 1 },
+  { system: "ACCESORIOS", name: "calzo de acristalar p/desplaz.39x100mm", code: "640301", priceEUR: 0.18, variants: 1 },
+  { system: "ACCESORIOS", name: "calzo p/sellado de multifaz, acrist.dobl", code: "642261", priceEUR: 0.21, variants: 1 },
+  { system: "ACCESORIOS", name: "clip para guia inferior aluminio247150", code: "640150", priceEUR: 4.7, variants: 1 },
+  { system: "ACCESORIOS", name: "contraviento c/felpillo p/corr96", code: "600100", priceEUR: 1.08, variants: 2 },
+  { system: "ACCESORIOS", name: "contraviento c/felpillo p/corr96, gris oscuro", code: "602100", priceEUR: 0.78, variants: 1 },
+  { system: "ACCESORIOS", name: "elemento de centraje multifaz", code: "642262", priceEUR: 0.07, variants: 1 },
+  { system: "ACCESORIOS", name: "elevador de marco,multicolor", code: "624015", priceEUR: 0.07, variants: 1 },
+  { system: "ACCESORIOS", name: "emulsion limpiad. cosmofen20 1lt - folios", code: "699920", priceEUR: 13.96, variants: 1 },
+  { system: "ACCESORIOS", name: "esquina soldable 40x40x1mm", code: "690226", priceEUR: 0.78, variants: 1 },
+  { system: "ACCESORIOS", name: "esquinero pvc soladable p/120333/120335", code: "620130", priceEUR: 2.4, variants: 1 },
+  { system: "ACCESORIOS", name: "esquinero pvc soladable p/229114", code: "680030", priceEUR: 1.75, variants: 1 },
+  { system: "ACCESORIOS", name: "liston de suela alum.p/puerta calle", code: "699912", priceEUR: 8.56, variants: 1 },
+  { system: "ACCESORIOS", name: "marcadores", code: "650900105", priceEUR: 10.54, variants: 13 },
+  { system: "ACCESORIOS", name: "panel de pvc 1300x3050x24mm", code: "620320105", priceEUR: 386.46, variants: 8 },
+  { system: "ACCESORIOS", name: "panel de pvc 1500x3000x24mm", code: "620320", priceEUR: 203, variants: 1 },
+  { system: "ACCESORIOS", name: "pieza soporte solera,10 puertas", code: "626370", priceEUR: 66.54, variants: 1 },
+  { system: "ACCESORIOS", name: "placa central contraviento", code: "650070", priceEUR: 0.46, variants: 3 },
+  { system: "ACCESORIOS", name: "puente acristalam.31mm p/marco corr.80mm", code: "650001", priceEUR: 0.1, variants: 1 },
+  { system: "ACCESORIOS", name: "puente acristalam.33mm p/marco corr.80mm", code: "650002", priceEUR: 0.24, variants: 1 },
+  { system: "ACCESORIOS", name: "puente acristalam.34mm p/ideal 2000", code: "620301", priceEUR: 0.1, variants: 1 },
+  { system: "ACCESORIOS", name: "puente acristalam.5mm p/desplaz", code: "620305", priceEUR: 0.15, variants: 1 },
+  { system: "ACCESORIOS", name: "puente acristalam.p/elevad", code: "640320", priceEUR: 0.16, variants: 1 },
+  { system: "ACCESORIOS", name: "puente acristalamiento multifaz", code: "650250", priceEUR: 0.08, variants: 1 },
+  { system: "ACCESORIOS", name: "pza de estanquedad p/corr.60mm", code: "600096", priceEUR: 0.88, variants: 1 },
+  { system: "ACCESORIOS", name: "pza de estanquedad p/corr.80", code: "600098", priceEUR: 0.96, variants: 1 },
+  { system: "ACCESORIOS", name: "remate 32mm p/140107 bl(20 par)", code: "640107", priceEUR: 7.69, variants: 1 },
+  { system: "ACCESORIOS", name: "remate 32mm p/141107(20 par)", code: "641107", priceEUR: 8.06, variants: 1 },
+  { system: "ACCESORIOS", name: "remate batiente 43mm p/120361,20sup/20in", code: "621002", priceEUR: 26.72, variants: 1 },
+  { system: "ACCESORIOS", name: "remate batiente 63mm p/120363 20sup/20in", code: "620001", priceEUR: 32.91, variants: 1 },
+  { system: "ACCESORIOS", name: "remate batiente 63mm p/120363,20sup/20in", code: "621001", priceEUR: 32.91, variants: 2 },
+  { system: "ACCESORIOS", name: "remate batiente p/120397,10der/10izq,10v", code: "620097", priceEUR: 7.87, variants: 3 },
+  { system: "ACCESORIOS", name: "remate desague 5x25mm", code: "691923", priceEUR: 0.2, variants: 2 },
+  { system: "ACCESORIOS", name: "remate p/ desague 5x25mm", code: "620010", priceEUR: 0.2, variants: 1 },
+  { system: "ACCESORIOS", name: "ruedas 20kg p/corr.80mm", code: "659940", priceEUR: 2.08, variants: 1 },
+  { system: "ACCESORIOS", name: "ruedas 30 kg p/corr.60mm", code: "650947", priceEUR: 2.14, variants: 1 },
+  { system: "ACCESORIOS", name: "ruedas 60kg p/corr.60mm", code: "659946", priceEUR: 3.97, variants: 1 },
+  { system: "ACCESORIOS", name: "ruedas 75kg p/100392/100374", code: "600094", priceEUR: 10.89, variants: 1 },
+  { system: "ACCESORIOS", name: "tapa marron p/120100, 25 par", code: "652914", priceEUR: 5.71, variants: 1 },
+  { system: "ACCESORIOS", name: "tapa remate lat. p/120100,25 par", code: "650914", priceEUR: 5.71, variants: 1 },
+  { system: "ACCESORIOS", name: "tapa remate lateral p/120218", code: "620018", priceEUR: 1.05, variants: 1 },
+  { system: "ACCESORIOS", name: "tope p/120335,amarillo cromo", code: "622107", priceEUR: 3.91, variants: 1 },
+  { system: "ACCESORIOS", name: "tope p/120341", code: "629111", priceEUR: 1.6, variants: 1 },
+  { system: "ACCESORIOS", name: "tornillo apriete, p/140100/107;140107/253/100", code: "652923", priceEUR: 0.13, variants: 1 },
+  { system: "ACCESORIOS", name: "tornillo d apriete d acerop/140104/15020", code: "659918", priceEUR: 0.17, variants: 1 },
+  { system: "ACCESORIOS", name: "union cruz tope de titanio p/120341", code: "627102", priceEUR: 2.89, variants: 1 },
+  { system: "ACCESORIOS", name: "union cruz tope p/140345", code: "677133", priceEUR: 3.22, variants: 1 },
+  { system: "ACCESORIOS", name: "union en cruz p/140041/044/048, titanio/", code: "647132", priceEUR: 3.02, variants: 1 },
+  { system: "ACCESORIOS", name: "union mecanica multi-falz", code: "627241", priceEUR: 3.2, variants: 1 },
+  { system: "ACCESORIOS", name: "union mecanica p/travesano multifaz", code: "620116", priceEUR: 2.93, variants: 1 },
+  { system: "ACCESORIOS", name: "union mecanica solera alum, par", code: "606125", priceEUR: 7.25, variants: 1 },
+  { system: "ACEROS 1MM", name: "refuerzo ac. zinc. 26.5x9.5x1,00mm p/100071", code: "258018", priceEUR: 1.51, variants: 1 },
+  { system: "ACEROS 1MM", name: "refuerzo ac.zinc.27.5x35x1,00mm p/120305", code: "228023", priceEUR: 1.74, variants: 1 },
+  { system: "ACEROS 1MM", name: "refuerzo ac.zinc.27x30x27x1,00mm p/100070/372", code: "228003", priceEUR: 1.63, variants: 1 },
+  { system: "ACEROS 1MM", name: "refuerzo ac.zinc.35x20x1,00mm p/120341", code: "228100", priceEUR: 2.28, variants: 1 },
+  { system: "ACEROS 1MM", name: "refuerzo ac.zinc.43x30x43x1,25mm p/120030/0", code: "228005", priceEUR: 3.16, variants: 1 },
+  { system: "ACEROS 1MM", name: "refuerzo ac.zinc.45x10x1,00mm p/100097/98", code: "208121", priceEUR: 2.37, variants: 1 },
+  { system: "CORREDERA 60MM", name: "hoja balc. 90mm.corr.60mm c/junta", code: "100374", priceEUR: 4.63, variants: 14 },
+  { system: "CORREDERA 60MM", name: "hoja p/vent.corr.60mm c/junta", code: "100372", priceEUR: 3.43, variants: 14 },
+  { system: "CORREDERA 60MM", name: "marco 3 rieles p/vent.corr. 60mm", code: "100071", priceEUR: 6.32, variants: 12 },
+  { system: "CORREDERA 60MM", name: "marco 3 rieles p/vent.corr. 60mm,folio al centro", code: "101071905", priceEUR: 7.39, variants: 13 },
+  { system: "CORREDERA 60MM", name: "marco 3 rieles p/vent.corr.60mm", code: "100071134", priceEUR: 7.08, variants: 2 },
+  { system: "CORREDERA 60MM", name: "marco 50mm p/vent.corr", code: "100069", priceEUR: 3.37, variants: 14 },
+  { system: "CORREDERA 60MM", name: "marco 50mm, folio al centro", code: "101069905", priceEUR: 6.69, variants: 13 },
+  { system: "CORREDERA 60MM", name: "marco p/mosquiero corredizo", code: "101275205", priceEUR: 4.76, variants: 13 },
+  { system: "CORREDERA 60MM", name: "marco rasurado para mosquitero monorriel", code: "1002750005850", priceEUR: 3.43, variants: 1 },
+  { system: "CORREDERA 60MM", name: "riel de piso 1guia,corr.60mm", code: "207174", priceEUR: 5.34, variants: 1 },
+  { system: "CORREDERA 60MM", name: "riel de piso guia doble, corr.60mm", code: "207175", priceEUR: 11.49, variants: 1 },
+  { system: "CORREDERA 60MM", name: "tapajuntas 35mm p/hoja corr.60mm", code: "100286", priceEUR: 1.1, variants: 14 },
+  { system: "CORREDERA 60MM - MONORRIEL", name: "contraviento p/monoriel", code: "600076", priceEUR: 0.33, variants: 1 },
+  { system: "CORREDERA 60MM - MONORRIEL", name: "hoja 66mm p/corredera 60 monoriel", code: "1003730005850", priceEUR: 3.12, variants: 1 },
+  { system: "CORREDERA 60MM - MONORRIEL", name: "junta marco/travesano p/monoriel", code: "409076", priceEUR: 0.45, variants: 1 },
+  { system: "CORREDERA 60MM - MONORRIEL", name: "marco 32mm p/fijo corr.60 monoriel", code: "100077", priceEUR: 2.59, variants: 1 },
+  { system: "CORREDERA 60MM - MONORRIEL", name: "marco 52mm p/corredera 60 monoriel", code: "100076", priceEUR: 4.2, variants: 14 },
+  { system: "CORREDERA 60MM - MONORRIEL", name: "refuerzo ac.galvaniz.2.00mm p/100075", code: "209075", priceEUR: 2.96, variants: 1 },
+  { system: "CORREDERA 60MM - MONORRIEL", name: "riel corredera 60 monoriel", code: "207076", priceEUR: 1.36, variants: 1 },
+  { system: "CORREDERA 60MM - MONORRIEL", name: "tapajunta/translape p/corr. 60 monoriel", code: "100273", priceEUR: 1.7, variants: 1 },
+  { system: "CORREDERA 60MM - MONORRIEL", name: "travesano 52mm p/corr. 60 monoriel", code: "100075", priceEUR: 2.32, variants: 14 },
+  { system: "CORREDERA 60MM - MONORRIEL", name: "union mecanica p/100075", code: "600075", priceEUR: 0.55, variants: 1 },
+  { system: "CORREDERA 96MM", name: "adap hoja movil", code: "209022000", priceEUR: 2.74, variants: 1 },
+  { system: "CORREDERA 96MM", name: "hoja p/corr.96mm", code: "100392", priceEUR: 4.8, variants: 14 },
+  { system: "CORREDERA 96MM", name: "marco p/corr.96mm", code: "100097", priceEUR: 4.43, variants: 14 },
+  { system: "CORREDERA 96MM", name: "marco p/corr.96mm, folio al centro", code: "101097405", priceEUR: 8.17, variants: 13 },
+  { system: "CORREDERA 96MM", name: "marco ras p/corr.96mm", code: "100098", priceEUR: 4.43, variants: 14 },
+  { system: "CORREDERA 96MM", name: "marco ras p/corr.96mm, folio al centro", code: "101098405", priceEUR: 7.11, variants: 13 },
+  { system: "CORREDERA 96MM", name: "perfil cover p/100097", code: "200122", priceEUR: 8.71, variants: 1 },
+  { system: "CORREDERA 96MM", name: "rampa", code: "209021000", priceEUR: 6.71, variants: 1 },
+  { system: "CORREDERA 96MM", name: "refuerzo ac.zinc.45x10x1,5mm p/100097/98", code: "209121", priceEUR: 3.44, variants: 1 },
+  { system: "CORREDERA 96MM", name: "refuerzo ac.zinc.48x40x1.25mm p/392", code: "209192", priceEUR: 3.26, variants: 1 },
+  { system: "CORREDERA 96MM", name: "refuerzo ac.zinc.48x40x2mm p/100392", code: "209193", priceEUR: 4.86, variants: 1 },
+  { system: "CORREDERA 96MM", name: "riel", code: "209020000", priceEUR: 1.82, variants: 1 },
+  { system: "CORREDERA 96MM", name: "riel de piso 1guia,multisliding", code: "209124000", priceEUR: 10.54, variants: 1 },
+  { system: "CORREDERA 96MM", name: "riel de piso guia doble, multislid", code: "209125000", priceEUR: 21.6, variants: 1 },
+  { system: "CORREDERA 96MM", name: "riel p/corr.96mm", code: "207120", priceEUR: 1.53, variants: 1 },
+  { system: "CORREDERA 96MM", name: "tapajuntas 2x53.5 p/hoja multisliding", code: "100293", priceEUR: 1.51, variants: 14 },
+  { system: "CORREDERA 96MM", name: "traslape p/corr.96mm", code: "100253", priceEUR: 1.99, variants: 14 },
+  { system: "CORREDERA 96MM", name: "zapata 1", code: "209018000", priceEUR: 10.7, variants: 1 },
+  { system: "CORREDERA 96MM", name: "zapata 2", code: "209019000", priceEUR: 10.37, variants: 1 },
+  { system: "ELEVADORA 70MM", name: "guia lateral p/elevadora", code: "140101", priceEUR: 3.36, variants: 14 },
+  { system: "ELEVADORA 70MM", name: "hoja puerta corr.elevad.100mm c/jun", code: "140381", priceEUR: 9.45, variants: 14 },
+  { system: "ELEVADORA 70MM", name: "marco p/puerta corr.elevad. 70mm", code: "140080", priceEUR: 9.68, variants: 14 },
+  { system: "ELEVADORA 70MM", name: "perfil de montaje elevad", code: "146103", priceEUR: 6.26, variants: 1 },
+  { system: "ELEVADORA 70MM", name: "perfil estanqueidad marco/hoja elevadora", code: "140104", priceEUR: 7.29, variants: 14 },
+  { system: "ELEVADORA 70MM", name: "perfil suplemento p/hoja", code: "140102", priceEUR: 4.34, variants: 14 },
+  { system: "ELEVADORA 70MM", name: "tapajuntas 2x68mm puerta corr.elevad", code: "140227", priceEUR: 2.48, variants: 14 },
+  { system: "ELEVADORA 70MM", name: "traslape p/puerta corr.elevad", code: "170100", priceEUR: 4.01, variants: 14 },
+  { system: "ELEVADORA 70MM", name: "travesano 84mm p/puerta corr.elevad.70mm", code: "140341", priceEUR: 7.85, variants: 1 },
+  { system: "ELEVADORA 70MM", name: "travesano corr. elevadora 104mm", code: "140345", priceEUR: 20.67, variants: 14 },
+  { system: "IDEAL 2000", name: "batiente 63mm c/juntap/ideal 2000", code: "121363105", priceEUR: 6.44, variants: 13 },
+  { system: "IDEAL 2000", name: "batiente 63mm c/juntap/ideal2000", code: "120363", priceEUR: 4.18, variants: 1 },
+  { system: "IDEAL 2000", name: "hoja 70mm coex p/ideal 2000 c/junta", code: "120321", priceEUR: 3.91, variants: 1 },
+  { system: "IDEAL 2000", name: "hoja 77mm p/ideal 2000 c/2 junta", code: "1203220005850", priceEUR: 4.19, variants: 5 },
+  { system: "IDEAL 2000", name: "hoja 77mm p/ideal 2000,c/2 junta", code: "121322127", priceEUR: 6.24, variants: 9 },
+  { system: "IDEAL 2000", name: "hoja ext 95mm p/ideal 2000c/junt,int", code: "120331134", priceEUR: 9.49, variants: 1 },
+  { system: "IDEAL 2000", name: "hoja ext. 74mm p/casement c/2 jun", code: "110393", priceEUR: 5.12, variants: 17 },
+  { system: "IDEAL 2000", name: "hoja ext.95mm p/ideal 2000 c/2 junta", code: "120331", priceEUR: 5.84, variants: 13 },
+  { system: "IDEAL 2000", name: "hoja ext105mmp/ideal2000c/2junta", code: "1203310000096", priceEUR: 8.02, variants: 14 },
+  { system: "IDEAL 2000", name: "hoja int.105mmp/ideal2000c/2junta", code: "1203300000096", priceEUR: 7.21, variants: 14 },
+  { system: "IDEAL 2000", name: "hoja int.95mm p/ideal 2000 c/2 junta", code: "121330105", priceEUR: 8.48, variants: 11 },
+  { system: "IDEAL 2000", name: "hoja int.95mm p/ideal 2000,c/2 junta", code: "121330133", priceEUR: 8.48, variants: 1 },
+  { system: "IDEAL 2000", name: "hoja int.95mmp/ideal 2000c/2junt int", code: "120330134", priceEUR: 8.9, variants: 1 },
+  { system: "IDEAL 2000", name: "hoja int.95mmp/ideal2000c/2junta", code: "120330", priceEUR: 5.88, variants: 1 },
+  { system: "IDEAL 2000", name: "marco 65mm coex p/ideal 2000 c/junta", code: "120301", priceEUR: 3.26, variants: 1 },
+  { system: "IDEAL 2000", name: "marco 65mm p/ideal 2000 c/junta", code: "120305", priceEUR: 3.86, variants: 14 },
+  { system: "IDEAL 2000", name: "marco 80mm p/ideal 2000 c/junta", code: "1203030005850", priceEUR: 4.74, variants: 14 },
+  { system: "IDEAL 2000", name: "travesano 80mm c/2 junta", code: "120341", priceEUR: 4.83, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 10mm c/4mm de jun", code: "150831", priceEUR: 1.31, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 12mm c/2mm de jun", code: "150632", priceEUR: 1.37, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 14mm c/4mm de jun", code: "150832", priceEUR: 1.39, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 16mm c/junta 2mm", code: "120633", priceEUR: 1.55, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 18mm c/4mm de jun", code: "1208330000098", priceEUR: 1.24, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 20mm c/ 4mm de jun", code: "121635223", priceEUR: 2.08, variants: 1 },
+  { system: "JUNQUILLOS", name: "junquillo 20mm c/4mm de jun", code: "120635", priceEUR: 1.46, variants: 13 },
+  { system: "JUNQUILLOS", name: "junquillo 22mm c/6mm de jun", code: "150733", priceEUR: 1.51, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 24 mm c/2mm de jun", code: "120636", priceEUR: 1.3, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 26mm c/4mm de jun", code: "150834", priceEUR: 1.56, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 28mm c/6mm de jun", code: "120736", priceEUR: 1.49, variants: 1 },
+  { system: "JUNQUILLOS", name: "junquillo 30mm c/2mm de jun", code: "150635", priceEUR: 1.55, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 32mm c/4mm de jun", code: "150835", priceEUR: 1.67, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 34mm c/2mm de jun", code: "150735", priceEUR: 1.7, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 36mm c/2mm de jun", code: "120640", priceEUR: 1.43, variants: 14 },
+  { system: "JUNQUILLOS", name: "junquillo 38mm c/4mm de jun", code: "120840", priceEUR: 2.12, variants: 14 },
+  { system: "JUNTAS Y FELPAS", name: "banda precomprimida - plegable 3-5mm", code: "420330", priceEUR: 1.5, variants: 2 },
+  { system: "JUNTAS Y FELPAS", name: "burlete 4,8 x 6,5mm", code: "459927", priceEUR: 0.51, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "burlete de ventilacion", code: "429334", priceEUR: 0.19, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "goma p/cubrecanal", code: "420250", priceEUR: 0.41, variants: 2 },
+  { system: "JUNTAS Y FELPAS", name: "junta acistalamiento 2,5-3mm", code: "459922", priceEUR: 0.26, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta acristalamiento 2mm", code: "429310", priceEUR: 0.78, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta de acristalamiento 3-5mm", code: "459925", priceEUR: 0.73, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta de acristalamiento 4mm", code: "429311", priceEUR: 1.08, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta de acristalamiento 6mm", code: "429312", priceEUR: 1.29, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta de felpillo 13x7mm p/travesano", code: "459931", priceEUR: 0.56, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta de felpillo 4,4x7mm", code: "459930", priceEUR: 0.17, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta de felpillo 7,5x7mm", code: "459932", priceEUR: 0.27, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta doble 4mm int epdm p/ id. 4000", code: "449340", priceEUR: 0.45, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta doble convexa 3,5mm", code: "429340", priceEUR: 0.3, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta p/corr.elevad.inf,sup y later,negr", code: "449100/449101", priceEUR: 1.5, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta para translape elevadora", code: "479180", priceEUR: 3.1, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta puerta abajo 4m", code: "496912", priceEUR: 3.73, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta universal", code: "429921", priceEUR: 0.57, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta vidrio bobinado a derecha 4-4,5mm", code: "449980", priceEUR: 0.49, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "junta vidrio bobinado a la derecha", code: "429320", priceEUR: 0.85, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "placa estanquedad, negro inf.p/marco elevad.5p", code: "449111", priceEUR: 19.23, variants: 1 },
+  { system: "JUNTAS Y FELPAS", name: "placa estanquedad,blanc inf.p/marco elevad.5p", code: "440111", priceEUR: 19.23, variants: 1 },
+  { system: "MALLORQUINA", name: "lama fija 45mm p/mallorq", code: "190235", priceEUR: 1.69, variants: 14 },
+  { system: "MALLORQUINA", name: "tapajuntas der.troquel. p/lama fija", code: "191227205", priceEUR: 2.78, variants: 13 },
+  { system: "MALLORQUINA", name: "tapajuntas der.troquel. p/lamafija", code: "190227", priceEUR: 2.29, variants: 1 },
+  { system: "MALLORQUINA", name: "tapajuntas izq.troquel. p/ lama fija", code: "190228", priceEUR: 2.29, variants: 14 },
+  { system: "MALLORQUINA", name: "tapajuntas p/lama fija,(sup o inf.)", code: "190229", priceEUR: 1.79, variants: 14 },
+  { system: "MOSQUITERO", name: "conectores de esquina p/mosquitero, alu", code: "590203", priceEUR: 0.72, variants: 1 },
+  { system: "MOSQUITERO", name: "junta esp.gris p/fijacion de fibra,vidri", code: "459200", priceEUR: 0.7, variants: 1 },
+  { system: "MOSQUITERO", name: "maneta espiral inox.plateado", code: "590210", priceEUR: 1.13, variants: 1 },
+  { system: "MOSQUITERO", name: "marco p/mosquitero fijo", code: "250201", priceEUR: 3.28, variants: 17 },
+  { system: "MOSQUITERO", name: "soporte de fijacion sup plastico", code: "590211", priceEUR: 2.64, variants: 1 },
+  { system: "MOSQUITERO", name: "tornillos de fijacion inferior p/590211", code: "590212", priceEUR: 0.53, variants: 1 },
+  { system: "PERFILES ADICIONALES", name: "angulo 3x30x20", code: "120291", priceEUR: 1.01, variants: 1 },
+  { system: "PERFILES ADICIONALES", name: "angulo 3x40x60", code: "120294", priceEUR: 2.74, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "angulo 3x60x100", code: "120296", priceEUR: 4.15, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "angulo 6x80x180mm", code: "120299", priceEUR: 5.95, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "barrotillo 11x26mm c/jun autoadh", code: "160376", priceEUR: 2.37, variants: 13 },
+  { system: "PERFILES ADICIONALES", name: "barrotillo 11x26mmc/jun autoadh", code: "161376233", priceEUR: 3.84, variants: 1 },
+  { system: "PERFILES ADICIONALES", name: "barrotillo 11x66,autoadesivo", code: "121267205", priceEUR: 6.83, variants: 3 },
+  { system: "PERFILES ADICIONALES", name: "barrotillo 11x66,autodesivo", code: "121267233", priceEUR: 6.83, variants: 1 },
+  { system: "PERFILES ADICIONALES", name: "barrotillo historik 12x25mm", code: "140373", priceEUR: 2.49, variants: 6 },
+  { system: "PERFILES ADICIONALES", name: "batiente 32mm c/juntap/corr.80mm", code: "1203970005850", priceEUR: 2.21, variants: 17 },
+  { system: "PERFILES ADICIONALES", name: "ensanche 15mm", code: "120220", priceEUR: 2.69, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "ensanche 35mm", code: "120242", priceEUR: 3.97, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "ensanche 60mm", code: "120221", priceEUR: 4.63, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "esquinero 60x60mm", code: "120275", priceEUR: 6.13, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "nailfin perfil de anclaje", code: "114210", priceEUR: 1.41, variants: 1 },
+  { system: "PERFILES ADICIONALES", name: "panel machembrado 94x24mm", code: "190219", priceEUR: 4.46, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "perfil erker 59/60mm p/ideal 2000", code: "120240", priceEUR: 3.45, variants: 1 },
+  { system: "PERFILES ADICIONALES", name: "perfil erker 60mm", code: "124240105", priceEUR: 5.58, variants: 13 },
+  { system: "PERFILES ADICIONALES", name: "perfil estatico 65x52mm", code: "120109", priceEUR: 6.74, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "perfil estatico de union 48x96", code: "120218", priceEUR: 8.43, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "perfil rectangular 12x45mm", code: "124123233", priceEUR: 2.65, variants: 1 },
+  { system: "PERFILES ADICIONALES", name: "perfil retangular 12x45mm", code: "124123205", priceEUR: 2.65, variants: 3 },
+  { system: "PERFILES ADICIONALES", name: "perfil union oculto 4x13mm", code: "120116", priceEUR: 0.86, variants: 1 },
+  { system: "PERFILES ADICIONALES", name: "remate 30mmx2.5mm", code: "120256", priceEUR: 1.12, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "remate 95x3mm", code: "120261", priceEUR: 3.34, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "tapajuntas 2x58mm", code: "120227", priceEUR: 1.31, variants: 14 },
+  { system: "PERFILES ADICIONALES", name: "tubo erker 59/60mm p/ideal 2000", code: "120241", priceEUR: 4.28, variants: 1 },
+  { system: "PERFILES ADICIONALES", name: "tubo erker 59mm", code: "124241205", priceEUR: 7.16, variants: 13 },
+  { system: "PERFILES ADICIONALES", name: "union h,17x15 mm", code: "121224205", priceEUR: 2.04, variants: 12 },
+  { system: "PERFILES ADICIONALES", name: "union h,17x15mm", code: "120224", priceEUR: 0.79, variants: 1 },
+  { system: "PERFILES ADICIONALES", name: "unionh,17x15 mm", code: "121224233", priceEUR: 2.04, variants: 1 },
+  { system: "PERFILES ADICIONALES", name: "vierteagua 20x32.5mm p/corr.80mm", code: "120100", priceEUR: 1.77, variants: 1 },
+  { system: "PERFILES ADICIONALES", name: "vierteagua 32x15mm p/corr.60mm", code: "141107205", priceEUR: 2.52, variants: 13 },
+  { system: "PERFILES ADICIONALES", name: "vierteagua 32x15mm p/corr60mm", code: "140107", priceEUR: 1.77, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "encuentro central p/corr.60/80mm", code: "250070", priceEUR: 2.03, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "encuentro central p/corred 60/80mm", code: "251070", priceEUR: 2.31, variants: 2 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "guia p/ elevadora inf", code: "247150", priceEUR: 10.18, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "guia p/elevadora sup.6.7m", code: "247148", priceEUR: 6.09, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac. zinc. 26.5x9.5x2mm p/100071", code: "259018", priceEUR: 3.32, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.27,5x35x2mm p/120305,12", code: "229024", priceEUR: 3.09, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.27.5x35x1.5mm p/120305", code: "229023", priceEUR: 2.33, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.27x30x27x1,5mm p/100070/372", code: "229003", priceEUR: 2.25, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.27x30x2mm p/100070/372", code: "229004", priceEUR: 2.81, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.27x35x2mm p/120305", code: "229030", priceEUR: 3.69, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.30x25.5x1mm p/110393 casement", code: "229212", priceEUR: 1.47, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.35x15x1,5mm", code: "229110", priceEUR: 3.14, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.35x20x1.5mm p/120341", code: "229100", priceEUR: 2.89, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.35x20x2mm p/120341", code: "229101", priceEUR: 3.77, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.40x35x1,5mm p/120303,341", code: "229017", priceEUR: 4.8, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.40x40x2mm p/120275", code: "229040", priceEUR: 8.64, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.43x30x43x2mm p/120030/0", code: "229005", priceEUR: 4.52, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.45x40x2mm p/140381,140345", code: "249035", priceEUR: 7.04, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.48x14.5x2mm p/120363", code: "229063", priceEUR: 4.1, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.50x40x2mm p/120333/35/127", code: "229125", priceEUR: 9.63, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.80x13x2mm p/120218/1402", code: "229018", priceEUR: 10.34, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo ac.zinc.p/lama 190233/235", code: "299234", priceEUR: 1.97, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo alum 40x140x2.5mm p/140080", code: "249108", priceEUR: 23.28, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "refuerzo alum 42,5x45x3mm p/140381", code: "249036", priceEUR: 13.16, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "solera 20x60mmp/puerta calle p/ideal2000", code: "227070", priceEUR: 21.61, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "solera 6.7,alum.gris p/elevad", code: "247118", priceEUR: 60.27, variants: 1 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "translape p/vent.corr.60/80mm", code: "250072", priceEUR: 1.85, variants: 2 },
+  { system: "PERFILES DE ACERO Y ALUMINIO", name: "translape p/vent.corr.60/80mm alum", code: "250072", priceEUR: 1.55, variants: 1 },
+  { system: "TORNILLOS", name: "tapa para tornillo ra-p crema", code: "9000011600", priceEUR: 8.89, variants: 1 },
+  { system: "TORNILLOS", name: "tapa para tornillo ra-p marron", code: "9000095600", priceEUR: 8.82, variants: 1 },
+  { system: "TORNILLOS", name: "tapa para tornillo ra-u crema", code: "9000045600", priceEUR: 9.52, variants: 1 },
+  { system: "TORNILLOS", name: "tapa para tornillo ra-u marron", code: "900005160", priceEUR: 8.33, variants: 1 },
+  { system: "TORNILLOS", name: "tapones p/ taladro 10mm", code: "9000070248", priceEUR: 7.63, variants: 1 },
+  { system: "TORNILLOS", name: "tapones p/ taladro 10mm crema", code: "9000070265", priceEUR: 7.84, variants: 1 },
+  { system: "TORNILLOS", name: "tapones p/ taladro 10mm marron", code: "9000070264", priceEUR: 7.63, variants: 1 },
+  { system: "TORNILLOS", name: "tapones p/ taladro 13m", code: "9000070258", priceEUR: 13.16, variants: 1 },
+  { system: "TORNILLOS", name: "tapones p/ taladro 13m crema", code: "9000070267", priceEUR: 13.72, variants: 1 },
+  { system: "TORNILLOS", name: "tapones p/ taladro 13m marron", code: "9000070266", priceEUR: 13.16, variants: 1 },
+  { system: "TORNILLOS", name: "tornill p/mont.vent. super e 4.2x25", code: "2253425601", priceEUR: 10.78, variants: 1 },
+  { system: "TORNILLOS", name: "tornill p/mont.vent. super e 4.2x35", code: "2253435601", priceEUR: 14.7, variants: 1 },
+  { system: "TORNILLOS", name: "tornill p/mont.vent. super e 4.2x40", code: "2253440601", priceEUR: 21.7, variants: 1 },
+  { system: "TORNILLOS", name: "tornillo anclaj.p/marcos ra-p 7.5x100, galv", code: "2231100601", priceEUR: 16.7, variants: 1 },
+  { system: "TORNILLOS", name: "tornillo anclaj.p/marcos ra-p 7.5x80, galv", code: "2231080601", priceEUR: 13.17, variants: 1 },
+  { system: "TORNILLOS", name: "tornillo autotal. fd42 3.9x16", code: "7260822607", priceEUR: 13.72, variants: 1 },
+  { system: "TORNILLOS", name: "tornillo autotal. fd42 3.9x19", code: "7260823607", priceEUR: 15.68, variants: 1 },
+  { system: "TORNILLOS", name: "tornillo autotal. fd42 3.9x25", code: "7260825607", priceEUR: 18.2, variants: 1 },
+  { system: "TORNILLOS", name: "tornillo autotal.de acoplam. tkb- 4.8x100", code: "3497300629", priceEUR: 88.41, variants: 1 },
+  { system: "TORNILLOS", name: "tornillo autotal.de acoplam. tkb- 4.8x80", code: "3497100629", priceEUR: 58.45, variants: 1 },
+  { system: "TORNILLOS", name: "tornillo de acoplam. ms 4.8x80", code: "2200580601", priceEUR: 14.7, variants: 1 },
+  { system: "TORNILLOS", name: "tornillo de acoplam. ms 4.8x95", code: "2200595601", priceEUR: 16.02, variants: 1 },
+  { system: "TORNILLOS", name: "tornillo de anclaje p/marcos ra-u 7.5x100", code: "2261100601", priceEUR: 21.46, variants: 1 },
+  { system: "TORNILLOS", name: "tornillo de anclaje p/marcos ra-u 7.5x80", code: "2261080601", priceEUR: 17.47, variants: 1 },
 ];
 
+const PROFILE_SYSTEMS = Array.from(new Set(profileFamilies.map((f) => f.system))).sort();
+
+// Wing (opening-mechanism) catalog. The first 8 shipped in the original editor; the 5 marked
+// new were added after researching real systems found in the price list (ELEVADORA 70MM ->
+// lift-slide) and a broader industry survey (hopper/jalousie/pivot/folding-sliding).
 const wingDefs = [
   { id: "fixed", name: "Fijo", icon: "▣", group: "Ventana" },
   { id: "sliding", name: "Corrediza", icon: "⇆", group: "Corredera" },
+  { id: "lift-slide", name: "Corredera elevadora", icon: "⇑", group: "Corredera", isNew: true },
+  { id: "folding-sliding", name: "Plegable corrediza", icon: "»", group: "Corredera", isNew: true },
   { id: "casement-in", name: "Abatible interior", icon: "◩", group: "Practicable" },
   { id: "casement-out", name: "Abatible exterior", icon: "◪", group: "Practicable" },
   { id: "tilt-turn", name: "Oscilobatiente", icon: "⌂", group: "Practicable" },
   { id: "project", name: "Proyectante", icon: "▽", group: "Practicable" },
+  { id: "hopper", name: "Proyectante inferior", icon: "△", group: "Practicable", isNew: true },
+  { id: "jalousie", name: "Persiana de cristal", icon: "☰", group: "Especial", isNew: true },
+  { id: "pivot", name: "Pivotante", icon: "↻", group: "Especial", isNew: true },
   { id: "door", name: "Puerta abatible", icon: "▥", group: "Puerta" },
   { id: "inactive", name: "Inactiva", icon: "—", group: "Especial" },
 ];
+
+const HARDWARE_OPTIONS = ["Sin herraje", "Roto · juego corredera", "Roto · carros 80 kg", "Roto · carros 120 kg", "Roto · cierre multipunto", "Roto Patio · osciloparalela", "Roto · sistema elevador (lift-slide)", "Bisagra pivote reforzada", "Bisagras reforzadas"];
+const HANDLE_OPTIONS = ["Sin manilla", "Harmony con tetones", "Slim 479092 con tetones", "Cierre embutido", "Manillón doble", "Cremona multipunto", "Manivela jalousie"];
+
+// Representative rate for the Mallorquina louvre-shutter accessory (avg. of the 5 Mallorquina
+// families' base EUR/m prices * EUR_MXN) — modeled as a per-leaf add-on, not a wing type,
+// since research confirmed it's an exterior shading accessory mounted over a window, not an
+// opening mechanism of the window itself.
+const MALLORQUINA_RATE_MXN_PER_M = 47;
 
 const TABS = ["Resumen", "Diseño", "Consumo", "Servicios", "Informes"];
 const REPORTS = ["Oferta", "Producción", "Perfiles", "Herrajes", "Vidrio", "Costos"];
@@ -339,26 +683,30 @@ const money = (v) => Number(v || 0).toLocaleString("es-MX", { style: "currency",
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const wingName = (id) => (wingDefs.find((w) => w.id === id) || {}).name || id;
 
-// ---------- TREE (ported 1:1 from lib/tree.ts) ----------
+// ---------- TREE ----------
 const OPENING_BY_WING = {
-  fixed: "Sin apertura", sliding: "Corredera", "casement-in": "Abatible interior",
-  "casement-out": "Abatible exterior", "tilt-turn": "Oscilobatiente", project: "Proyectante",
+  fixed: "Sin apertura", sliding: "Corredera", "lift-slide": "Corredera elevadora", "folding-sliding": "Plegable corrediza",
+  "casement-in": "Abatible interior", "casement-out": "Abatible exterior", "tilt-turn": "Oscilobatiente", project: "Proyectante",
+  hopper: "Proyectante inferior", jalousie: "Persiana de cristal", pivot: "Pivotante",
   door: "Abatible interior", inactive: "Sin apertura",
 };
+const HARDWARE_BY_WING = { "lift-slide": "Roto · sistema elevador (lift-slide)", pivot: "Bisagra pivote reforzada" };
+const HANDLE_BY_WING = { jalousie: "Manivela jalousie" };
 
 function defaultSpecFor(wing) {
   const fixed = wing === "fixed" || wing === "inactive";
+  const directional = wing === "sliding" || wing === "lift-slide" || wing === "folding-sliding";
   return {
     state: wing === "inactive" ? "Inactiva" : fixed ? "Fija" : "Móvil",
     opening: OPENING_BY_WING[wing],
-    direction: wing === "sliding" ? "Derecha" : "N/A",
-    hardware: fixed ? "Sin herraje" : "Roto · cierre multipunto",
-    handle: fixed ? "Sin manilla" : "Harmony con tetones",
+    direction: directional ? "Derecha" : "N/A",
+    hardware: fixed ? "Sin herraje" : (HARDWARE_BY_WING[wing] || "Roto · cierre multipunto"),
+    handle: fixed ? "Sin manilla" : (HANDLE_BY_WING[wing] || "Harmony con tetones"),
   };
 }
 
 function createLeaf(wing, spec) {
-  return { kind: "leaf", id: crypto.randomUUID(), wing: wing || "fixed", spec: Object.assign({ glass: "Heredar vidrio general", notes: "" }, defaultSpecFor(wing || "fixed"), spec || {}) };
+  return { kind: "leaf", id: crypto.randomUUID(), wing: wing || "fixed", spec: Object.assign({ glass: "Heredar vidrio general", notes: "", mallorquina: false }, defaultSpecFor(wing || "fixed"), spec || {}) };
 }
 
 function createDefaultTree() {
@@ -368,6 +716,8 @@ function createDefaultTree() {
 const isLeaf = (n) => n.kind === "leaf";
 
 function firstLeafId(tree) { return tree.kind === "leaf" ? tree.id : firstLeafId(tree.children[0]); }
+
+function walkLeaves(tree) { return tree.kind === "leaf" ? [tree] : tree.children.flatMap(walkLeaves); }
 
 function findNode(tree, id) {
   if (tree.id === id) return tree;
@@ -436,7 +786,7 @@ function flattenToRects(tree, width, height, x, y) {
   return rects;
 }
 
-// ---------- CALC (ported 1:1 from lib/calc.ts) ----------
+// ---------- CALC ----------
 function splitterLengthM(node, widthMm, heightMm) {
   if (node.kind === "leaf") return 0;
   const dividerLenM = (node.axis === "col" ? heightMm : widthMm) / 1000;
@@ -466,12 +816,39 @@ function calcQuote(p) {
   const reinforce = (frameM + sashM) * 78;
   const seals = (frameM + sashM) * 24;
   const accessories = p.sys.hardware + leaves.length * 110 + p.rail * 165;
+  const addons = leaves.reduce((a, l) => a + (l.spec.mallorquina ? (l.wMm / 1000) * MALLORQUINA_RATE_MXN_PER_M * 2 : 0), 0);
   const consumables = (profileCost + glassCost) * 0.045;
-  const direct = profileCost + glassCost + reinforce + seals + accessories + consumables + p.installation + p.transport;
+  const direct = profileCost + glassCost + reinforce + seals + accessories + addons + consumables + p.installation + p.transport;
   const sale = (direct / (1 - p.margin / 100)) * (1 - p.discount / 100);
   const bars = Math.ceil((frameM + sashM) / 6);
   const waste = Math.max(0, bars * 6 - frameM - sashM);
-  return { w, h, area, perimeter, leaves, frameM, sashM, glassArea, profileCost, glassCost, reinforce, seals, accessories, consumables, direct, sale, total: sale * p.qty, utility: (sale - direct) * p.qty, bars, waste };
+  return { w, h, area, perimeter, leaves, frameM, sashM, glassArea, profileCost, glassCost, reinforce, seals, accessories, addons, consumables, direct, sale, total: sale * p.qty, utility: (sale - direct) * p.qty, bars, waste };
+}
+
+// ---------- SELF-CHECK ----------
+function runSelfCheck() {
+  const checks = [];
+  const ids = walkLeaves(state.tree).map((l) => l.id);
+  checks.push({ name: "IDs de hoja únicos", pass: new Set(ids).size === ids.length && ids.length > 0 });
+  (function checkRatios() {
+    function ok(node) {
+      if (node.kind === "leaf") return true;
+      const sum = node.ratios.reduce((a, b) => a + b, 0);
+      return Math.abs(sum - 1) < 0.01 && node.children.every(ok);
+    }
+    checks.push({ name: "Proporciones de división suman 1", pass: ok(state.tree) });
+  })();
+  let calcOk = false;
+  try {
+    const sys = catalog[state.brand][Math.min(state.systemIndex, catalog[state.brand].length - 1)];
+    const glass = glassCatalog[state.glassIndex];
+    const color = colorsByBrand[state.brand][Math.min(state.colorIndex, colorsByBrand[state.brand].length - 1)];
+    const c = calcQuote({ width: state.width, height: state.height, qty: state.qty, tree: state.tree, sys, glass, color, rail: state.rail, installation: state.installation, transport: state.transport, margin: state.margin, discount: state.discount });
+    calcOk = Number.isFinite(c.total) && c.total >= 0 && Number.isFinite(c.area) && c.leaves.length === ids.length;
+  } catch (e) { calcOk = false; }
+  checks.push({ name: "Motor de cálculo consistente", pass: calcOk });
+  checks.push({ name: "Catálogo de perfiles cargado", pass: profileFamilies.length > 200 });
+  return { ok: checks.every((c) => c.pass), checks, ranAt: new Date().toString() };
 }
 
 // ---------- STATE ----------
@@ -481,11 +858,14 @@ const state = {
   tab: "Diseño", view: "Frente", report: "Vidrio",
   margin: 35, installation: 1200, transport: 450, discount: 0,
   code: "001", designation: "V01", location: "Cocina",
-  tree: createDefaultTree(), selectedId: "", activeTool: { mode: "select" },
+  tree: createDefaultTree(), selectedId: "", activeTool: { mode: "select" }, focusPart: null,
+  profileSearch: "", profileSystemFilter: "Todos",
+  selfCheck: null,
 };
 state.selectedId = firstLeafId(state.tree);
+applyBrandTheme();
 
-function changeBrand(b) { state.brand = b; state.systemIndex = 0; state.colorIndex = 0; state.rail = catalog[b][0].rails[0]; }
+function changeBrand(b) { state.brand = b; state.systemIndex = 0; state.colorIndex = 0; state.rail = catalog[b][0].rails[0]; applyBrandTheme(); }
 function changeSystem(i) { state.systemIndex = i; state.rail = catalog[state.brand][i].rails[0]; }
 
 function handleMerge() {
@@ -493,12 +873,14 @@ function handleMerge() {
   if (!parentId) return;
   state.tree = removeSplitFn(state.tree, parentId);
   state.selectedId = parentId;
+  state.focusPart = null;
 }
 
 function handleResetTree() {
   state.tree = createDefaultTree();
   state.selectedId = firstLeafId(state.tree);
   state.activeTool = { mode: "select" };
+  state.focusPart = null;
 }
 
 function handleLeafClick(id, clientX, clientY, rect) {
@@ -522,7 +904,7 @@ function handleLeafClick(id, clientX, clientY, rect) {
 const root = document.getElementById("app");
 
 function motionGlyph(wing, spec) {
-  if (wing === "sliding") return spec.direction === "Izquierda" ? "←" : "→";
+  if (wing === "sliding" || wing === "lift-slide" || wing === "folding-sliding") return spec.direction === "Izquierda" ? "←" : "→";
   if (wing === "fixed" || wing === "inactive") return "FIJO";
   return (wingDefs.find((w) => w.id === wing) || {}).icon || "?";
 }
@@ -539,14 +921,24 @@ function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis) {
     )).join("");
     return `<div class="splitNode ${axisClass}" style="flex:${flexBasis}">${children}</div>`;
   }
-  const showOpeningLines = node.wing !== "fixed" && node.wing !== "inactive" && node.wing !== "sliding";
-  return `<button type="button" aria-label="Editar ${esc(wingName(node.wing))}" class="pane ${node.id === selectedId ? "selectedPane" : ""}" style="flex:${flexBasis}" data-action="leaf-click" data-id="${node.id}">
-    <span class="motion">${esc(motionGlyph(node.wing, node.spec))}</span>
-    ${showOpeningLines ? '<i class="openingLines"></i>' : ""}
+  const hasSash = node.wing !== "fixed" && node.wing !== "inactive";
+  const showOpeningLines = hasSash && node.wing !== "sliding" && node.wing !== "lift-slide" && node.wing !== "folding-sliding";
+  const glyph = esc(motionGlyph(node.wing, node.spec));
+  const hojaHit = hasSash
+    ? `<button type="button" class="hit hitHoja" title="Hoja / tipo de apertura" data-action="part-click" data-part="hoja" data-id="${node.id}"><span class="motion">${glyph}</span>${showOpeningLines ? '<i class="openingLines"></i>' : ""}</button>`
+    : `<span class="motion">${glyph}</span>`;
+  const herrajeHit = hasSash
+    ? `<button type="button" class="hit hitHerraje" title="Herraje / manilla" data-action="part-click" data-part="herraje" data-id="${node.id}">⚙</button>`
+    : "";
+  return `<div class="pane ${node.id === selectedId ? "selectedPane" : ""}" style="flex:${flexBasis}" data-leaf="${node.id}">
+    <button type="button" class="hit hitMarco" title="Marco / estado" data-action="part-click" data-part="marco" data-id="${node.id}" aria-label="Marco de ${esc(wingName(node.wing))}"></button>
+    ${hojaHit}
+    <button type="button" class="hit hitVidrio" title="Vidrio" data-action="part-click" data-part="vidrio" data-id="${node.id}"></button>
+    ${herrajeHit}
     <em>${esc(wingName(node.wing))}</em>
     <small class="paneHardware">${esc(node.spec.hardware.replace("Roto · ", ""))}</small>
     <b class="paneDim">${Math.round(widthMm)} × ${Math.round(heightMm)}</b>
-  </button>`;
+  </div>`;
 }
 
 function renderToolbox() {
@@ -559,7 +951,7 @@ function renderToolbox() {
       <button type="button" class="${isSplit("row") ? "active" : ""}" title="Dividir en filas" data-action="tool-split" data-axis="row">⫳</button>
     </div></div>
     <div class="toolboxGroup"><span>Tipo de hoja</span><div class="toolboxGrid">
-      ${wingDefs.map((w) => `<button type="button" class="${isWing(w.id) ? "active" : ""}" title="${esc(w.name)}" data-action="tool-wing" data-wing="${w.id}">${w.icon}</button>`).join("")}
+      ${wingDefs.map((w) => `<button type="button" class="${isWing(w.id) ? "active" : ""}" title="${esc(w.name)}${w.isNew ? " (nuevo)" : ""}" data-action="tool-wing" data-wing="${w.id}">${w.icon}</button>`).join("")}
     </div></div>
     <div class="toolboxGroup">
       <button type="button" class="toolboxAction" data-action="tool-select" ${t.mode === "select" ? "disabled" : ""}>Modo selección</button>
@@ -578,7 +970,7 @@ function canMerge() {
 
 function toolHint() {
   const t = state.activeTool;
-  if (t.mode === "select") return "Haz clic en una hoja para seleccionarla";
+  if (t.mode === "select") return "Haz clic en el marco, la hoja, el vidrio o el herraje para seleccionar esa parte";
   if (t.mode === "split") return `Haz clic dentro de una hoja para dividirla (${t.axis === "col" ? "vertical" : "horizontal"})`;
   return `Haz clic en una hoja para asignarle "${esc(wingName(t.wing))}"`;
 }
@@ -589,21 +981,40 @@ function configSummary(calc) {
 
 function renderPropertiesPanel(leaf, dims) {
   const spec = leaf.spec;
+  const fp = state.focusPart;
+  const cls = (part, extra) => `${fp === part ? "partFocus" : ""} ${extra || ""}`.trim();
   const opt = (val, list) => list.map((o) => `<option ${o === val ? "selected" : ""}>${esc(o)}</option>`).join("");
   return `<div class="componentEditor">
-    <div class="componentTitle"><span>COMPONENTE SELECCIONADO</span><b>${esc(wingName(leaf.wing))}</b><small>${dims ? `${Math.round(dims.wMm)} × ${Math.round(dims.hMm)} mm` : ""}</small></div>
+    <div class="componentTitle"><span>COMPONENTE SELECCIONADO${fp ? " · " + esc(fp.toUpperCase()) : ""}</span><b>${esc(wingName(leaf.wing))}</b><small>${dims ? `${Math.round(dims.wMm)} × ${Math.round(dims.hMm)} mm` : ""}</small></div>
     <div class="componentGrid">
-      <label>Estado<select data-bind-spec="state">${opt(spec.state, ["Fija", "Móvil", "Inactiva"])}</select></label>
-      <label>Tipo de apertura<select data-bind-spec="opening">${opt(spec.opening, ["Sin apertura", "Corredera", "Abatible interior", "Abatible exterior", "Oscilobatiente", "Proyectante"])}</select></label>
-      <label>Dirección<select data-bind-spec="direction">${opt(spec.direction, ["N/A", "Derecha", "Izquierda", "Interior", "Exterior"])}</select></label>
-      <label>Vidrio<select data-bind-spec="glass">${opt(spec.glass, ["Heredar vidrio general"].concat(glassCatalog.map((g) => g.name)))}</select></label>
-      <label class="wide">Herraje<select data-bind-spec="hardware">${opt(spec.hardware, ["Sin herraje", "Roto · juego corredera", "Roto · carros 80 kg", "Roto · carros 120 kg", "Roto · cierre multipunto", "Roto Patio · osciloparalela", "Bisagras reforzadas"])}</select></label>
-      <label class="wide">Manilla / cierre<select data-bind-spec="handle">${opt(spec.handle, ["Sin manilla", "Harmony con tetones", "Slim 479092 con tetones", "Cierre embutido", "Manillón doble", "Cremona multipunto"])}</select></label>
+      <label class="${cls('marco')}">Estado<select data-bind-spec="state">${opt(spec.state, ["Fija", "Móvil", "Inactiva"])}</select></label>
+      <label class="${cls('hoja')}">Tipo de apertura<select data-bind-spec="opening">${opt(spec.opening, Array.from(new Set(Object.values(OPENING_BY_WING))))}</select></label>
+      <label class="${cls('hoja')}">Dirección<select data-bind-spec="direction">${opt(spec.direction, ["N/A", "Derecha", "Izquierda", "Interior", "Exterior"])}</select></label>
+      <label class="${cls('vidrio')}">Vidrio<select data-bind-spec="glass">${opt(spec.glass, ["Heredar vidrio general"].concat(glassCatalog.map((g) => g.name)))}</select></label>
+      <label class="wide ${cls('herraje')}">Herraje<select data-bind-spec="hardware">${opt(spec.hardware, HARDWARE_OPTIONS)}</select></label>
+      <label class="wide ${cls('herraje')}">Manilla / cierre<select data-bind-spec="handle">${opt(spec.handle, HANDLE_OPTIONS)}</select></label>
+      <label class="wide checkRow"><input type="checkbox" data-bind-spec-bool="mallorquina" ${spec.mallorquina ? "checked" : ""}> Persiana Mallorquina exterior (lamas orientables, accesorio de sombra)</label>
       <label class="wide">Observaciones<textarea data-bind-spec="notes" placeholder="Mecanizado, altura de manilla, restricciones...">${esc(spec.notes)}</textarea></label>
     </div>
-    <p class="componentNote">Selecciona carros, cierres y manillas según el peso del vidrio, tamaño de hoja y geometría del perfil.</p>
+    <p class="componentNote">Selecciona carros, cierres y manillas según el peso del vidrio, tamaño de hoja y geometría del perfil. Haz clic directamente en el marco, la hoja, el vidrio o el herraje del dibujo para saltar aquí.</p>
     ${canMerge() ? '<button type="button" class="fullButton" data-action="merge">Combinar con hoja vecina <span>×</span></button>' : ""}
   </div>`;
+}
+
+function renderProfileCatalog() {
+  const q = state.profileSearch.trim().toLowerCase();
+  const filtered = profileFamilies.filter((f) =>
+    (state.profileSystemFilter === "Todos" || f.system === state.profileSystemFilter) &&
+    (!q || f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q))
+  );
+  return `
+    ${block("02", "Catálogo de perfiles y accesorios", "Datos reales Aluplast · lista EXWORK Veracruz, revisión ABR_22 (01/05/2022). 278 familias normalizadas.")}
+    <div class="profileFilters">
+      <label>Buscar<input type="text" id="f-profileSearch" value="${esc(state.profileSearch)}" data-bind="profileSearch"></label>
+      <label>Sistema<select data-bind="profileSystemFilter">${["Todos"].concat(PROFILE_SYSTEMS).map((s) => `<option ${s === state.profileSystemFilter ? "selected" : ""}>${esc(s)}</option>`).join("")}</select></label>
+    </div>
+    <p class="profileCount">Mostrando ${filtered.length} de ${profileFamilies.length} familias.</p>
+    <div class="profileCatalog">${filtered.map((f) => `<div><span class="profileSketch">▥</span><section><b>${esc(f.code)}</b><p>${esc(f.name)}</p><small>${esc(f.system)} · €${f.priceEUR.toFixed(2)} (~${money(f.priceEUR * EUR_MXN)})</small></section></div>`).join("")}</div>`;
 }
 
 function renderReportPreview(calc, sys, glass) {
@@ -622,7 +1033,8 @@ function renderReportPreview(calc, sys, glass) {
     body = `<h3>Accesorios y herrajes</h3>
       ${reportRow("Juego de herrajes", `${calc.leaves.length * state.qty} set`, configSummary(calc))}
       ${reportRow("Juntas EPDM", `${((calc.frameM + calc.sashM) * state.qty).toFixed(2)} m`, "Perimetral")}
-      ${reportRow("Calzos / topes", `${calc.leaves.length * 4 * state.qty} pza`, "Según vidrio")}`;
+      ${reportRow("Calzos / topes", `${calc.leaves.length * 4 * state.qty} pza`, "Según vidrio")}
+      ${calc.addons > 0 ? reportRow("Persiana Mallorquina", money(calc.addons * state.qty), "Accesorio exterior") : ""}`;
   } else if (r === "Producción") {
     body = `<h3>Orden de producción</h3>
       ${reportRow("Elemento", `${state.qty} pza`, `${state.width} × ${state.height} mm`)}
@@ -661,10 +1073,15 @@ function renderApp() {
     .concat(glass.thickness > sys.glazing ? [`Vidrio de ${glass.thickness} mm supera el galce de referencia (${sys.glazing} mm).`] : [])
     .concat(state.rail > 0 && !sys.rails.includes(state.rail) ? [`El sistema no contempla ${state.rail} riel(es).`] : []);
 
+  const sc = state.selfCheck || { ok: true, checks: [] };
+  const scTitle = sc.checks.map((c) => `${c.pass ? "✓" : "✗"} ${c.name}`).join("\n");
   const topbar = `<header class="topbar">
     <a class="brand" href="#top"><span class="brandMark">L</span><span>LUFT <b>PVC</b></span></a>
     <div class="projectName"><span>PROYECTO ACTIVO</span><strong>Oferta ${esc(state.code)} · ${esc(state.designation)} ${esc(state.location)}</strong></div>
-    <div class="headerActions"><button class="primary" data-action="print">Generar informe</button></div>
+    <div class="headerActions">
+      <span class="selfCheckBadge ${sc.ok ? "ok" : "warn"}" title="${esc(scTitle)}">${sc.ok ? "✓ Sistema OK" : "⚠ Revisar"}</span>
+      <button class="primary" data-action="print">Generar informe</button>
+    </div>
   </header>`;
 
   const nav = `<nav class="moduleNav">${TABS.map((x) => `<button class="${state.tab === x ? "active" : ""}" data-action="set-tab" data-value="${x}">${x}</button>`).join("")}</nav>`;
@@ -686,9 +1103,10 @@ function renderApp() {
         <button class="${state.brand === "Aluplast" ? "selected" : ""}" data-action="change-brand" data-value="Aluplast">ALUPLAST</button>
         <button class="${state.brand === "Deceuninck" ? "selected" : ""}" data-action="change-brand" data-value="Deceuninck">DECEUNINCK</button>
       </div>
-      <label>Sistema<select data-action="change-system">${catalog[state.brand].map((x, i) => `<option value="${i}" ${i === state.systemIndex ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
+      <label>Sistema<select data-action="change-system">${catalog[state.brand].map((x, i) => `<option value="${i}" ${i === state.systemIndex ? "selected" : ""}>${esc(x.name)}${x.sourced ? " ✓" : ""}</option>`).join("")}</select></label>
+      ${sys.sourced ? `<p class="sourceNote"><b>✓ Datos reales</b> — precio de marco/hoja tomado de la lista EXWORK Veracruz (rev. ABR_22), convertido a MXN @ ${EUR_MXN}.</p>` : `<p class="sourceNote">Precio de marco/hoja estimado (sin lista de precios de origen para este sistema).</p>`}
       ${hasRailOptions ? `<label>Tipo de riel<select data-bind="rail" data-numeric="true">${sys.rails.map((x) => `<option value="${x}" ${x === state.rail ? "selected" : ""}>${x === 1 ? "Monorriel" : x + " rieles"}</option>`).join("")}</select></label>` : ""}
-      ${block("02", "Composición", "Usa la paleta de herramientas sobre el lienzo para dividir la ventana y asignar el tipo de cada hoja.")}
+      ${block("02", "Composición", "Haz clic en el marco, la hoja, el vidrio o el herraje del dibujo para seleccionar esa parte, o usa la paleta para dividir y asignar tipos de apertura.")}
       ${block("03", "Geometría", "Cotas generales en milímetros.")}
       <div class="inputGrid">
         <label>Ancho<input id="f-width" type="number" value="${state.width}" data-bind="width" data-numeric="true"></label>
@@ -712,8 +1130,7 @@ function renderApp() {
         return `<div><header><b>Hoja ${String.fromCharCode(65 + i)}</b><span>${used} / 6000 mm</span></header><section>${pieces.map((p) => `<i style="width:${Math.max(12, p / 60)}%">${p}</i>`).join("")}<em style="flex:1">${Math.max(0, 6000 - used)}</em></section></div>`;
       }).join("")}</div>
       <p class="notice">La optimización definitiva depende de descuentos, ángulos, soldadura, refuerzos, sierra y reglas específicas del catálogo.</p>
-      ${state.brand === "Aluplast" ? `${block("02", "Perfiles IDEAL 2000", "Códigos identificados en catálogo y listas MX.")}
-      <div class="profileCatalog">${ideal2000Profiles.map((p) => `<div><span class="profileSketch">${p.role === "Conector" ? "⊞" : p.role === "Junquillo" ? "⌝" : "▥"}</span><section><b>${esc(p.code)}</b><p>${esc(p.name)}</p><small>${esc(p.role)} · ${esc(p.status)}</small></section></div>`).join("")}</div>` : ""}`;
+      ${renderProfileCatalog()}`;
   } else if (state.tab === "Servicios") {
     configBody = `
       ${block("01", "Costos adicionales", "Recargos y condiciones comerciales.")}
@@ -790,6 +1207,7 @@ function renderApp() {
       <div class="costSummary"><h2>Costos del elemento</h2>
         ${cost("Perfiles", calc.profileCost)}
         ${cost("Accesorios y herrajes", calc.accessories + calc.reinforce + calc.seals)}
+        ${calc.addons > 0 ? cost("Persianas Mallorquina", calc.addons) : ""}
         ${cost("Vidrio", calc.glassCost)}
         ${cost("Servicios y consumibles", state.installation + state.transport + calc.consumables)}
         <div class="direct"><span>Costo directo / pza.</span><b>${money(calc.direct)}</b></div>
@@ -803,7 +1221,7 @@ function renderApp() {
         ${item("EPDM", "Juntas y sellos", `${(calc.frameM + calc.sashM).toFixed(2)} m`)}
         ${item("HERRAJE", "Juego de herrajes", `${calc.leaves.length} set`)}
       </details>
-      <p class="priceNote">Motor técnico v3 · Editor compositivo estilo RA Workshop. Valores en MXN. Los precios y límites deben validarse con la lista vigente y la ingeniería de cada proyecto.</p>`;
+      <p class="priceNote">Motor técnico v4 · Editor compositivo estilo RA Workshop + catálogo real Aluplast (EXWORK Veracruz, rev. ABR_22 2022). Valores en MXN. Los precios y límites deben validarse con la lista vigente y la ingeniería de cada proyecto.</p>`;
   }
 
   const quotePanel = `<aside class="quotePanel">
@@ -813,7 +1231,7 @@ function renderApp() {
     ${quoteBody}
   </aside>`;
 
-  const footer = `<footer class="sources"><b>Base técnica:</b> documentación RA Workshop aportada, <a href="https://www.aluplast.net/eng-int/products/windows/ideal/" target="_blank" rel="noopener">sistemas oficiales Aluplast</a> y <a href="https://www.deceuninck.com.mx/en/pdf/catalogo_tecnico.pdf" target="_blank" rel="noopener">catálogo técnico Deceuninck México</a>.</footer>`;
+  const footer = `<footer class="sources"><b>Base técnica:</b> documentación RA Workshop aportada, catálogo real Aluplast (lista EXWORK Veracruz, rev. ABR_22 2022), <a href="https://www.aluplast.net/eng-int/products/windows/ideal/" target="_blank" rel="noopener">sistemas oficiales Aluplast</a> y <a href="https://www.deceuninck.com.mx/en/pdf/catalogo_tecnico.pdf" target="_blank" rel="noopener">catálogo técnico Deceuninck México</a>.</footer>`;
 
   return `<main>${topbar}${nav}<section class="workspace" id="top">${configPanel}${visualPanel}${quotePanel}</section>${footer}</main>`;
 }
@@ -838,6 +1256,10 @@ function render() {
       if (restore.start != null && "setSelectionRange" in el) { try { el.setSelectionRange(restore.start, restore.end); } catch (e) {} }
     }
   }
+  if (state.focusPart) {
+    const target = root.querySelector(".partFocus");
+    if (target) target.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
 }
 
 // ---------- EVENTS ----------
@@ -855,9 +1277,18 @@ root.addEventListener("click", (e) => {
   if (action === "tool-wing") { state.activeTool = { mode: "assign-wing", wing: el.dataset.wing }; render(); return; }
   if (action === "merge") { handleMerge(); render(); return; }
   if (action === "reset-tree") { handleResetTree(); render(); return; }
-  if (action === "leaf-click") {
-    const rect = el.getBoundingClientRect();
-    handleLeafClick(el.dataset.id, e.clientX, e.clientY, rect);
+  if (action === "part-click") {
+    const id = el.dataset.id;
+    const part = el.dataset.part;
+    if (state.activeTool.mode === "select") {
+      state.selectedId = id;
+      state.focusPart = part;
+    } else {
+      const paneEl = el.closest("[data-leaf]");
+      const rect = paneEl.getBoundingClientRect();
+      handleLeafClick(id, e.clientX, e.clientY, rect);
+      state.focusPart = null;
+    }
     render();
     return;
   }
@@ -870,10 +1301,17 @@ function handleFieldChange(e) {
   if (t.dataset.bindSpec) {
     const node = findNode(state.tree, state.selectedId);
     if (node && node.kind === "leaf") { state.tree = updateSpecFn(state.tree, node.id, { [t.dataset.bindSpec]: t.value }); render(); }
+    return;
+  }
+  if (t.dataset.bindSpecBool) {
+    const node = findNode(state.tree, state.selectedId);
+    if (node && node.kind === "leaf") { state.tree = updateSpecFn(state.tree, node.id, { [t.dataset.bindSpecBool]: t.checked }); render(); }
   }
 }
 root.addEventListener("input", handleFieldChange);
 root.addEventListener("change", handleFieldChange);
 
+state.selfCheck = runSelfCheck();
 render();
+setInterval(() => { state.selfCheck = runSelfCheck(); render(); }, 25000);
 </script>

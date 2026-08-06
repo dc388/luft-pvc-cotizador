@@ -11,6 +11,8 @@ export type PaneSpec = {
   handle: string;
   glass: string;
   notes: string;
+  /** Exterior louvre shutter accessory (Mallorquina) — not a wing type, see lib/tree.ts. */
+  mallorquina: boolean;
 };
 
 // Opening/leaf types a cell in the composed window can be assigned, modeled on
@@ -18,10 +20,15 @@ export type PaneSpec = {
 export type WingType =
   | "fixed"
   | "sliding"
+  | "lift-slide"
+  | "folding-sliding"
   | "casement-in"
   | "casement-out"
   | "tilt-turn"
   | "project"
+  | "hopper"
+  | "jalousie"
+  | "pivot"
   | "door"
   | "inactive";
 
@@ -65,8 +72,12 @@ export type System = {
   sash: number;
   hardware: number;
   uf: string;
+  /** true when frame/sash are real EUR->MXN prices from the Aluplast EXWORK Veracruz
+   * price list (rev. ABR_22, 2022-05-01), not an estimate. See lib/pricing.ts. */
+  sourced?: boolean;
 };
 
 export type GlassItem = { name: string; thickness: number; price: number; type: string };
 export type ColorItem = { name: string; code: string; factor: number };
 export type ProfileItem = { code: string; name: string; role: string; status: string };
+export type ProfileFamily = { system: string; name: string; code: string; priceEUR: number; variants: number };
