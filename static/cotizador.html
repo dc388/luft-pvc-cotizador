@@ -98,10 +98,12 @@ a{color:inherit}
 .splitNode{display:flex;min-width:0;min-height:0;position:relative}
 .splitNode.axisCol{flex-direction:row}
 .splitNode.axisRow{flex-direction:column}
-.pane{flex:1;position:relative;border:5px solid #24352e;background:linear-gradient(145deg,#9cbec4cc,#e9f2f0cc 55%,#91b8c2cc);overflow:hidden;min-width:0}
+.pane{flex:1;position:relative;border:5px solid #24352e;background:var(--frame,#dfe2dc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);overflow:hidden;min-width:0}
 .whiteFrame .pane{border-color:#e8eae5}
-.pane:after{content:"";position:absolute;width:160%;height:14px;background:#ffffff22;transform:rotate(-35deg);top:24%;left:-30%;pointer-events:none}
 .pane.selectedPane{outline:4px solid var(--accent);outline-offset:-4px;box-shadow:inset 0 0 0 2px #14231c}
+.sashRing{position:absolute;inset:max(9%,12px);background:var(--frame,#dfe2dc);filter:brightness(.82);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.2);pointer-events:none}
+.glassFill{position:absolute;inset:max(17%,22px);background:linear-gradient(145deg,#9cbec4cc,#e9f2f0cc 55%,#91b8c2cc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);pointer-events:none;overflow:hidden}
+.glassFill:after{content:"";position:absolute;width:160%;height:14px;background:#ffffff44;transform:rotate(-35deg);top:24%;left:-30%}
 .hit{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer}
 .hit:hover{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent)}
 .hitMarco{inset:0;z-index:1}
@@ -1499,18 +1501,18 @@ const aluplastColors = [
 const colorsByBrand = {
   Aluplast: aluplastColors,
   Deceuninck: [
-    { name: "Blanco", code: "M3", factor: 1 },
-    { name: "Roble Dorado", code: "190", factor: 1.21 },
-    { name: "Nogal", code: "191", factor: 1.22 },
-    { name: "Macoré", code: "149", factor: 1.22 },
-    { name: "Mountain Oak", code: "196", factor: 1.23 },
-    { name: "Winchester", code: "194", factor: 1.23 },
-    { name: "Antracita Veteado", code: "523", factor: 1.22 },
-    { name: "Antracita", code: "408", factor: 1.22 },
-    { name: "Black Ulti Matt", code: "192", factor: 1.25 },
-    { name: "Gris Aluminio", code: "911", factor: 1.22 },
-    { name: "Truffle Oak", code: "422", factor: 1.24 },
-    { name: "Nogal Ulti Matt", code: "456", factor: 1.25 },
+    { name: "Blanco", code: "M3", factor: 1, hex: "#F4F4F0" },
+    { name: "Roble Dorado", code: "190", factor: 1.21, hex: "#B98A4E" },
+    { name: "Nogal", code: "191", factor: 1.22, hex: "#6B4A32" },
+    { name: "Macoré", code: "149", factor: 1.22, hex: "#7A3B2E" },
+    { name: "Mountain Oak", code: "196", factor: 1.23, hex: "#C9A46B" },
+    { name: "Winchester", code: "194", factor: 1.23, hex: "#8B6F52" },
+    { name: "Antracita Veteado", code: "523", factor: 1.22, hex: "#43474A" },
+    { name: "Antracita", code: "408", factor: 1.22, hex: "#3B3F42" },
+    { name: "Black Ulti Matt", code: "192", factor: 1.25, hex: "#1C1C1C" },
+    { name: "Gris Aluminio", code: "911", factor: 1.22, hex: "#9CA3A6" },
+    { name: "Truffle Oak", code: "422", factor: 1.24, hex: "#5B4636" },
+    { name: "Nogal Ulti Matt", code: "456", factor: 1.25, hex: "#4A3728" },
   ],
 };
 
@@ -2378,6 +2380,8 @@ function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis) {
     ? `<button type="button" class="hit hitHerraje" title="Herraje / manilla" data-action="part-click" data-part="herraje" data-id="${node.id}">⚙</button>`
     : "";
   return `<div class="pane ${node.id === selectedId ? "selectedPane" : ""}" style="flex:${flexBasis}" data-leaf="${node.id}">
+    ${hasSash ? `<div class="sashRing"></div>` : ""}
+    <div class="glassFill"></div>
     <button type="button" class="hit hitMarco" title="Marco / estado" data-action="part-click" data-part="marco" data-id="${node.id}" aria-label="Marco de ${esc(wingName(node.wing))}"></button>
     ${hojaHit}
     <button type="button" class="hit hitVidrio" title="Vidrio" data-action="part-click" data-part="vidrio" data-id="${node.id}"></button>
@@ -2475,7 +2479,7 @@ function todayStr() {
 }
 
 function renderCotizacionDoc(calc, sys, glass, color) {
-  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}</div>`;
+  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}</div>`;
   const specRows = [
     ["Dimensiones", `${state.width.toLocaleString()} mm × ${state.height.toLocaleString()} mm`],
     ["Perfil del sistema", `${esc(state.brand)} - ${esc(sys.name)} / ${esc(color.name)}`],
@@ -2743,7 +2747,7 @@ function renderApp() {
     : state.view === "3D"
     ? `<div class="scene3dSlot" id="scene3dSlot"></div><div class="scene3dHint">Arrastra para rotar · rueda para acercar · clic derecho para desplazar</div>`
     : `<div class="modelStage">
-        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}</div>
+        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}</div>
       </div>`;
 
   const visualPanel = `<section class="visualPanel">
