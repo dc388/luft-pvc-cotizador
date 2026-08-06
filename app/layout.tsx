@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Starter Project",
-  description: "A clean starting point for building your site.",
+  title: "LUFT PVC · Cotizador",
+  description: "Cotizador técnico de cancelería de PVC para Aluplast y Deceuninck.",
   other: {
     "codex-preview": "development",
   },

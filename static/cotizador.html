@@ -1,0 +1,879 @@
+<title>LUFT PVC · Cotizador</title>
+<meta name="description" content="Cotizador técnico de cancelería de PVC para Aluplast y Deceuninck, con editor compositivo de ventanas estilo RA Workshop.">
+<style>
+:root{
+  --paper:#f4f5ef; --surface:#ffffff; --ink:#14231c; --green:#163f32; --mint:#d9ef3b;
+  --line:#d8ddd4; --muted:#66736c; --warn-bg:#fff5dc; --warn-fg:#795b1a; --warn-line:#f1d792;
+  --ok-bg:#e8f2e7; --ok-fg:#367558; --shadow:#14231c1f;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0f1713; --surface:#182420; --ink:#e9efe9; --green:#4caf8a; --mint:#d9ef3b;
+    --line:#2b3a33; --muted:#9db2a7; --warn-bg:#3a2f10; --warn-fg:#f0cf7a; --warn-line:#5b4a1c;
+    --ok-bg:#183828; --ok-fg:#7fd8ab; --shadow:#00000055;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f1713; --surface:#182420; --ink:#e9efe9; --green:#4caf8a; --mint:#d9ef3b;
+  --line:#2b3a33; --muted:#9db2a7; --warn-bg:#3a2f10; --warn-fg:#f0cf7a; --warn-line:#5b4a1c;
+  --ok-bg:#183828; --ok-fg:#7fd8ab; --shadow:#00000055;
+}
+:root[data-theme="light"]{
+  --paper:#f4f5ef; --surface:#ffffff; --ink:#14231c; --green:#163f32; --mint:#d9ef3b;
+  --line:#d8ddd4; --muted:#66736c; --warn-bg:#fff5dc; --warn-fg:#795b1a; --warn-line:#f1d792;
+  --ok-bg:#e8f2e7; --ok-fg:#367558; --shadow:#14231c1f;
+}
+*{box-sizing:border-box}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer;color:inherit}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+select,input[type=number],input[type=text]{width:100%;height:40px;border:1px solid var(--line);background:var(--paper);border-radius:7px;padding:0 10px;color:var(--ink);font-size:12px}
+textarea{background:var(--paper);color:var(--ink)}
+a{color:inherit}
+
+.topbar{height:76px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:20}
+.brand{color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:12px;letter-spacing:.08em;font-size:18px}
+.brand b{color:var(--green)}
+.brandMark{width:38px;height:38px;border-radius:50%;background:var(--green);color:var(--mint);display:grid;place-items:center;font-weight:900}
+.projectName{display:flex;flex-direction:column;text-align:center;gap:2px}
+.projectName span,.eyebrow,.quoteHead span,.metricRow span,.totalBox span,.priceNote{font-size:10px;letter-spacing:.12em;color:var(--muted)}
+.projectName strong{font-size:13px}
+.headerActions{display:flex;gap:8px}
+.primary{padding:11px 16px;border-radius:8px;border:1px solid var(--green);background:var(--green);color:#fff;font-size:12px;font-weight:bold}
+
+.moduleNav{height:42px;display:flex;justify-content:center;gap:4px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:76px;z-index:19}
+.moduleNav button{border:0;background:transparent;padding:0 24px;font-size:11px;color:var(--muted);border-bottom:2px solid transparent}
+.moduleNav button.active{color:var(--green);font-weight:bold;border-bottom-color:var(--green)}
+
+.workspace{display:grid;grid-template-columns:360px minmax(460px,1fr) 390px;min-height:calc(100vh - 76px)}
+.configPanel,.quotePanel{background:var(--surface);padding:28px;border-right:1px solid var(--line);overflow:auto}
+.quotePanel{border-right:0;border-left:1px solid var(--line);padding:0 26px 24px}
+.eyebrow{color:var(--green);font-weight:bold;margin-bottom:10px}
+.configPanel h1{font-family:Georgia,serif;font-size:40px;line-height:1.02;margin:0 0 12px;letter-spacing:-.04em;text-wrap:balance}
+.lead{font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:24px}
+.step{display:flex;gap:12px;border-top:1px solid var(--line);padding-top:18px;margin-top:20px}
+.step>span{color:var(--green);font-size:11px;font-weight:bold}
+.step div{display:flex;flex-direction:column;gap:3px}
+.step b{font-size:13px}
+.step small{color:var(--muted);font-size:11px}
+.segmented{display:grid;grid-template-columns:1fr 1fr;margin:14px 0 12px;border:1px solid var(--line);border-radius:9px;padding:3px}
+.segmented button{border:0;background:transparent;padding:10px;font-size:10px;font-weight:800;color:var(--muted);border-radius:6px}
+.segmented button.selected{background:var(--green);color:#fff}
+.configPanel label,.additional label{display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--muted);font-weight:bold;margin-top:10px}
+.inputGrid{display:grid;grid-template-columns:1fr 1fr 80px;gap:8px}
+.inputGrid.two{grid-template-columns:1fr 1fr}
+.summaryCard{margin-top:16px;display:grid;grid-template-columns:1fr 1.4fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.summaryCard span,.summaryCard b{padding:9px;font-size:10px;border-bottom:1px solid var(--line)}
+.summaryCard span{background:var(--paper);color:var(--muted)}
+
+.visualPanel{display:flex;flex-direction:column;min-width:0}
+.visualHeader{height:54px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:9px;letter-spacing:.09em;color:var(--muted);border-bottom:1px solid var(--line)}
+.statusDot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4bb17c;margin-right:8px}
+.viewSwitch{display:flex;background:var(--paper);border-radius:7px;padding:2px}
+.viewSwitch button{border:0;background:transparent;font-size:10px;padding:7px 12px;border-radius:5px;color:var(--ink)}
+.viewSwitch .active{background:var(--surface)}
+.canvas{position:relative;flex:1;min-height:500px;display:grid;place-items:center;padding:70px;background-color:var(--paper);background-image:linear-gradient(color-mix(in srgb, var(--ink) 6%, transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb, var(--ink) 6%, transparent) 1px,transparent 1px);background-size:28px 28px}
+.modelStage{width:min(76%,650px);perspective:1100px;position:relative;display:grid;place-items:center}
+.modelStage .window{width:100%;max-height:420px}
+.view-3D .modelStage{transform-style:preserve-3d;transform:rotateY(-24deg) rotateX(3deg);filter:drop-shadow(28px 28px 24px var(--shadow))}
+.view-3D .window{transform-style:preserve-3d;box-shadow:none}
+.modelSide{position:absolute;top:0;right:-22px;width:24px;height:100%;background:linear-gradient(90deg,#0c1713,#35473f);transform-origin:left;transform:rotateY(90deg);border:1px solid #08100d}
+.modelSill{position:absolute;left:0;right:0;bottom:-20px;height:22px;background:linear-gradient(#23332c,#0d1814);transform-origin:top;transform:rotateX(-90deg)}
+.window{width:min(76%,650px);max-height:420px;border:15px solid #1d2924;background:linear-gradient(135deg,#b9d5d7,#e5eeee 45%,#afcdd0);display:flex;box-shadow:0 24px 40px var(--shadow);position:relative;min-height:190px}
+.window.whiteFrame{border-color:#f7f7f2;box-shadow:0 0 0 1px #aeb8b1,0 24px 40px var(--shadow)}
+.splitNode{display:flex;min-width:0;min-height:0;position:relative}
+.splitNode.axisCol{flex-direction:row}
+.splitNode.axisRow{flex-direction:column}
+.pane{flex:1;position:relative;border:5px solid #24352e;background:linear-gradient(145deg,#9cbec4cc,#e9f2f0cc 55%,#91b8c2cc);overflow:hidden;appearance:none;padding:0;cursor:pointer;text-align:left;min-width:0}
+.whiteFrame .pane{border-color:#e8eae5}
+.pane:after{content:"";position:absolute;width:180%;height:22px;background:#fff5;transform:rotate(-35deg);top:26%;left:-40%}
+.pane .motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#2870a2;font-size:18px}
+.pane em{position:absolute;z-index:3;bottom:4px;left:6px;font-size:8px;font-style:normal;color:#325248}
+.openingLines{position:absolute;inset:0;display:block;background:linear-gradient(32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%),linear-gradient(-32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%)}
+.pane.selectedPane{outline:4px solid var(--mint);outline-offset:-4px;box-shadow:inset 0 0 0 2px var(--green)}
+.paneHardware{position:absolute;z-index:4;top:5px;left:5px;background:#ffffffd9;color:#274d3e;padding:3px 5px;border-radius:4px;font-size:7px}
+.paneDim{position:absolute;z-index:4;bottom:5px;right:5px;background:#ffffffd9;color:#274d3e;padding:3px 5px;border-radius:4px;font-size:7px;font-weight:normal;font-style:normal}
+.dim{position:absolute;color:var(--muted);font-size:10px;letter-spacing:.07em}
+.dim.top{top:40px;left:19%;right:19%;border-top:1px solid var(--line);text-align:center}
+.dim.top span{background:var(--paper);padding:0 8px;position:relative;top:-7px}
+.dim.side{left:42px;top:20%;bottom:20%;border-left:1px solid var(--line);display:flex;align-items:center}
+.dim.side span{background:var(--paper);padding:6px;transform:rotate(-90deg);margin-left:-24px}
+.editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:7px 11px;border-radius:20px;font-size:8px;letter-spacing:.06em;text-align:center;max-width:70%}
+.specChip{position:absolute;left:24px;bottom:22px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 13px;display:flex;flex-direction:column;font-size:10px;gap:3px;box-shadow:0 6px 18px var(--shadow)}
+.specChip span{color:var(--muted)}
+.metricRow{height:74px;display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line)}
+.metricRow div{padding:16px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.metricRow strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+
+.toolbox{position:absolute;top:70px;left:16px;z-index:6;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 24px var(--shadow);max-height:calc(100% - 100px);overflow:auto}
+.toolboxGroup{display:flex;flex-direction:column;gap:6px}
+.toolboxGroup>span{font-size:8px;letter-spacing:.08em;color:var(--muted);font-weight:bold}
+.toolboxGrid{display:grid;grid-template-columns:repeat(4,28px);gap:5px}
+.toolboxGrid button{width:28px;height:28px;border:1px solid var(--line);background:var(--paper);border-radius:6px;font-size:14px;color:var(--green);display:grid;place-items:center;padding:0}
+.toolboxGrid button.active{border-color:var(--green);background:var(--green);color:#fff}
+.toolboxAction{width:100%;border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:7px 8px;font-size:9px;text-align:left;color:var(--ink)}
+.toolboxAction:disabled{opacity:.4;cursor:not-allowed}
+
+.sectionRender{width:70%;display:grid;grid-template-columns:220px 1fr;gap:25px;align-items:center}
+.profileSection{height:180px;border:18px solid #1d2924;background:#d9e0db;position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:18px}
+.chamber{border:5px solid #52645c;background:#f3f5f1}
+.glassSection{position:absolute;top:-45px;bottom:-45px;left:50%;background:#a8d4de99;border:2px solid #518b96;transform:translateX(-50%)}
+.sectionInfo{display:flex;flex-direction:column;gap:9px}
+.sectionInfo b{font-size:14px}
+.sectionInfo span{font-size:10px;color:var(--muted)}
+
+.quoteHead{height:72px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.quoteHead>div{display:flex;flex-direction:column;gap:4px}
+.quoteHead strong{font-size:20px}
+.badge{background:var(--ok-bg);color:var(--ok-fg)!important;padding:7px 9px;border-radius:20px;letter-spacing:0!important;font-size:10px}
+.badge.warning{background:var(--warn-bg)!important;color:var(--warn-fg)!important}
+.warnings{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;margin:10px 0;padding:8px}
+.warnings p{margin:3px;font-size:9px;color:var(--warn-fg)}
+
+.componentEditor{border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:10px 0 14px}
+.componentTitle{background:var(--green);color:#fff;padding:12px;display:grid;grid-template-columns:1fr auto;gap:3px}
+.componentTitle span{grid-column:1/3;font-size:7px;letter-spacing:.14em;color:#bcd2c8}
+.componentTitle b{font-size:15px}
+.componentTitle small{font-size:8px;align-self:center}
+.componentGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px}
+.componentGrid label{font-size:8px;color:var(--muted)}
+.componentGrid select{height:32px;font-size:9px}
+.componentGrid .wide{grid-column:1/3}
+.componentGrid textarea{width:100%;min-height:55px;border:1px solid var(--line);border-radius:6px;padding:7px;font:9px Arial}
+.componentNote{font-size:8px;line-height:1.45;color:var(--warn-fg);background:var(--warn-bg);margin:0;padding:9px}
+.fullButton{width:100%;border:0;background:var(--mint);padding:14px;border-radius:8px;color:#14231c;font-size:11px;font-weight:bold;display:flex;justify-content:space-between;margin-top:10px}
+
+.propertyGroup{margin-bottom:14px}
+.propertyGroup h2,.costSummary h2{font-size:11px;background:color-mix(in srgb, var(--green) 12%, var(--surface));padding:7px 8px;margin:0;color:var(--green)}
+.prop{display:grid;grid-template-columns:1.15fr 1fr;border-bottom:1px solid var(--line);font-size:9px}
+.prop span,.prop b{padding:6px 8px}
+.prop span{color:var(--muted);background:var(--paper)}
+.prop b{text-align:right;font-weight:500}
+.line{display:flex;justify-content:space-between;padding:7px 0;color:var(--muted);font-size:11px}
+.line b{color:var(--ink)}
+.direct{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding:10px 0;font-size:10px}
+.totalBox{background:var(--green);color:#fff;border-radius:10px;padding:16px;margin:12px 0}
+.totalBox>span{color:#bcd0c7;display:flex;justify-content:space-between}
+.totalBox small{font-size:8px}
+.totalBox>strong{display:block;font-family:Georgia,serif;font-size:28px;margin:8px 0 14px;font-variant-numeric:tabular-nums}
+.totalBox div{display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #ffffff33;font-size:11px}
+.totalBox div span{color:#d9e5df}
+.materials{border-top:1px solid var(--line);margin-top:12px}
+.materials summary{padding:10px 0;font-size:10px;font-weight:bold;cursor:pointer}
+.materialItem{display:grid;grid-template-columns:68px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
+.materialItem>span{font-size:9px;color:var(--green)}
+.materialItem div{display:flex;justify-content:space-between;gap:8px}
+.materialItem b,.materialItem small{font-size:10px}
+.materialItem small{color:var(--muted);white-space:nowrap}
+.priceNote{text-align:center;line-height:1.5;margin-top:12px;letter-spacing:.04em}
+
+.optimization{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;border:1px solid var(--line);border-radius:9px;padding:15px;margin:14px 0}
+.optimization strong{font-size:30px;grid-row:1/3;color:var(--green);font-variant-numeric:tabular-nums}
+.optimization span{font-size:9px;color:var(--muted)}
+.optimization b{font-size:13px}
+.cutPlan{margin:14px 0;max-height:230px;overflow:auto}
+.cutPlan>div{margin-bottom:9px}
+.cutPlan header{display:flex;justify-content:space-between;font-size:8px;margin-bottom:3px}
+.cutPlan header span{color:var(--muted)}
+.cutPlan section{height:25px;display:flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.cutPlan i,.cutPlan em{display:grid;place-items:center;min-width:32px;padding:0 3px;border-right:1px solid var(--surface);background:#5e9e84;color:#fff;font-size:7px;font-style:normal}
+.cutPlan em{background:var(--paper);color:var(--muted);border:0}
+.notice{font-size:10px;line-height:1.5;color:var(--warn-fg);background:var(--warn-bg);padding:10px;border-radius:7px}
+.profileCatalog{display:grid;gap:6px;max-height:380px;overflow:auto}
+.profileCatalog>div{display:grid;grid-template-columns:44px 1fr;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.profileSketch{display:grid;place-items:center;background:var(--paper);font-size:20px;color:var(--green)}
+.profileCatalog section{padding:7px}
+.profileCatalog b{font-size:9px;color:var(--green)}
+.profileCatalog p{font-size:9px;margin:3px 0}
+.profileCatalog small{font-size:8px;color:var(--muted)}
+
+.reportList{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}
+.reportList button{display:flex;justify-content:space-between;border:1px solid var(--line);background:var(--surface);padding:11px;border-radius:7px;font-size:9px;color:var(--ink)}
+.reportList button.selected{border-color:var(--green);background:color-mix(in srgb, var(--green) 12%, var(--surface));color:var(--green);font-weight:bold}
+.reportPreview{margin-top:12px;border:1px solid var(--line);background:var(--surface);border-radius:5px;overflow:hidden}
+.reportPreview>header{padding:15px;background:var(--paper);display:flex;flex-direction:column;gap:3px}
+.reportPreview>header span{font-size:8px;letter-spacing:.12em;color:var(--green)}
+.reportPreview>header b{font-size:18px}
+.reportPreview>header small{font-size:8px;color:var(--muted)}
+.reportPreview h3{font-size:11px;margin:15px}
+.reportPreview table{border-collapse:collapse;width:calc(100% - 20px);margin:0 10px 15px;font-size:7px}
+.reportPreview th,.reportPreview td{border:1px solid var(--line);padding:5px;text-align:left}
+.reportPreview tfoot th{background:var(--paper)}
+.reportRow{display:grid;grid-template-columns:1.4fr 1fr .8fr;border-top:1px solid var(--line);padding:8px 10px;gap:6px;align-items:center}
+.reportRow span,.reportRow b,.reportRow small{font-size:8px}
+.reportRow b{text-align:right}
+.reportRow small{text-align:right;color:var(--muted)}
+
+.sources{background:var(--green);color:#d5e5dd;padding:18px 30px;font-size:9px;text-align:center}
+.sources a{color:var(--mint)}
+
+@media(max-width:1150px){
+  .workspace{grid-template-columns:330px 1fr}
+  .quotePanel{grid-column:1/3;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:0 30px}
+  .quoteHead,.priceNote{grid-column:1/3}
+  .totalBox,.fullButton{align-self:end}
+}
+@media(max-width:760px){
+  .topbar{height:auto;padding:12px 15px}
+  .projectName{display:none}
+  .workspace{display:block}
+  .configPanel,.quotePanel{border:0;padding:22px}
+  .visualPanel{min-height:600px}
+  .canvas{min-height:430px;padding:50px}
+  .metricRow{grid-template-columns:1fr 1fr;height:auto}
+  .configPanel h1{font-size:34px}
+  .inputGrid{grid-template-columns:1fr 1fr}
+  .inputGrid label:last-child{grid-column:1/3}
+  .window{width:88%;border-width:9px}
+  .moduleNav{top:62px;overflow:auto;justify-content:flex-start}
+  .moduleNav button{padding:0 16px}
+  .toolbox{display:none}
+  .sectionRender{width:95%;grid-template-columns:1fr}
+  .view-3D .modelStage{transform:rotateY(-16deg) scale(.88)}
+}
+@media print{
+  .topbar,.configPanel,.viewSwitch,.moduleNav,.toolbox,.fullButton,.priceNote,.sources{display:none!important}
+  .workspace{display:block}
+  .visualPanel{min-height:600px}
+  .quotePanel{border:0}
+  .canvas{min-height:480px}
+}
+</style>
+<div id="app"></div>
+<script>
+"use strict";
+
+// ---------- DATA (ported 1:1 from data/*.ts) ----------
+const catalog = {
+  Aluplast: [
+    { name: "IDEAL 2000 MX · Corredera 2 rieles", category: "Corredera", depth: 60, chambers: "3 cámaras", glazing: 24, maxW: 4000, maxH: 2400, rails: [2], frame: 155, sash: 132, hardware: 980, uf: "1.6 W/m²K" },
+    { name: "IDEAL 2000 MX · Corredera 3 rieles", category: "Corredera", depth: 60, chambers: "3 cámaras", glazing: 24, maxW: 4800, maxH: 2400, rails: [3], frame: 178, sash: 132, hardware: 1360, uf: "1.6 W/m²K" },
+    { name: "IDEAL 2000 MX · Monorriel", category: "Corredera", depth: 60, chambers: "3 cámaras", glazing: 24, maxW: 4000, maxH: 2400, rails: [1], frame: 168, sash: 137, hardware: 1080, uf: "1.6 W/m²K" },
+    { name: "IDEAL 2000 Classic-line · Fijo", category: "Fijo", depth: 60, chambers: "3 cámaras", glazing: 33, maxW: 3000, maxH: 2600, rails: [0], frame: 172, sash: 0, hardware: 180, uf: "1.6 W/m²K" },
+    { name: "IDEAL 2000 Classic-line · Practicable", category: "Practicable", depth: 60, chambers: "3 cámaras", glazing: 33, maxW: 2800, maxH: 2400, rails: [0], frame: 188, sash: 172, hardware: 1850, uf: "1.6 W/m²K" },
+    { name: "IDEAL 2000 Round-line · Practicable", category: "Practicable", depth: 60, chambers: "3 cámaras", glazing: 33, maxW: 2800, maxH: 2400, rails: [0], frame: 196, sash: 180, hardware: 1850, uf: "1.6 W/m²K" },
+    { name: "IDEAL 2000 · Puerta interior/exterior", category: "Puerta", depth: 60, chambers: "3 cámaras", glazing: 33, maxW: 2400, maxH: 2600, rails: [0], frame: 205, sash: 198, hardware: 2480, uf: "1.6 W/m²K" },
+    { name: "IDEAL 2000 · Osciloparalela", category: "Especial", depth: 60, chambers: "3 cámaras", glazing: 33, maxW: 3600, maxH: 2400, rails: [1], frame: 218, sash: 192, hardware: 3900, uf: "1.6 W/m²K" },
+    { name: "IDEAL 4000 70", category: "Practicable", depth: 70, chambers: "5 cámaras", glazing: 41, maxW: 3000, maxH: 2600, rails: [0], frame: 208, sash: 191, hardware: 2150, uf: "1.3 W/m²K" },
+    { name: "smart-slide 70", category: "Especial", depth: 70, chambers: "cierre perimetral", glazing: 41, maxW: 5800, maxH: 2400, rails: [1, 2], frame: 245, sash: 218, hardware: 4200, uf: "1.3 W/m²K" },
+    { name: "Lift-slide 85", category: "Especial", depth: 85, chambers: "umbral especial", glazing: 52, maxW: 6500, maxH: 2800, rails: [2], frame: 320, sash: 285, hardware: 7600, uf: "1.1 W/m²K" },
+  ],
+  Deceuninck: [
+    { name: "Sliding 2 rieles", category: "Corredera", depth: 60, chambers: "multicámara", glazing: 24, maxW: 4000, maxH: 2400, rails: [2], frame: 148, sash: 126, hardware: 930, uf: "según configuración" },
+    { name: "Sliding Monorriel", category: "Corredera", depth: 60, chambers: "multicámara", glazing: 24, maxW: 4000, maxH: 2400, rails: [1], frame: 164, sash: 132, hardware: 1040, uf: "según configuración" },
+    { name: "Bella Sliding", category: "Corredera", depth: 80, chambers: "multicámara", glazing: 24, maxW: 5200, maxH: 2600, rails: [2, 3], frame: 176, sash: 151, hardware: 1180, uf: "según configuración" },
+    { name: "Bella Sliding Monorriel", category: "Corredera", depth: 80, chambers: "multicámara", glazing: 24, maxW: 5200, maxH: 2600, rails: [1], frame: 185, sash: 158, hardware: 1290, uf: "según configuración" },
+    { name: "Everest Max 60", category: "Practicable", depth: 60, chambers: "4 cámaras · doble junta", glazing: 36, maxW: 3000, maxH: 2600, rails: [0], frame: 182, sash: 168, hardware: 1780, uf: "según vidrio" },
+    { name: "Lotus Sliding", category: "Corredera", depth: 76, chambers: "multicámara", glazing: 24, maxW: 4800, maxH: 2500, rails: [1, 2], frame: 194, sash: 164, hardware: 1380, uf: "según configuración" },
+    { name: "Legend / Legend Slide", category: "Premium", depth: 80, chambers: "multicámara", glazing: 44, maxW: 5200, maxH: 2700, rails: [0, 1, 2], frame: 238, sash: 207, hardware: 2450, uf: "alto desempeño" },
+    { name: "HS-76 Elevadora", category: "Especial", depth: 175, chambers: "elevadora", glazing: 52, maxW: 6500, maxH: 2800, rails: [2], frame: 310, sash: 278, hardware: 7200, uf: "según configuración" },
+  ],
+};
+
+const glassCatalog = [
+  { name: "Cristal recocido claro 6 mm", thickness: 6, price: 354.84, type: "Monolítico" },
+  { name: "Cristal recocido claro 9.5 mm", thickness: 9.5, price: 560.28, type: "Monolítico" },
+  { name: "Cristal recocido claro 12.7 mm", thickness: 12.7, price: 784.39, type: "Monolítico" },
+  { name: "Cristal templado claro 6 mm", thickness: 6, price: 505.18, type: "Seguridad" },
+  { name: "Cristal templado claro 9.5 mm", thickness: 9.5, price: 810.84, type: "Seguridad" },
+  { name: "Cristal templado claro 12.7 mm", thickness: 12.7, price: 1110.12, type: "Seguridad" },
+  { name: "Luna clara 6 mm", thickness: 6, price: 993.30, type: "Especial" },
+  { name: "DVH 24 mm · 6/12/6", thickness: 24, price: 1650, type: "Doble vidrio" },
+  { name: "DVH 20 mm · 4/12/4", thickness: 20, price: 1420, type: "Doble vidrio" },
+  { name: "Laminado 6+6 mm", thickness: 12.7, price: 1890, type: "Seguridad" },
+];
+
+const colorsByBrand = {
+  Aluplast: [
+    { name: "Blanco", code: "BL", factor: 1 },
+    { name: "Negro JB", code: "JB", factor: 1.18 },
+    { name: "Antracita", code: "ANT", factor: 1.22 },
+    { name: "Nogal", code: "NOG", factor: 1.24 },
+    { name: "Roble dorado", code: "RD", factor: 1.24 },
+  ],
+  Deceuninck: [
+    { name: "Blanco", code: "M3", factor: 1 },
+    { name: "Roble Dorado", code: "190", factor: 1.21 },
+    { name: "Nogal", code: "191", factor: 1.22 },
+    { name: "Macoré", code: "149", factor: 1.22 },
+    { name: "Mountain Oak", code: "196", factor: 1.23 },
+    { name: "Winchester", code: "194", factor: 1.23 },
+    { name: "Antracita Veteado", code: "523", factor: 1.22 },
+    { name: "Antracita", code: "408", factor: 1.22 },
+    { name: "Black Ulti Matt", code: "192", factor: 1.25 },
+    { name: "Gris Aluminio", code: "911", factor: 1.22 },
+    { name: "Truffle Oak", code: "422", factor: 1.24 },
+    { name: "Nogal Ulti Matt", code: "456", factor: 1.25 },
+  ],
+};
+
+const ideal2000Profiles = [
+  { code: "102071171", name: "Marco 3 rieles para ventana corrediza 60 mm con junta · JB", role: "Marco", status: "Código de lista MX" },
+  { code: "102372171", name: "Hoja para ventana corrediza 60 mm con junta · JB", role: "Hoja", status: "Código de lista MX" },
+  { code: "620116", name: "Unión mecánica para travesaño / montante", role: "Conector", status: "IDEAL 2000 / 4000" },
+  { code: "120x07", name: "Marco Classic-line 70 × 60 mm", role: "Marco", status: "Catálogo técnico" },
+  { code: "120x18", name: "Marco Round-line 70 × 60 mm", role: "Marco", status: "Catálogo técnico" },
+  { code: "120x41", name: "Poste / travesaño Classic-line 80 mm", role: "Travesaño", status: "Catálogo técnico" },
+  { code: "120x45", name: "Poste / travesaño Round-line 80 mm", role: "Travesaño", status: "Catálogo técnico" },
+  { code: "120x35", name: "Hoja exterior Classic-line 120 mm", role: "Hoja", status: "Catálogo técnico" },
+  { code: "120x86", name: "Hoja de encuentro Round-line 49 mm", role: "Hoja", status: "Catálogo técnico" },
+  { code: "120833/120863", name: "Junquillo para combinaciones de 24 mm", role: "Junquillo", status: "Según acristalamiento" },
+];
+
+const wingDefs = [
+  { id: "fixed", name: "Fijo", icon: "▣", group: "Ventana" },
+  { id: "sliding", name: "Corrediza", icon: "⇆", group: "Corredera" },
+  { id: "casement-in", name: "Abatible interior", icon: "◩", group: "Practicable" },
+  { id: "casement-out", name: "Abatible exterior", icon: "◪", group: "Practicable" },
+  { id: "tilt-turn", name: "Oscilobatiente", icon: "⌂", group: "Practicable" },
+  { id: "project", name: "Proyectante", icon: "▽", group: "Practicable" },
+  { id: "door", name: "Puerta abatible", icon: "▥", group: "Puerta" },
+  { id: "inactive", name: "Inactiva", icon: "—", group: "Especial" },
+];
+
+const TABS = ["Resumen", "Diseño", "Consumo", "Servicios", "Informes"];
+const REPORTS = ["Oferta", "Producción", "Perfiles", "Herrajes", "Vidrio", "Costos"];
+
+const money = (v) => Number(v || 0).toLocaleString("es-MX", { style: "currency", currency: "MXN" });
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const wingName = (id) => (wingDefs.find((w) => w.id === id) || {}).name || id;
+
+// ---------- TREE (ported 1:1 from lib/tree.ts) ----------
+const OPENING_BY_WING = {
+  fixed: "Sin apertura", sliding: "Corredera", "casement-in": "Abatible interior",
+  "casement-out": "Abatible exterior", "tilt-turn": "Oscilobatiente", project: "Proyectante",
+  door: "Abatible interior", inactive: "Sin apertura",
+};
+
+function defaultSpecFor(wing) {
+  const fixed = wing === "fixed" || wing === "inactive";
+  return {
+    state: wing === "inactive" ? "Inactiva" : fixed ? "Fija" : "Móvil",
+    opening: OPENING_BY_WING[wing],
+    direction: wing === "sliding" ? "Derecha" : "N/A",
+    hardware: fixed ? "Sin herraje" : "Roto · cierre multipunto",
+    handle: fixed ? "Sin manilla" : "Harmony con tetones",
+  };
+}
+
+function createLeaf(wing, spec) {
+  return { kind: "leaf", id: crypto.randomUUID(), wing: wing || "fixed", spec: Object.assign({ glass: "Heredar vidrio general", notes: "" }, defaultSpecFor(wing || "fixed"), spec || {}) };
+}
+
+function createDefaultTree() {
+  return { kind: "split", id: crypto.randomUUID(), axis: "col", ratios: [0.5, 0.5], children: [createLeaf("sliding"), createLeaf("sliding", { direction: "Izquierda" })] };
+}
+
+const isLeaf = (n) => n.kind === "leaf";
+
+function firstLeafId(tree) { return tree.kind === "leaf" ? tree.id : firstLeafId(tree.children[0]); }
+
+function findNode(tree, id) {
+  if (tree.id === id) return tree;
+  if (tree.kind === "split") for (const c of tree.children) { const f = findNode(c, id); if (f) return f; }
+  return null;
+}
+
+function findParentSplitId(tree, childId) {
+  if (tree.kind !== "split") return null;
+  if (tree.children.some((c) => c.id === childId)) return tree.id;
+  for (const c of tree.children) { const f = findParentSplitId(c, childId); if (f) return f; }
+  return null;
+}
+
+function mapLeaf(tree, id, fn) {
+  if (tree.id === id) return tree.kind === "leaf" ? fn(tree) : tree;
+  if (tree.kind === "split") return Object.assign({}, tree, { children: tree.children.map((c) => mapLeaf(c, id, fn)) });
+  return tree;
+}
+
+function splitLeafFn(tree, id, axis, fraction) {
+  const f = Math.min(0.85, Math.max(0.15, fraction));
+  return mapLeaf(tree, id, (leaf) => ({
+    kind: "split", id: leaf.id, axis, ratios: [f, 1 - f],
+    children: [Object.assign({}, leaf, { id: crypto.randomUUID() }), Object.assign({}, leaf, { id: crypto.randomUUID() })],
+  }));
+}
+
+function setWingFn(tree, id, wing) {
+  return mapLeaf(tree, id, (leaf) => ({ kind: "leaf", id: leaf.id, wing, spec: Object.assign({}, leaf.spec, defaultSpecFor(wing)) }));
+}
+
+function updateSpecFn(tree, id, patch) {
+  return mapLeaf(tree, id, (leaf) => ({ kind: "leaf", id: leaf.id, wing: leaf.wing, spec: Object.assign({}, leaf.spec, patch) }));
+}
+
+function removeSplitFn(tree, splitId) {
+  function walk(node) {
+    if (node.kind !== "split") return node;
+    if (node.id === splitId) {
+      const base = node.children.find(isLeaf) || createLeaf();
+      return { kind: "leaf", id: node.id, wing: base.wing, spec: base.spec };
+    }
+    return Object.assign({}, node, { children: node.children.map(walk) });
+  }
+  return walk(tree);
+}
+
+function flattenToRects(tree, width, height, x, y) {
+  x = x || 0; y = y || 0;
+  if (tree.kind === "leaf") return [{ id: tree.id, wing: tree.wing, spec: tree.spec, x, y, w: width, h: height }];
+  const rects = [];
+  let offset = 0;
+  tree.children.forEach((child, i) => {
+    const ratio = tree.ratios[i];
+    if (tree.axis === "col") {
+      const w = width * ratio;
+      rects.push.apply(rects, flattenToRects(child, w, height, x + offset, y));
+      offset += w;
+    } else {
+      const h = height * ratio;
+      rects.push.apply(rects, flattenToRects(child, width, h, x, y + offset));
+      offset += h;
+    }
+  });
+  return rects;
+}
+
+// ---------- CALC (ported 1:1 from lib/calc.ts) ----------
+function splitterLengthM(node, widthMm, heightMm) {
+  if (node.kind === "leaf") return 0;
+  const dividerLenM = (node.axis === "col" ? heightMm : widthMm) / 1000;
+  let total = (node.children.length - 1) * dividerLenM;
+  node.children.forEach((child, i) => {
+    const ratio = node.ratios[i];
+    const w = node.axis === "col" ? widthMm * ratio : widthMm;
+    const h = node.axis === "row" ? heightMm * ratio : heightMm;
+    total += splitterLengthM(child, w, h);
+  });
+  return total;
+}
+
+function calcQuote(p) {
+  const w = p.width / 1000, h = p.height / 1000;
+  const area = w * h, perimeter = 2 * (w + h);
+  const rects = flattenToRects(p.tree, p.width, p.height);
+  const leaves = rects.map((r) => {
+    const wM = r.w / 1000, hM = r.h / 1000;
+    return { id: r.id, wing: r.wing, spec: r.spec, wMm: r.w, hMm: r.h, glassArea: Math.max(0, (wM - 0.12) * (hM - 0.12)), sashPerimeter: 2 * (wM + hM) };
+  });
+  const frameM = perimeter + splitterLengthM(p.tree, p.width, p.height);
+  const sashM = leaves.reduce((a, l) => a + l.sashPerimeter, 0);
+  const glassArea = leaves.reduce((a, l) => a + l.glassArea, 0);
+  const profileCost = (frameM * p.sys.frame + sashM * p.sys.sash) * p.color.factor;
+  const glassCost = glassArea * p.glass.price;
+  const reinforce = (frameM + sashM) * 78;
+  const seals = (frameM + sashM) * 24;
+  const accessories = p.sys.hardware + leaves.length * 110 + p.rail * 165;
+  const consumables = (profileCost + glassCost) * 0.045;
+  const direct = profileCost + glassCost + reinforce + seals + accessories + consumables + p.installation + p.transport;
+  const sale = (direct / (1 - p.margin / 100)) * (1 - p.discount / 100);
+  const bars = Math.ceil((frameM + sashM) / 6);
+  const waste = Math.max(0, bars * 6 - frameM - sashM);
+  return { w, h, area, perimeter, leaves, frameM, sashM, glassArea, profileCost, glassCost, reinforce, seals, accessories, consumables, direct, sale, total: sale * p.qty, utility: (sale - direct) * p.qty, bars, waste };
+}
+
+// ---------- STATE ----------
+const state = {
+  brand: "Aluplast", systemIndex: 0, rail: 2, width: 4000, height: 2200, qty: 1,
+  glassIndex: 7, colorIndex: 1, face: "Ambas caras",
+  tab: "Diseño", view: "Frente", report: "Vidrio",
+  margin: 35, installation: 1200, transport: 450, discount: 0,
+  code: "001", designation: "V01", location: "Cocina",
+  tree: createDefaultTree(), selectedId: "", activeTool: { mode: "select" },
+};
+state.selectedId = firstLeafId(state.tree);
+
+function changeBrand(b) { state.brand = b; state.systemIndex = 0; state.colorIndex = 0; state.rail = catalog[b][0].rails[0]; }
+function changeSystem(i) { state.systemIndex = i; state.rail = catalog[state.brand][i].rails[0]; }
+
+function handleMerge() {
+  const parentId = findParentSplitId(state.tree, state.selectedId);
+  if (!parentId) return;
+  state.tree = removeSplitFn(state.tree, parentId);
+  state.selectedId = parentId;
+}
+
+function handleResetTree() {
+  state.tree = createDefaultTree();
+  state.selectedId = firstLeafId(state.tree);
+  state.activeTool = { mode: "select" };
+}
+
+function handleLeafClick(id, clientX, clientY, rect) {
+  const tool = state.activeTool;
+  if (tool.mode === "select") { state.selectedId = id; return; }
+  if (tool.mode === "split") {
+    const fraction = tool.axis === "col" ? (clientX - rect.left) / rect.width : (clientY - rect.top) / rect.height;
+    const result = splitLeafFn(state.tree, id, tool.axis, fraction);
+    const node = findNode(result, id);
+    state.tree = result;
+    if (node && node.kind === "split") state.selectedId = node.children[0].id;
+    state.activeTool = { mode: "select" };
+    return;
+  }
+  state.tree = setWingFn(state.tree, id, tool.wing);
+  state.selectedId = id;
+  state.activeTool = { mode: "select" };
+}
+
+// ---------- RENDER ----------
+const root = document.getElementById("app");
+
+function motionGlyph(wing, spec) {
+  if (wing === "sliding") return spec.direction === "Izquierda" ? "←" : "→";
+  if (wing === "fixed" || wing === "inactive") return "FIJO";
+  return (wingDefs.find((w) => w.id === wing) || {}).icon || "?";
+}
+
+function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis) {
+  if (node.kind === "split") {
+    const axisClass = node.axis === "row" ? "axisRow" : "axisCol";
+    const children = node.children.map((child, i) => renderFrameNode(
+      child,
+      node.axis === "col" ? widthMm * node.ratios[i] : widthMm,
+      node.axis === "row" ? heightMm * node.ratios[i] : heightMm,
+      selectedId,
+      node.ratios[i] + " 1 0%"
+    )).join("");
+    return `<div class="splitNode ${axisClass}" style="flex:${flexBasis}">${children}</div>`;
+  }
+  const showOpeningLines = node.wing !== "fixed" && node.wing !== "inactive" && node.wing !== "sliding";
+  return `<button type="button" aria-label="Editar ${esc(wingName(node.wing))}" class="pane ${node.id === selectedId ? "selectedPane" : ""}" style="flex:${flexBasis}" data-action="leaf-click" data-id="${node.id}">
+    <span class="motion">${esc(motionGlyph(node.wing, node.spec))}</span>
+    ${showOpeningLines ? '<i class="openingLines"></i>' : ""}
+    <em>${esc(wingName(node.wing))}</em>
+    <small class="paneHardware">${esc(node.spec.hardware.replace("Roto · ", ""))}</small>
+    <b class="paneDim">${Math.round(widthMm)} × ${Math.round(heightMm)}</b>
+  </button>`;
+}
+
+function renderToolbox() {
+  const t = state.activeTool;
+  const isSplit = (axis) => t.mode === "split" && t.axis === axis;
+  const isWing = (w) => t.mode === "assign-wing" && t.wing === w;
+  return `<aside class="toolbox">
+    <div class="toolboxGroup"><span>Divisores</span><div class="toolboxGrid">
+      <button type="button" class="${isSplit("col") ? "active" : ""}" title="Dividir en columnas" data-action="tool-split" data-axis="col">⫲</button>
+      <button type="button" class="${isSplit("row") ? "active" : ""}" title="Dividir en filas" data-action="tool-split" data-axis="row">⫳</button>
+    </div></div>
+    <div class="toolboxGroup"><span>Tipo de hoja</span><div class="toolboxGrid">
+      ${wingDefs.map((w) => `<button type="button" class="${isWing(w.id) ? "active" : ""}" title="${esc(w.name)}" data-action="tool-wing" data-wing="${w.id}">${w.icon}</button>`).join("")}
+    </div></div>
+    <div class="toolboxGroup">
+      <button type="button" class="toolboxAction" data-action="tool-select" ${t.mode === "select" ? "disabled" : ""}>Modo selección</button>
+      <button type="button" class="toolboxAction" data-action="merge" ${canMerge() ? "" : "disabled"}>Combinar hojas</button>
+      <button type="button" class="toolboxAction" data-action="reset-tree">Reiniciar diseño</button>
+    </div>
+  </aside>`;
+}
+
+function canMerge() {
+  const parentId = findParentSplitId(state.tree, state.selectedId);
+  if (!parentId) return false;
+  const node = findNode(state.tree, parentId);
+  return !!node && node.kind === "split" && node.children.every(isLeaf);
+}
+
+function toolHint() {
+  const t = state.activeTool;
+  if (t.mode === "select") return "Haz clic en una hoja para seleccionarla";
+  if (t.mode === "split") return `Haz clic dentro de una hoja para dividirla (${t.axis === "col" ? "vertical" : "horizontal"})`;
+  return `Haz clic en una hoja para asignarle "${esc(wingName(t.wing))}"`;
+}
+
+function configSummary(calc) {
+  return Array.from(new Set(calc.leaves.map((l) => wingName(l.wing)))).join(" + ");
+}
+
+function renderPropertiesPanel(leaf, dims) {
+  const spec = leaf.spec;
+  const opt = (val, list) => list.map((o) => `<option ${o === val ? "selected" : ""}>${esc(o)}</option>`).join("");
+  return `<div class="componentEditor">
+    <div class="componentTitle"><span>COMPONENTE SELECCIONADO</span><b>${esc(wingName(leaf.wing))}</b><small>${dims ? `${Math.round(dims.wMm)} × ${Math.round(dims.hMm)} mm` : ""}</small></div>
+    <div class="componentGrid">
+      <label>Estado<select data-bind-spec="state">${opt(spec.state, ["Fija", "Móvil", "Inactiva"])}</select></label>
+      <label>Tipo de apertura<select data-bind-spec="opening">${opt(spec.opening, ["Sin apertura", "Corredera", "Abatible interior", "Abatible exterior", "Oscilobatiente", "Proyectante"])}</select></label>
+      <label>Dirección<select data-bind-spec="direction">${opt(spec.direction, ["N/A", "Derecha", "Izquierda", "Interior", "Exterior"])}</select></label>
+      <label>Vidrio<select data-bind-spec="glass">${opt(spec.glass, ["Heredar vidrio general"].concat(glassCatalog.map((g) => g.name)))}</select></label>
+      <label class="wide">Herraje<select data-bind-spec="hardware">${opt(spec.hardware, ["Sin herraje", "Roto · juego corredera", "Roto · carros 80 kg", "Roto · carros 120 kg", "Roto · cierre multipunto", "Roto Patio · osciloparalela", "Bisagras reforzadas"])}</select></label>
+      <label class="wide">Manilla / cierre<select data-bind-spec="handle">${opt(spec.handle, ["Sin manilla", "Harmony con tetones", "Slim 479092 con tetones", "Cierre embutido", "Manillón doble", "Cremona multipunto"])}</select></label>
+      <label class="wide">Observaciones<textarea data-bind-spec="notes" placeholder="Mecanizado, altura de manilla, restricciones...">${esc(spec.notes)}</textarea></label>
+    </div>
+    <p class="componentNote">Selecciona carros, cierres y manillas según el peso del vidrio, tamaño de hoja y geometría del perfil.</p>
+    ${canMerge() ? '<button type="button" class="fullButton" data-action="merge">Combinar con hoja vecina <span>×</span></button>' : ""}
+  </div>`;
+}
+
+function renderReportPreview(calc, sys, glass) {
+  const r = state.report;
+  let body = "";
+  if (r === "Vidrio") {
+    body = `<h3>Orden de vidrio</h3><table><thead><tr><th>Pos.</th><th>Descripción</th><th>Cant.</th><th>Medidas</th><th>m²</th></tr></thead><tbody>
+      ${calc.leaves.map((l, i) => `<tr><td>${esc(state.designation)}.${String.fromCharCode(65 + i)}</td><td>${esc(l.spec.glass !== "Heredar vidrio general" ? l.spec.glass : glass.name)}</td><td>${state.qty}</td><td>${Math.max(0, Math.round(l.wMm - 120))} × ${Math.max(0, Math.round(l.hMm - 120))}</td><td>${(l.glassArea * state.qty).toFixed(3)}</td></tr>`).join("")}
+      </tbody><tfoot><tr><th colspan="4">Superficie total</th><th>${(calc.glassArea * state.qty).toFixed(3)}</th></tr></tfoot></table>`;
+  } else if (r === "Perfiles") {
+    body = `<h3>Orden total de perfiles</h3>
+      ${reportRow("Marco / riel", `${(calc.frameM * state.qty).toFixed(2)} m`, `${Math.ceil((calc.frameM * state.qty) / 6)} barras`)}
+      ${reportRow("Perfil de hoja", `${(calc.sashM * state.qty).toFixed(2)} m`, `${Math.ceil((calc.sashM * state.qty) / 6)} barras`)}
+      ${reportRow("Refuerzo", `${((calc.frameM + calc.sashM) * state.qty).toFixed(2)} m`, "Galvanizado")}`;
+  } else if (r === "Herrajes") {
+    body = `<h3>Accesorios y herrajes</h3>
+      ${reportRow("Juego de herrajes", `${calc.leaves.length * state.qty} set`, configSummary(calc))}
+      ${reportRow("Juntas EPDM", `${((calc.frameM + calc.sashM) * state.qty).toFixed(2)} m`, "Perimetral")}
+      ${reportRow("Calzos / topes", `${calc.leaves.length * 4 * state.qty} pza`, "Según vidrio")}`;
+  } else if (r === "Producción") {
+    body = `<h3>Orden de producción</h3>
+      ${reportRow("Elemento", `${state.qty} pza`, `${state.width} × ${state.height} mm`)}
+      ${reportRow("Configuración", configSummary(calc), `${calc.leaves.length} hoja(s)`)}
+      ${reportRow("Vidrio", esc(glass.name), `${calc.leaves.length} paño(s)`)}
+      ${reportRow("Control", "Medidas y diagonales", "Pendiente")}`;
+  } else if (r === "Costos") {
+    body = `<h3>Estadística del proyecto</h3>
+      ${reportRow("Perfiles", money(calc.profileCost * state.qty), "MXN")}
+      ${reportRow("Vidrio", money(calc.glassCost * state.qty), "MXN")}
+      ${reportRow("Herrajes y accesorios", money(calc.accessories * state.qty), "MXN")}
+      ${reportRow("Costo directo", money(calc.direct * state.qty), "MXN")}
+      ${reportRow("Total oferta", money(calc.total), "MXN")}`;
+  } else {
+    body = `<h3>Oferta para cliente</h3>
+      ${reportRow(`${esc(state.designation)} · ${esc(state.location)}`, `${state.qty} pza`, `${state.width} × ${state.height} mm`)}
+      ${reportRow(esc(state.brand), esc(sys.name), configSummary(calc))}
+      ${reportRow("Total", money(calc.total), "IVA no incluido")}`;
+  }
+  return `<div class="reportPreview"><header><span>LUFT PVC · ${r.toUpperCase()}</span><b>${esc(state.code)} / ${esc(state.designation)}</b><small>${esc(state.location)} · ${esc(state.brand)} · ${esc(sys.name)}</small></header>${body}</div>`;
+}
+function reportRow(a, b, c) { return `<div class="reportRow"><span>${a}</span><b>${b}</b><small>${c}</small></div>`; }
+
+function renderApp() {
+  const sys = catalog[state.brand][Math.min(state.systemIndex, catalog[state.brand].length - 1)];
+  const glass = glassCatalog[state.glassIndex];
+  const color = colorsByBrand[state.brand][Math.min(state.colorIndex, colorsByBrand[state.brand].length - 1)];
+  const calc = calcQuote({ width: state.width, height: state.height, qty: state.qty, tree: state.tree, sys, glass, color, rail: state.rail, installation: state.installation, transport: state.transport, margin: state.margin, discount: state.discount });
+  const selectedNode = findNode(state.tree, state.selectedId);
+  const selectedLeaf = selectedNode && selectedNode.kind === "leaf" ? selectedNode : null;
+  const selectedDims = calc.leaves.find((l) => l.id === state.selectedId) || null;
+  const summary = configSummary(calc);
+  const hasRailOptions = sys.rails.some((x) => x > 0);
+  const warnings = []
+    .concat(state.width > sys.maxW || state.height > sys.maxH ? [`Medida supera el límite de referencia ${sys.maxW} × ${sys.maxH} mm.`] : [])
+    .concat(glass.thickness > sys.glazing ? [`Vidrio de ${glass.thickness} mm supera el galce de referencia (${sys.glazing} mm).`] : [])
+    .concat(state.rail > 0 && !sys.rails.includes(state.rail) ? [`El sistema no contempla ${state.rail} riel(es).`] : []);
+
+  const topbar = `<header class="topbar">
+    <a class="brand" href="#top"><span class="brandMark">L</span><span>LUFT <b>PVC</b></span></a>
+    <div class="projectName"><span>PROYECTO ACTIVO</span><strong>Oferta ${esc(state.code)} · ${esc(state.designation)} ${esc(state.location)}</strong></div>
+    <div class="headerActions"><button class="primary" data-action="print">Generar informe</button></div>
+  </header>`;
+
+  const nav = `<nav class="moduleNav">${TABS.map((x) => `<button class="${state.tab === x ? "active" : ""}" data-action="set-tab" data-value="${x}">${x}</button>`).join("")}</nav>`;
+
+  let configBody = "";
+  if (state.tab === "Resumen") {
+    configBody = `
+      ${block("01", "Proyecto y cliente", "Datos que aparecerán en la oferta.")}
+      <div class="inputGrid two">
+        <label>Código<input id="f-code" type="text" value="${esc(state.code)}" data-bind="code"></label>
+        <label>Designación<input id="f-designation" type="text" value="${esc(state.designation)}" data-bind="designation"></label>
+      </div>
+      <label>Ubicación / descripción<input id="f-location" type="text" value="${esc(state.location)}" data-bind="location"></label>
+      <div class="summaryCard"><span>Marca</span><b>${esc(state.brand)}</b><span>Sistema</span><b>${esc(sys.name)}</b><span>Configuración</span><b>${esc(summary)}</b><span>Superficie total</span><b>${(calc.area * state.qty).toFixed(3)} m²</b></div>`;
+  } else if (state.tab === "Diseño") {
+    configBody = `
+      ${block("01", "Marca y sistema", "Catálogo técnico del proyecto.")}
+      <div class="segmented">
+        <button class="${state.brand === "Aluplast" ? "selected" : ""}" data-action="change-brand" data-value="Aluplast">ALUPLAST</button>
+        <button class="${state.brand === "Deceuninck" ? "selected" : ""}" data-action="change-brand" data-value="Deceuninck">DECEUNINCK</button>
+      </div>
+      <label>Sistema<select data-action="change-system">${catalog[state.brand].map((x, i) => `<option value="${i}" ${i === state.systemIndex ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
+      ${hasRailOptions ? `<label>Tipo de riel<select data-bind="rail" data-numeric="true">${sys.rails.map((x) => `<option value="${x}" ${x === state.rail ? "selected" : ""}>${x === 1 ? "Monorriel" : x + " rieles"}</option>`).join("")}</select></label>` : ""}
+      ${block("02", "Composición", "Usa la paleta de herramientas sobre el lienzo para dividir la ventana y asignar el tipo de cada hoja.")}
+      ${block("03", "Geometría", "Cotas generales en milímetros.")}
+      <div class="inputGrid">
+        <label>Ancho<input id="f-width" type="number" value="${state.width}" data-bind="width" data-numeric="true"></label>
+        <label>Alto<input id="f-height" type="number" value="${state.height}" data-bind="height" data-numeric="true"></label>
+        <label>Cant.<input id="f-qty" type="number" min="1" value="${state.qty}" data-bind="qty" data-numeric="true"></label>
+      </div>
+      ${block("04", "Materiales", "Color, aplicación y vidrio.")}
+      <label>Color / folio<select data-bind="colorIndex" data-numeric="true">${colorsByBrand[state.brand].map((x, i) => `<option value="${i}" ${i === state.colorIndex ? "selected" : ""}>${esc(x.code)} · ${esc(x.name)}</option>`).join("")}</select></label>
+      <div class="inputGrid two">
+        <label>Aplicación<select data-bind="face">${["Exterior", "Interior", "Ambas caras"].map((x) => `<option ${x === state.face ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+        <label>Vidrio<select data-bind="glassIndex" data-numeric="true">${glassCatalog.map((x, i) => `<option value="${i}" ${i === state.glassIndex ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
+      </div>`;
+  } else if (state.tab === "Consumo") {
+    configBody = `
+      ${block("01", "Optimización de corte", "Patrones preliminares sobre barras comerciales de 6 m.")}
+      <div class="optimization"><strong>${calc.bars}</strong><span>barras estimadas</span><b>${calc.waste.toFixed(2)} m</b><span>remanente teórico</span></div>
+      <label>Longitud de barra<select><option>6,000 mm</option><option>6,500 mm</option></select></label>
+      <div class="cutPlan">${calc.leaves.slice(0, 6).map((l, i) => {
+        const pieces = [Math.round(l.wMm), Math.round(l.hMm)];
+        const used = Math.min(5800, pieces[0] + pieces[1]);
+        return `<div><header><b>Hoja ${String.fromCharCode(65 + i)}</b><span>${used} / 6000 mm</span></header><section>${pieces.map((p) => `<i style="width:${Math.max(12, p / 60)}%">${p}</i>`).join("")}<em style="flex:1">${Math.max(0, 6000 - used)}</em></section></div>`;
+      }).join("")}</div>
+      <p class="notice">La optimización definitiva depende de descuentos, ángulos, soldadura, refuerzos, sierra y reglas específicas del catálogo.</p>
+      ${state.brand === "Aluplast" ? `${block("02", "Perfiles IDEAL 2000", "Códigos identificados en catálogo y listas MX.")}
+      <div class="profileCatalog">${ideal2000Profiles.map((p) => `<div><span class="profileSketch">${p.role === "Conector" ? "⊞" : p.role === "Junquillo" ? "⌝" : "▥"}</span><section><b>${esc(p.code)}</b><p>${esc(p.name)}</p><small>${esc(p.role)} · ${esc(p.status)}</small></section></div>`).join("")}</div>` : ""}`;
+  } else if (state.tab === "Servicios") {
+    configBody = `
+      ${block("01", "Costos adicionales", "Recargos y condiciones comerciales.")}
+      <label>Instalación por pieza<input id="f-installation" type="number" value="${state.installation}" data-bind="installation" data-numeric="true"></label>
+      <label>Transporte por pieza<input id="f-transport" type="number" value="${state.transport}" data-bind="transport" data-numeric="true"></label>
+      <label>Margen de utilidad <b>${state.margin}%</b><input id="f-margin" type="range" min="10" max="60" value="${state.margin}" data-bind="margin" data-numeric="true"></label>
+      <label>Descuento <b>${state.discount}%</b><input id="f-discount" type="range" min="0" max="20" value="${state.discount}" data-bind="discount" data-numeric="true"></label>`;
+  } else if (state.tab === "Informes") {
+    configBody = `
+      ${block("01", "Centro de informes", "Selecciona el documento y genera PDF.")}
+      <div class="reportList">${REPORTS.map((r) => `<button class="${state.report === r ? "selected" : ""}" data-action="set-report" data-value="${r}">${r}<span>Ver →</span></button>`).join("")}</div>
+      <button class="fullButton" data-action="print">Exportar ${state.report} a PDF <span>↗</span></button>`;
+  }
+
+  const configPanel = `<aside class="configPanel">
+    <div class="eyebrow">MOTOR DE CONFIGURACIÓN · MX</div>
+    <h1>${state.tab}</h1>
+    <p class="lead">Sistema técnico de diseño, consumo y cotización para cancelería de PVC.</p>
+    ${configBody}
+  </aside>`;
+
+  const canvasInner = state.view === "Sección"
+    ? `<div class="sectionRender"><div class="profileSection"><span class="chamber"></span><span class="chamber"></span><span class="chamber"></span><i class="glassSection" style="width:${Math.max(8, glass.thickness / 2)}px"></i></div><div class="sectionInfo"><b>Sección de sistema</b><span>Profundidad: ${sys.depth} mm</span><span>Acristalamiento: ${glass.thickness} mm</span><span>${state.rail ? `${state.rail} riel${state.rail > 1 ? "es" : ""}` : "Doble contacto"}</span></div></div>`
+    : `<div class="modelStage">
+        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}</div>
+        ${state.view === "3D" ? '<span class="modelSide"></span><span class="modelSill"></span>' : ""}
+      </div>`;
+
+  const visualPanel = `<section class="visualPanel">
+    <div class="visualHeader"><div><span class="statusDot"></span>VISTA ${state.view.toUpperCase()} · ${esc(summary)}</div>
+      <div class="viewSwitch">${["Frente", "Sección", "3D"].map((v) => `<button class="${state.view === v ? "active" : ""}" data-action="set-view" data-value="${v}">${v}</button>`).join("")}</div>
+    </div>
+    <div class="canvas view-${state.view.replace("ó", "o")}">
+      <div class="dim top"><span>W=${state.width.toLocaleString()} mm</span></div>
+      <div class="dim side"><span>H=${state.height.toLocaleString()} mm</span></div>
+      ${state.tab === "Diseño" ? renderToolbox() : ""}
+      ${canvasInner}
+      <div class="editHint">${esc(toolHint())}</div>
+      <div class="specChip"><b>${esc(state.brand)} · ${esc(sys.name)}</b><span>${sys.depth} mm · ${esc(sys.chambers)} · ${state.rail ? `${state.rail} riel${state.rail > 1 ? "es" : ""}` : "practicable"}</span><span>${esc(glass.name)} · ${esc(state.face)}</span></div>
+    </div>
+    <div class="metricRow">
+      <div><span>SUPERFICIE</span><strong>${calc.area.toFixed(3)} m²</strong></div>
+      <div><span>VIDRIO ÚTIL</span><strong>${calc.glassArea.toFixed(3)} m²</strong></div>
+      <div><span>HOJAS</span><strong>${calc.leaves.length}</strong></div>
+      <div><span>REFERENCIA</span><strong>${esc(state.code)}-${esc(state.designation)}</strong></div>
+    </div>
+  </section>`;
+
+  let quoteBody;
+  if (state.tab === "Informes") {
+    quoteBody = renderReportPreview(calc, sys, glass);
+  } else {
+    quoteBody = `
+      <div class="propertyGroup"><h2>Información general</h2>
+        ${prop("Nombre completo", `${esc(state.designation)} · ${esc(state.location)}`)}
+        ${prop("Referencia", `${esc(state.code)}.${esc(state.brand.slice(0, 3).toUpperCase())}`)}
+        ${prop("Configuración", esc(summary))}
+        ${prop("Hojas", String(calc.leaves.length))}
+        ${prop("Riel inferior", state.rail ? String(state.rail) : "N/A")}
+      </div>
+      <div class="propertyGroup"><h2>Geometría</h2>
+        ${prop("Forma", "Rectángulo")}
+        ${prop("W", `${state.width.toLocaleString()} mm`)}
+        ${prop("H", `${state.height.toLocaleString()} mm`)}
+        ${prop("Perímetro", `${calc.perimeter.toFixed(3)} m`)}
+        ${prop("Superficie", `${calc.area.toFixed(3)} m²`)}
+      </div>
+      <div class="propertyGroup"><h2>Prestaciones del sistema</h2>
+        ${prop("Profundidad", `${sys.depth} mm`)}
+        ${prop("Acristalamiento máx.", `${sys.glazing} mm`)}
+        ${prop("Valor Uf", esc(sys.uf))}
+        ${prop("Límite de referencia", `${sys.maxW} × ${sys.maxH} mm`)}
+      </div>
+      <div class="costSummary"><h2>Costos del elemento</h2>
+        ${cost("Perfiles", calc.profileCost)}
+        ${cost("Accesorios y herrajes", calc.accessories + calc.reinforce + calc.seals)}
+        ${cost("Vidrio", calc.glassCost)}
+        ${cost("Servicios y consumibles", state.installation + state.transport + calc.consumables)}
+        <div class="direct"><span>Costo directo / pza.</span><b>${money(calc.direct)}</b></div>
+      </div>
+      <div class="totalBox"><span>TOTAL OFERTA <small>IVA no incluido</small></span><strong>${money(calc.total)}</strong><div><span>Utilidad estimada</span><b>${money(calc.utility)}</b></div></div>
+      <details class="materials" open><summary>Consumo calculado</summary>
+        ${item("PVC-MARCO", "Marco / riel", `${calc.frameM.toFixed(2)} m`)}
+        ${item("PVC-HOJA", "Perfil de hoja", `${calc.sashM.toFixed(2)} m`)}
+        ${item("VIDRIO", glass.name, `${calc.glassArea.toFixed(3)} m²`)}
+        ${item("REF-AC", "Refuerzo galvanizado", `${(calc.frameM + calc.sashM).toFixed(2)} m`)}
+        ${item("EPDM", "Juntas y sellos", `${(calc.frameM + calc.sashM).toFixed(2)} m`)}
+        ${item("HERRAJE", "Juego de herrajes", `${calc.leaves.length} set`)}
+      </details>
+      <p class="priceNote">Motor técnico v3 · Editor compositivo estilo RA Workshop. Valores en MXN. Los precios y límites deben validarse con la lista vigente y la ingeniería de cada proyecto.</p>`;
+  }
+
+  const quotePanel = `<aside class="quotePanel">
+    <div class="quoteHead"><div><span>PROPIEDADES</span><strong>${esc(state.designation)}</strong></div><span class="badge ${warnings.length ? "warning" : ""}">${warnings.length ? `${warnings.length} alerta${warnings.length > 1 ? "s" : ""}` : "Compatible"}</span></div>
+    ${warnings.length ? `<div class="warnings">${warnings.map((x) => `<p>⚠ ${esc(x)}</p>`).join("")}</div>` : ""}
+    ${state.tab === "Diseño" && selectedLeaf ? renderPropertiesPanel(selectedLeaf, selectedDims) : ""}
+    ${quoteBody}
+  </aside>`;
+
+  const footer = `<footer class="sources"><b>Base técnica:</b> documentación RA Workshop aportada, <a href="https://www.aluplast.net/eng-int/products/windows/ideal/" target="_blank" rel="noopener">sistemas oficiales Aluplast</a> y <a href="https://www.deceuninck.com.mx/en/pdf/catalogo_tecnico.pdf" target="_blank" rel="noopener">catálogo técnico Deceuninck México</a>.</footer>`;
+
+  return `<main>${topbar}${nav}<section class="workspace" id="top">${configPanel}${visualPanel}${quotePanel}</section>${footer}</main>`;
+}
+
+function block(n, title, sub) { return `<div class="step"><span>${n}</span><div><b>${esc(title)}</b><small>${esc(sub)}</small></div></div>`; }
+function prop(k, v) { return `<div class="prop"><span>${esc(k)}</span><b>${v}</b></div>`; }
+function cost(label, value) { return `<div class="line"><span>${esc(label)}</span><b>${money(value)}</b></div>`; }
+function item(code, name, qty) { return `<div class="materialItem"><span>${esc(code)}</span><div><b>${esc(name)}</b><small>${esc(qty)}</small></div></div>`; }
+
+function render() {
+  const active = document.activeElement;
+  let restore = null;
+  if (active && root.contains(active)) {
+    const selector = active.id ? `#${active.id}` : active.dataset.bind ? `[data-bind="${active.dataset.bind}"]` : active.dataset.bindSpec ? `[data-bind-spec="${active.dataset.bindSpec}"]` : null;
+    if (selector) restore = { selector, start: "selectionStart" in active ? active.selectionStart : null, end: "selectionEnd" in active ? active.selectionEnd : null };
+  }
+  root.innerHTML = renderApp();
+  if (restore) {
+    const el = root.querySelector(restore.selector);
+    if (el) {
+      el.focus();
+      if (restore.start != null && "setSelectionRange" in el) { try { el.setSelectionRange(restore.start, restore.end); } catch (e) {} }
+    }
+  }
+}
+
+// ---------- EVENTS ----------
+root.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  const action = el.dataset.action;
+  if (action === "print") { window.print(); return; }
+  if (action === "set-tab") { state.tab = el.dataset.value; if (state.tab !== "Diseño") state.activeTool = { mode: "select" }; render(); return; }
+  if (action === "set-view") { state.view = el.dataset.value; render(); return; }
+  if (action === "set-report") { state.report = el.dataset.value; render(); return; }
+  if (action === "change-brand") { changeBrand(el.dataset.value); render(); return; }
+  if (action === "tool-select") { state.activeTool = { mode: "select" }; render(); return; }
+  if (action === "tool-split") { state.activeTool = { mode: "split", axis: el.dataset.axis }; render(); return; }
+  if (action === "tool-wing") { state.activeTool = { mode: "assign-wing", wing: el.dataset.wing }; render(); return; }
+  if (action === "merge") { handleMerge(); render(); return; }
+  if (action === "reset-tree") { handleResetTree(); render(); return; }
+  if (action === "leaf-click") {
+    const rect = el.getBoundingClientRect();
+    handleLeafClick(el.dataset.id, e.clientX, e.clientY, rect);
+    render();
+    return;
+  }
+});
+
+function handleFieldChange(e) {
+  const t = e.target;
+  if (t.dataset.action === "change-system") { changeSystem(Number(t.value)); render(); return; }
+  if (t.dataset.bind) { state[t.dataset.bind] = t.dataset.numeric === "true" ? Number(t.value) : t.value; render(); return; }
+  if (t.dataset.bindSpec) {
+    const node = findNode(state.tree, state.selectedId);
+    if (node && node.kind === "leaf") { state.tree = updateSpecFn(state.tree, node.id, { [t.dataset.bindSpec]: t.value }); render(); }
+  }
+}
+root.addEventListener("input", handleFieldChange);
+root.addEventListener("change", handleFieldChange);
+
+render();
+</script>
