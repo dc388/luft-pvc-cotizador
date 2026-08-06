@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type MouseEvent } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import type { Brand, PaneSpec, Report, Tab, Tool, ViewMode } from "@/types/domain";
 import { catalog, EUR_MXN } from "@/data/catalog";
 import { glassCatalog } from "@/data/glass";
@@ -153,7 +153,7 @@ export default function Home() {
     : `Haz clic en una hoja para asignarle "${wingDefs.find((w) => w.id === activeTool.wing)?.name}"`;
 
   return (
-    <main style={{ "--accent": brandAccent[brand] } as CSSProperties}>
+    <main>
       <TopBar code={code} designation={designation} location={location} onPrint={() => window.print()} />
       <ModuleNav tabs={TABS} active={tab} onChange={changeTab} />
 
@@ -184,8 +184,8 @@ export default function Home() {
             <>
               <Block n="01" title="Marca y sistema" sub="Catálogo técnico del proyecto." />
               <div className="segmented">
-                <button className={brand === "Aluplast" ? "selected" : ""} onClick={() => changeBrand("Aluplast")}>ALUPLAST</button>
-                <button className={brand === "Deceuninck" ? "selected" : ""} onClick={() => changeBrand("Deceuninck")}>DECEUNINCK</button>
+                <button className={brand === "Aluplast" ? "selected" : ""} style={brand === "Aluplast" ? { background: brandAccent.Aluplast } : undefined} onClick={() => changeBrand("Aluplast")}>ALUPLAST</button>
+                <button className={brand === "Deceuninck" ? "selected" : ""} style={brand === "Deceuninck" ? { background: brandAccent.Deceuninck } : undefined} onClick={() => changeBrand("Deceuninck")}>DECEUNINCK</button>
               </div>
               <label>Sistema
                 <select value={systemIndex} onChange={(e) => changeSystem(Number(e.target.value))}>

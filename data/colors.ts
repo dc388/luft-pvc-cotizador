@@ -45,10 +45,12 @@ export const colors: Record<Brand, ColorItem[]> = {
   ],
 };
 
-// Real brand accent colors, extracted directly from each brand's own live site:
-// aluplast.net logo SVG fill = rgb(209,10,17); deceuninck.com.mx logo/nav dominant
-// color ~ rgb(0,96,176). Used to theme the UI per selected brand.
+// Real brand colors, used only as a small, contained accent on the brand toggle pill
+// (not a full-page repaint — see app/page.tsx). Aluplast red extracted directly from
+// aluplast.net's logo SVG fill (rgb(209,10,17)). Deceuninck reuses the page's own accent
+// (--accent in globals.css), a deep cyan-blue sampled from Deceuninck's own printed
+// catalog hero banners (Línea Bella/Sliding/Everest Max), averaged and darkened ~20%.
 export const brandAccent: Record<Brand, string> = {
   Aluplast: "#D10A11",
-  Deceuninck: "#0060B0",
+  Deceuninck: "#1D6CA6",
 };

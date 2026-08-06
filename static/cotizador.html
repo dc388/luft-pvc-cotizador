@@ -4,7 +4,7 @@
 :root{
   --paper:#eef1f2; --surface:#ffffff; --ink:#171b1e;
   --line:#d7dee1; --muted:#5c6b72; --warn-bg:#fff5dc; --warn-fg:#795b1a; --warn-line:#f1d792;
-  --ok-bg:#e8f2e7; --ok-fg:#367558; --shadow:#14231c1f; --accent:#D10A11;
+  --ok-bg:#e8f2e7; --ok-fg:#367558; --shadow:#14231c1f; --accent:#1D6CA6;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -92,7 +92,7 @@ a{color:inherit}
 .splitNode.axisRow{flex-direction:column}
 .pane{flex:1;position:relative;border:5px solid #24352e;background:linear-gradient(145deg,#9cbec4cc,#e9f2f0cc 55%,#91b8c2cc);overflow:hidden;min-width:0}
 .whiteFrame .pane{border-color:#e8eae5}
-.pane:after{content:"";position:absolute;width:180%;height:22px;background:#fff5;transform:rotate(-35deg);top:26%;left:-40%;pointer-events:none}
+.pane:after{content:"";position:absolute;width:160%;height:14px;background:#ffffff22;transform:rotate(-35deg);top:24%;left:-30%;pointer-events:none}
 .pane.selectedPane{outline:4px solid var(--accent);outline-offset:-4px;box-shadow:inset 0 0 0 2px #14231c}
 .hit{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer}
 .hit:hover{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent)}
@@ -110,7 +110,7 @@ a{color:inherit}
 .dim.top span{background:var(--paper);padding:0 8px;position:relative;top:-7px}
 .dim.side{left:42px;top:20%;bottom:20%;border-left:1px solid var(--line);display:flex;align-items:center}
 .dim.side span{background:var(--paper);padding:6px;transform:rotate(-90deg);margin-left:-24px}
-.editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:7px 11px;border-radius:20px;font-size:8px;letter-spacing:.06em;text-align:center;max-width:70%;z-index:7}
+.editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--accent);border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));padding:7px 11px;border-radius:20px;font-size:8px;letter-spacing:.06em;text-align:center;max-width:70%;z-index:7;box-shadow:0 4px 14px var(--shadow)}
 .specChip{position:absolute;left:24px;bottom:22px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 13px;display:flex;flex-direction:column;font-size:10px;gap:3px;box-shadow:0 6px 18px var(--shadow)}
 .specChip span{color:var(--muted)}
 .metricRow{height:74px;display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line)}
@@ -156,7 +156,8 @@ a{color:inherit}
 .componentGrid .checkRow input{width:auto;height:auto}
 .partFocus{outline:2px solid var(--accent);outline-offset:1px;background:color-mix(in srgb, var(--accent) 10%, transparent)}
 .componentNote{font-size:8px;line-height:1.45;color:var(--warn-fg);background:var(--warn-bg);margin:0;padding:9px}
-.fullButton{width:100%;border:0;background:var(--accent);padding:14px;border-radius:8px;color:#fff;font-size:11px;font-weight:bold;display:flex;justify-content:space-between;margin-top:10px;transition:background .2s}
+.fullButton{width:100%;border:1.5px solid var(--accent);background:transparent;padding:12.5px 14px;border-radius:8px;color:var(--accent);font-size:11px;font-weight:bold;display:flex;justify-content:space-between;margin-top:10px;transition:background .15s,color .15s}
+.fullButton:hover{background:var(--accent);color:#fff}
 
 .propertyGroup{margin-bottom:14px}
 .propertyGroup h2,.costSummary h2{font-size:11px;background:color-mix(in srgb, var(--accent) 12%, var(--surface));padding:7px 8px;margin:0;color:var(--accent)}
@@ -261,12 +262,15 @@ a{color:inherit}
 <script>
 "use strict";
 
-// ---------- BRAND IDENTITY (extracted from the brands' own live sites: aluplast.net logo SVG
-// fill = rgb(209,10,17); deceuninck.com.mx nav/logo dominant color ~ rgb(0,96,176)) ----------
-const BRAND_ACCENT = { Aluplast: "#D10A11", Deceuninck: "#0060B0" };
-function applyBrandTheme() {
-  document.documentElement.style.setProperty("--accent", BRAND_ACCENT[state.brand] || "#D10A11");
-}
+// ---------- BRAND IDENTITY ----------
+// The page's own accent (--accent in CSS, set once in :root) is a deep cyan-blue sampled
+// directly from Deceuninck's own printed catalog hero banners (Línea Bella / Sliding / Everest
+// Max pages), averaged and darkened ~20%: raw samples ~rgb(41,130,205) -> #1D6CA6. This is now
+// the page's single fixed identity color, not something that repaints on brand switch — only
+// the brand toggle pill below shows each brand's own real logo color as a small, contained
+// accent (Aluplast red extracted from aluplast.net's logo SVG fill rgb(209,10,17); Deceuninck
+// reuses the page's own cyan-blue since that already comes from Deceuninck's material).
+const BRAND_ACCENT = { Aluplast: "#D10A11", Deceuninck: "#1D6CA6" };
 
 // Reference EUR->MXN rate used only to display/convert the Aluplast EXWORK Veracruz price
 // list (revision ABR_22, 01/05/2022, source: Catalogo_Perfiles_Aluplast_Base_Cotizacion.xlsx).
@@ -863,9 +867,8 @@ const state = {
   selfCheck: null,
 };
 state.selectedId = firstLeafId(state.tree);
-applyBrandTheme();
 
-function changeBrand(b) { state.brand = b; state.systemIndex = 0; state.colorIndex = 0; state.rail = catalog[b][0].rails[0]; applyBrandTheme(); }
+function changeBrand(b) { state.brand = b; state.systemIndex = 0; state.colorIndex = 0; state.rail = catalog[b][0].rails[0]; }
 function changeSystem(i) { state.systemIndex = i; state.rail = catalog[state.brand][i].rails[0]; }
 
 function handleMerge() {
@@ -1100,8 +1103,8 @@ function renderApp() {
     configBody = `
       ${block("01", "Marca y sistema", "Catálogo técnico del proyecto.")}
       <div class="segmented">
-        <button class="${state.brand === "Aluplast" ? "selected" : ""}" data-action="change-brand" data-value="Aluplast">ALUPLAST</button>
-        <button class="${state.brand === "Deceuninck" ? "selected" : ""}" data-action="change-brand" data-value="Deceuninck">DECEUNINCK</button>
+        <button class="${state.brand === "Aluplast" ? "selected" : ""}" style="${state.brand === "Aluplast" ? `background:${BRAND_ACCENT.Aluplast}` : ""}" data-action="change-brand" data-value="Aluplast">ALUPLAST</button>
+        <button class="${state.brand === "Deceuninck" ? "selected" : ""}" style="${state.brand === "Deceuninck" ? `background:${BRAND_ACCENT.Deceuninck}` : ""}" data-action="change-brand" data-value="Deceuninck">DECEUNINCK</button>
       </div>
       <label>Sistema<select data-action="change-system">${catalog[state.brand].map((x, i) => `<option value="${i}" ${i === state.systemIndex ? "selected" : ""}>${esc(x.name)}${x.sourced ? " ✓" : ""}</option>`).join("")}</select></label>
       ${sys.sourced ? `<p class="sourceNote"><b>✓ Datos reales</b> — precio de marco/hoja tomado de la lista EXWORK Veracruz (rev. ABR_22), convertido a MXN @ ${EUR_MXN}.</p>` : `<p class="sourceNote">Precio de marco/hoja estimado (sin lista de precios de origen para este sistema).</p>`}
