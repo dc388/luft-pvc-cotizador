@@ -98,7 +98,7 @@ a{color:inherit}
 .splitNode{display:flex;min-width:0;min-height:0;position:relative}
 .splitNode.axisCol{flex-direction:row}
 .splitNode.axisRow{flex-direction:column}
-.pane{flex:1;position:relative;border:5px solid #24352e;background:var(--frame,#dfe2dc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);overflow:hidden;min-width:0}
+.pane{flex:1;position:relative;border-style:solid;border-color:#24352e;background:var(--frame,#dfe2dc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);overflow:hidden;min-width:0}
 .whiteFrame .pane{border-color:#e8eae5}
 .pane.selectedPane{outline:4px solid var(--accent);outline-offset:-4px;box-shadow:inset 0 0 0 2px #14231c}
 .sashRing{position:absolute;inset:max(9%,12px);background:var(--frame,#dfe2dc);filter:brightness(.82);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.2);pointer-events:none}
@@ -2358,16 +2358,24 @@ function motionGlyph(wing, spec) {
   return (wingDefs.find((w) => w.id === wing) || {}).icon || "?";
 }
 
-function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis) {
+function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis, edges) {
+  edges = edges || { top: true, right: true, bottom: true, left: true };
   if (node.kind === "split") {
     const axisClass = node.axis === "row" ? "axisRow" : "axisCol";
-    const children = node.children.map((child, i) => renderFrameNode(
-      child,
-      node.axis === "col" ? widthMm * node.ratios[i] : widthMm,
-      node.axis === "row" ? heightMm * node.ratios[i] : heightMm,
-      selectedId,
-      node.ratios[i] + " 1 0%"
-    )).join("");
+    const n = node.children.length;
+    const children = node.children.map((child, i) => {
+      const childEdges = node.axis === "col"
+        ? { top: edges.top, bottom: edges.bottom, left: i === 0 ? edges.left : false, right: i === n - 1 ? edges.right : false }
+        : { top: i === 0 ? edges.top : false, bottom: i === n - 1 ? edges.bottom : false, left: edges.left, right: edges.right };
+      return renderFrameNode(
+        child,
+        node.axis === "col" ? widthMm * node.ratios[i] : widthMm,
+        node.axis === "row" ? heightMm * node.ratios[i] : heightMm,
+        selectedId,
+        node.ratios[i] + " 1 0%",
+        childEdges
+      );
+    }).join("");
     return `<div class="splitNode ${axisClass}" style="flex:${flexBasis}">${children}</div>`;
   }
   const hasSash = node.wing !== "fixed" && node.wing !== "inactive";
@@ -2379,7 +2387,8 @@ function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis) {
   const herrajeHit = hasSash
     ? `<button type="button" class="hit hitHerraje" title="Herraje / manilla" data-action="part-click" data-part="herraje" data-id="${node.id}">⚙</button>`
     : "";
-  return `<div class="pane ${node.id === selectedId ? "selectedPane" : ""}" style="flex:${flexBasis}" data-leaf="${node.id}">
+  const borderWidth = `${edges.top ? 5 : 2}px ${edges.right ? 5 : 2}px ${edges.bottom ? 5 : 2}px ${edges.left ? 5 : 2}px`;
+  return `<div class="pane ${node.id === selectedId ? "selectedPane" : ""}" style="flex:${flexBasis};border-width:${borderWidth}" data-leaf="${node.id}">
     ${hasSash ? `<div class="sashRing"></div>` : ""}
     <div class="glassFill"></div>
     <button type="button" class="hit hitMarco" title="Marco / estado" data-action="part-click" data-part="marco" data-id="${node.id}" aria-label="Marco de ${esc(wingName(node.wing))}"></button>
