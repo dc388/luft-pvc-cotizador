@@ -299,12 +299,12 @@ a{color:inherit}
   .view-3D .modelStage{transform:rotateY(-16deg) scale(.88)}
   .profileFilters{grid-template-columns:1fr}
 }
+@page{margin:15mm}
 @media print{
-  .topbar,.configPanel,.viewSwitch,.moduleNav,.toolbox,.fullButton,.priceNote,.sources{display:none!important}
+  .topbar,.configPanel,.viewSwitch,.moduleNav,.toolbox,.fullButton,.priceNote,.sources,.visualPanel,.quoteHead,.warnings,.selfCheckBadge{display:none!important}
+  html,body{background:#fff}
   .workspace{display:block}
-  .visualPanel{min-height:600px}
-  .quotePanel{border:0}
-  .canvas{min-height:480px}
+  .quotePanel{border:0;padding:0}
 }
 </style>
 <div id="app"></div>
@@ -1525,7 +1525,16 @@ root.addEventListener("click", (e) => {
   const el = e.target.closest("[data-action]");
   if (!el) return;
   const action = el.dataset.action;
-  if (action === "print") { window.print(); return; }
+  if (action === "print") {
+    // Always print one of the polished report documents, never whatever tab happened
+    // to be open — printing straight from the Diseño canvas produced a messy, unpaginated
+    // dump of the editor UI instead of a real report.
+    state.tab = "Informes";
+    state.activeTool = { mode: "select" };
+    render();
+    setTimeout(() => window.print(), 0);
+    return;
+  }
   if (action === "set-tab") { state.tab = el.dataset.value; if (state.tab !== "Diseño") state.activeTool = { mode: "select" }; render(); return; }
   if (action === "set-view") { state.view = el.dataset.value; render(); return; }
   if (action === "set-report") { state.report = el.dataset.value; render(); return; }
