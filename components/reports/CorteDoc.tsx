@@ -1,4 +1,4 @@
-import type { FrameNode } from "@/types/domain";
+import type { FrameNode, System } from "@/types/domain";
 import { buildCutList, packBars, BAR_LENGTH_MM, KERF_MM, type CutPiece } from "@/lib/calc";
 
 function todayStr() {
@@ -40,13 +40,13 @@ function CorteCategory({ title, pieces, qty }: { title: string; pieces: CutPiece
   );
 }
 
-type Props = { tree: FrameNode; width: number; height: number; qty: number; designation: string; location: string };
+type Props = { tree: FrameNode; width: number; height: number; qty: number; designation: string; location: string; system: System };
 
 // Direct port of renderCorteDoc from static/cotizador.html: the real cut-list optimizer
 // document, grouped by piece category (Marco/Travesaño/Hoja/Junquillo), each bin-packed
 // independently onto BAR_LENGTH_MM commercial bars via packBars (first-fit-decreasing).
-export function CorteDoc({ tree, width, height, qty, designation, location }: Props) {
-  const cut = buildCutList(tree, width, height);
+export function CorteDoc({ tree, width, height, qty, designation, location, system }: Props) {
+  const cut = buildCutList(tree, width, height, system);
   return (
     <div className="reportDoc">
       <div className="docPage">

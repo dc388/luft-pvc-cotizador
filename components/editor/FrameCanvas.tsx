@@ -1,7 +1,8 @@
 "use client";
 
 import type { CSSProperties, MouseEvent } from "react";
-import type { ColorItem, FocusScope, FrameNode } from "@/types/domain";
+import type { ColorItem, FocusScope, FrameNode, System } from "@/types/domain";
+import { flattenToLeafFrames } from "@/lib/tree";
 import { FrameNodeView } from "./FrameNodeView";
 import { CentralLocks } from "./CentralLocks";
 import { AssemblyMarcoHits } from "./AssemblyMarcoHits";
@@ -15,6 +16,7 @@ type Props = {
   // renders with selectedId="").
   selectedId: string;
   color: ColorItem;
+  system: System;
   focusScope: FocusScope;
   focusPart: PartKind | null;
   focusSide: SideKey | null;
@@ -31,6 +33,7 @@ export function FrameCanvas({
   height,
   selectedId,
   color,
+  system,
   focusScope,
   focusPart,
   focusSide,
@@ -40,20 +43,24 @@ export function FrameCanvas({
   onCentralLockClick,
 }: Props) {
   const light = color.name === "Blanco";
+  const frames = flattenToLeafFrames(tree, width, height, system.frameSeatMm, system.centerOverlapMm);
   return (
     <div className="modelStage" style={{ "--ar": `${width}/${height}` } as CSSProperties}>
       <div className={`window ${light ? "whiteFrame" : ""}`} style={{ "--frame": color.hex ?? "#dfe2dc" } as CSSProperties}>
-        <FrameNodeView
-          node={tree}
-          widthMm={width}
-          heightMm={height}
-          selectedId={selectedId}
-          flexBasis="1 1 100%"
-          focusScope={focusScope}
-          focusPart={focusPart}
-          focusSide={focusSide}
-          onPartClick={onPartClick}
-        />
+        {frames.map((frame, i) => (
+          <FrameNodeView
+            key={frame.id}
+            frame={frame}
+            overallWidthMm={width}
+            overallHeightMm={height}
+            zIndex={i + 1}
+            selectedId={selectedId}
+            focusScope={focusScope}
+            focusPart={focusPart}
+            focusSide={focusSide}
+            onPartClick={onPartClick}
+          />
+        ))}
         <CentralLocks tree={tree} widthMm={width} heightMm={height} onCentralLockClick={onCentralLockClick} />
         <AssemblyMarcoHits showFocus={showFocus} focusScope={focusScope} focusPart={focusPart} focusSide={focusSide} onClick={onAssemblyMarcoClick} />
       </div>

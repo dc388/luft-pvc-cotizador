@@ -507,6 +507,7 @@ export default function Home() {
                   height={height}
                   selectedId={selectedId}
                   color={color}
+                  system={sys}
                   focusScope={focusScope}
                   focusPart={focusPart}
                   focusSide={focusSide}
@@ -584,7 +585,7 @@ export default function Home() {
                 configSummary={configSummary}
               />
             ) : report === "Optimización de corte" ? (
-              <CorteDoc tree={tree} width={width} height={height} qty={qty} designation={designation} location={location} />
+              <CorteDoc tree={tree} width={width} height={height} qty={qty} designation={designation} location={location} system={sys} />
             ) : report === "Pedido de vidrio" ? (
               <VidrioDoc calc={calc} glass={glass} qty={qty} designation={designation} location={location} />
             ) : (

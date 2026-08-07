@@ -114,6 +114,17 @@ export type System = {
   /** true when frame/sash are real EUR->MXN prices from the Aluplast EXWORK Veracruz
    * price list (rev. ABR_22, 2022-05-01), not an estimate. See lib/pricing.ts. */
   sourced?: boolean;
+  /** Marco->hoja seat: mm a sliding sash overlaps INTO the frame's channel on each outer
+   * edge it contacts (top/bottom rail, or an outer jamb) -- the sash's real cut size is
+   * inset by this much below its nominal share of the frame on those edges. Currently 8mm
+   * across the board per dc's field measurement; not yet split out per system depth. */
+  frameSeatMm: number;
+  /** Traslape central: mm two sliding leaves overlap where they meet mid-run, so the
+   * closed leaves seal against each other's stile instead of butting edge to edge (this is
+   * what stops air/sound leaking through the center of a corredera). PLACEHOLDER pending
+   * Aluplast's fabrication datasheet -- see data/catalog.ts. 0 for systems whose leaves
+   * never meet a sliding sibling (Practicable/Fijo/Puerta). */
+  centerOverlapMm: number;
 };
 
 export type GlassItem = { name: string; thickness: number; price: number; type: string };
