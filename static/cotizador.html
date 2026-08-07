@@ -114,7 +114,19 @@ a{color:inherit}
 .hitMarcoRight{top:var(--ring);bottom:var(--ring);right:0;width:var(--ring)}
 .hitHoja{inset:var(--ring);z-index:2;display:grid;place-items:center}
 .hitVidrio{inset:max(17%,22px);z-index:3}
+.hitVidrioSide{z-index:4}
+.hitVidrioTop{top:max(17%,22px);left:max(17%,22px);right:max(17%,22px);height:10px}
+.hitVidrioBottom{bottom:max(17%,22px);left:max(17%,22px);right:max(17%,22px);height:10px}
+.hitVidrioLeft{top:max(17%,22px);bottom:max(17%,22px);left:max(17%,22px);width:10px}
+.hitVidrioRight{top:max(17%,22px);bottom:max(17%,22px);right:max(17%,22px);width:10px}
 .hitHerraje{position:absolute;z-index:5;bottom:6px;left:6px;width:24px;height:24px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:12px;display:grid;place-items:center}
+.hitAssemblyMarco{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer;z-index:8}
+.hitAssemblyMarco:hover{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent)}
+.hitAssemblyMarco.marcoSideFocus{background:color-mix(in srgb, var(--accent) 55%, transparent);box-shadow:inset 0 0 0 2px var(--accent)}
+.hitAssemblyMarcoTop{top:-15px;left:-15px;right:-15px;height:15px}
+.hitAssemblyMarcoBottom{bottom:-15px;left:-15px;right:-15px;height:15px}
+.hitAssemblyMarcoLeft{top:-15px;bottom:-15px;left:-15px;width:15px}
+.hitAssemblyMarcoRight{top:-15px;bottom:-15px;right:-15px;width:15px}
 .cierreCentral{position:absolute;top:50%;transform:translate(-50%,-50%);z-index:6;width:22px;height:22px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:11px;border:0;padding:0;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}
 .motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#2870a2;font-size:18px;pointer-events:none}
 .pane em{position:absolute;z-index:4;bottom:4px;right:34px;font-size:8px;font-style:normal;color:#325248;pointer-events:none}
@@ -137,6 +149,11 @@ a{color:inherit}
 .explorerTree{display:flex;flex-direction:column;gap:2px;margin-top:6px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .explorerLeaf{text-align:left;padding:7px 10px;font-size:9px;font-weight:bold;background:var(--paper);border:0;border-bottom:1px solid var(--line);color:var(--ink);cursor:pointer}
 .explorerLeaf.active{background:color-mix(in srgb, var(--accent) 16%, var(--paper));color:var(--accent)}
+.explorerMarco{text-align:left;padding:8px 10px;font-size:9.5px;font-weight:800;letter-spacing:.04em;background:color-mix(in srgb, var(--accent) 8%, var(--paper));border:0;border-bottom:1px solid var(--line);color:var(--ink);cursor:pointer}
+.explorerMarco.active{background:color-mix(in srgb, var(--accent) 22%, var(--paper));color:var(--accent)}
+.explorerGancho{text-align:left;padding:6px 10px 6px 18px;font-size:8.5px;background:var(--surface);border:0;border-bottom:1px solid var(--line);color:var(--muted);cursor:pointer}
+.explorerGancho.active{background:color-mix(in srgb, var(--accent) 16%, var(--surface));color:var(--accent)}
+.explorerVidrioHeader{padding:6px 10px 4px 18px;font-size:7.5px;letter-spacing:.08em;font-weight:bold;color:var(--muted);background:var(--surface)}
 .explorerSides{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
 .explorerSide{padding:6px 4px;font-size:7.5px;letter-spacing:.02em;background:var(--surface);border:0;border-right:1px solid var(--line);color:var(--muted);cursor:pointer}
 .explorerSide:last-child{border-right:0}
@@ -1891,10 +1908,23 @@ function defaultSides() {
   const side = () => ({ reinforcement: false, notes: "" });
   return { top: side(), bottom: side(), left: side(), right: side() };
 }
+function defaultGlassSides() {
+  // 45°/45° = miter of a standard rectangular pane corner, matching what RA Workshop
+  // shows for a plain rectangular glass side (radio/arco only matter for shaped glass).
+  const side = () => ({ angulo1: 45, angulo2: 45, radio: 0, arco: 0, notes: "" });
+  return { top: side(), bottom: side(), left: side(), right: side() };
+}
+function defaultMarco() {
+  return {
+    profileCode: "", reinforcement: false, reinforcementCode: "",
+    mosquitero: false, mosquiteroCode: "", persiana: false, persianaCode: "",
+    sides: defaultSides(),
+  };
+}
 const SIDE_LABEL = { top: "Arriba", bottom: "Abajo", left: "Izquierda", right: "Derecha" };
 
 function createLeaf(wing, spec) {
-  return { kind: "leaf", id: crypto.randomUUID(), wing: wing || "fixed", spec: Object.assign({ glass: "Heredar vidrio general", notes: "", mallorquina: false, sides: defaultSides() }, defaultSpecFor(wing || "fixed"), spec || {}) };
+  return { kind: "leaf", id: crypto.randomUUID(), wing: wing || "fixed", spec: Object.assign({ glass: "Heredar vidrio general", notes: "", mallorquina: false, sides: defaultSides(), glassSides: defaultGlassSides() }, defaultSpecFor(wing || "fixed"), spec || {}) };
 }
 
 function createDefaultTree() {
@@ -1947,6 +1977,21 @@ function updateSideSpecFn(tree, id, side, patch) {
     kind: "leaf", id: leaf.id, wing: leaf.wing,
     spec: Object.assign({}, leaf.spec, { sides: Object.assign({}, leaf.spec.sides, { [side]: Object.assign({}, leaf.spec.sides[side], patch) }) }),
   }));
+}
+
+function updateGlassSideSpecFn(tree, id, side, patch) {
+  return mapLeaf(tree, id, (leaf) => ({
+    kind: "leaf", id: leaf.id, wing: leaf.wing,
+    spec: Object.assign({}, leaf.spec, { glassSides: Object.assign({}, leaf.spec.glassSides, { [side]: Object.assign({}, leaf.spec.glassSides[side], patch) }) }),
+  }));
+}
+
+function updateMarcoFn(marco, patch) {
+  return Object.assign({}, marco, patch);
+}
+
+function updateMarcoSideFn(marco, side, patch) {
+  return Object.assign({}, marco, { sides: Object.assign({}, marco.sides, { [side]: Object.assign({}, marco.sides[side], patch) }) });
 }
 
 function removeSplitFn(tree, splitId) {
@@ -2104,6 +2149,8 @@ function runSelfCheck() {
     scene3dOk = typeof THREE === "object" && typeof THREE.OrbitControls === "function" && !!renderer3d && !!scene3d;
   } catch (e) { scene3dOk = false; }
   checks.push({ name: "Motor 3D cargado", pass: scene3dOk });
+  const marcoOk = !!state.marco && !!state.marco.sides && ["top", "bottom", "left", "right"].every((s) => !!state.marco.sides[s]);
+  checks.push({ name: "Marco de conjunto íntegro", pass: marcoOk });
   return { ok: checks.every((c) => c.pass), checks, ranAt: new Date().toString() };
 }
 
@@ -2115,7 +2162,8 @@ const state = {
   margin: 35, installation: 1200, transport: 450, discount: 0,
   code: "001", designation: "V01", location: "Cocina",
   client: "", clientAddress: "", deliveryDate: "",
-  tree: createDefaultTree(), selectedId: "", activeTool: { mode: "select" }, focusPart: null, focusSide: null,
+  tree: createDefaultTree(), selectedId: "", activeTool: { mode: "select" }, focusPart: null, focusSide: null, focusScope: "leaf",
+  marco: defaultMarco(),
   profileSearch: "", profileSystemFilter: "Todos",
   selfCheck: null,
 };
@@ -2131,6 +2179,7 @@ function handleMerge() {
   state.selectedId = parentId;
   state.focusPart = null;
   state.focusSide = null;
+  state.focusScope = "leaf";
 }
 
 function handleResetTree() {
@@ -2139,6 +2188,8 @@ function handleResetTree() {
   state.activeTool = { mode: "select" };
   state.focusPart = null;
   state.focusSide = null;
+  state.focusScope = "leaf";
+  state.marco = defaultMarco();
 }
 
 function handleLeafClick(id, clientX, clientY, rect) {
@@ -2268,7 +2319,7 @@ function buildScene3D() {
   const color = colorsByBrand[state.brand][Math.min(state.colorIndex, colorsByBrand[state.brand].length - 1)];
   const depthMm = sys.depth;
   const frameHex = colorToHex3D(color);
-  const isSelectedPart = (id, part, side) => state.selectedId === id && (!state.focusPart || state.focusPart === part) && (part !== "marco" || !state.focusSide || !side || state.focusSide === side);
+  const isSelectedPart = (id, part, side) => state.focusScope !== "assembly" && state.selectedId === id && (!state.focusPart || state.focusPart === part) && (part !== "marco" || !state.focusSide || !side || state.focusSide === side);
 
   const frameMat = new THREE.MeshStandardMaterial({ color: frameHex, roughness: 0.5, metalness: 0.12 });
   const sashMat = new THREE.MeshStandardMaterial({ color: frameHex, roughness: 0.55, metalness: 0.1 });
@@ -2370,13 +2421,14 @@ function handle3DClick(e) {
     const result = splitLeafFn(state.tree, tag.id, tool.axis, fraction);
     const node = findNode(result, tag.id);
     state.tree = result;
-    if (node && node.kind === "split") { state.selectedId = node.children[0].id; state.focusPart = null; state.focusSide = null; }
+    if (node && node.kind === "split") { state.selectedId = node.children[0].id; state.focusPart = null; state.focusSide = null; state.focusScope = "leaf"; }
     state.activeTool = { mode: "select" };
     render();
     return;
   }
   state.tree = setWingFn(state.tree, tag.id, tool.wing);
   state.selectedId = tag.id;
+  state.focusScope = "leaf";
   state.focusPart = null;
   state.focusSide = null;
   state.activeTool = { mode: "select" };
@@ -2414,6 +2466,12 @@ function renderCentralLocks(tree, widthMm, heightMm) {
     }
   }
   return markers.join("");
+}
+
+function renderAssemblyMarcoHits() {
+  const isFocused = (side) => state.focusScope === "assembly" && state.focusPart === "marco" && state.focusSide === side;
+  const hit = (side, label) => `<button type="button" class="hitAssemblyMarco hitAssemblyMarco${side.charAt(0).toUpperCase()}${side.slice(1)} ${isFocused(side) ? "marcoSideFocus" : ""}" title="Marco de conjunto · Lado ${label}" data-action="part-click" data-scope="assembly" data-side="${side}" aria-label="Marco de conjunto - Lado ${label}"></button>`;
+  return hit("top", "Arriba") + hit("bottom", "Abajo") + hit("left", "Izquierda") + hit("right", "Derecha");
 }
 
 function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis, edges) {
@@ -2455,8 +2513,10 @@ function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis, edges) 
     : "";
   const edgeWidth = (v) => (v === true ? 5 : v === "overlap" ? 1 : 2);
   const borderWidth = `${edgeWidth(edges.top)}px ${edgeWidth(edges.right)}px ${edgeWidth(edges.bottom)}px ${edgeWidth(edges.left)}px`;
-  const isSideFocused = (side) => node.id === selectedId && state.focusPart === "marco" && state.focusSide === side;
+  const isSideFocused = (side) => state.focusScope === "leaf" && node.id === selectedId && state.focusPart === "marco" && state.focusSide === side;
+  const isGlassSideFocused = (side) => state.focusScope === "leaf" && node.id === selectedId && state.focusPart === "vidrio" && state.focusSide === side;
   const marcoSideHit = (side, label) => `<button type="button" class="hit hitMarcoSide hitMarco${side.charAt(0).toUpperCase()}${side.slice(1)} ${isSideFocused(side) ? "marcoSideFocus" : ""}" title="Marco · Lado ${label}" data-action="part-click" data-part="marco" data-side="${side}" data-id="${node.id}" aria-label="Marco - Lado ${label} de ${esc(wingName(node.wing))}"></button>`;
+  const vidrioSideHit = (side, label) => `<button type="button" class="hit hitVidrioSide hitVidrio${side.charAt(0).toUpperCase()}${side.slice(1)} ${isGlassSideFocused(side) ? "marcoSideFocus" : ""}" title="Vidrio · Lado ${label}" data-action="part-click" data-part="vidrio" data-side="${side}" data-id="${node.id}" aria-label="Vidrio - Lado ${label}"></button>`;
   return `<div class="pane ${node.id === selectedId ? "selectedPane" : ""}" style="flex:${flexBasis};border-width:${borderWidth}" data-leaf="${node.id}">
     ${hasSash ? `<div class="sashRing"></div>` : ""}
     <div class="glassFill"></div>
@@ -2466,6 +2526,10 @@ function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis, edges) 
     ${marcoSideHit("right", "Derecha")}
     ${hojaHit}
     <button type="button" class="hit hitVidrio" title="Vidrio" data-action="part-click" data-part="vidrio" data-id="${node.id}"></button>
+    ${vidrioSideHit("top", "Arriba")}
+    ${vidrioSideHit("bottom", "Abajo")}
+    ${vidrioSideHit("left", "Izquierda")}
+    ${vidrioSideHit("right", "Derecha")}
     ${herrajeHit}
     <em>${esc(wingName(node.wing))}</em>
     <small class="paneHardware">${esc(node.spec.hardware.replace("Roto · ", ""))}</small>
@@ -2511,19 +2575,54 @@ function configSummary(calc) {
   return Array.from(new Set(calc.leaves.map((l) => wingName(l.wing)))).join(" + ");
 }
 
+function renderMarcoPanel() {
+  const m = state.marco;
+  const fs = state.focusSide;
+  const sideSpec = fs ? m.sides[fs] : null;
+  return `<div class="componentEditor">
+    <div class="componentTitle"><span>COMPONENTE SELECCIONADO · MARCO DE CONJUNTO${fs ? " · LADO " + esc(SIDE_LABEL[fs].toUpperCase()) : ""}</span><b>Marco</b><small>Vano completo</small></div>
+    ${sideSpec ? `<div class="sideEditor">
+      <b>Lado — ${esc(SIDE_LABEL[fs])}</b>
+      <label class="checkRow"><input type="checkbox" data-bind-marco-side="reinforcement" ${sideSpec.reinforcement ? "checked" : ""}> Refuerzo galvanizado en este lado</label>
+      <label>Notas de este lado<textarea data-bind-marco-side="notes" placeholder="Mecanizado, drenaje, restricciones de este lado...">${esc(sideSpec.notes)}</textarea></label>
+    </div>` : ""}
+    <div class="componentGrid">
+      <label class="wide">Perfil - código<input type="text" data-bind-marco="profileCode" value="${esc(m.profileCode)}" placeholder="Catálogo real: pendiente (ver Fase 2)"></label>
+      <label class="checkRow"><input type="checkbox" data-bind-marco="reinforcement" ${m.reinforcement ? "checked" : ""}> Reforzamiento</label>
+      <label>Código de refuerzo<input type="text" data-bind-marco="reinforcementCode" value="${esc(m.reinforcementCode)}" ${m.reinforcement ? "" : "disabled"}></label>
+      <label class="checkRow"><input type="checkbox" data-bind-marco="mosquitero" ${m.mosquitero ? "checked" : ""}> Mosquitero</label>
+      <label>Código de mosquitero<input type="text" data-bind-marco="mosquiteroCode" value="${esc(m.mosquiteroCode)}" ${m.mosquitero ? "" : "disabled"}></label>
+      <label class="checkRow"><input type="checkbox" data-bind-marco="persiana" ${m.persiana ? "checked" : ""}> Persiana</label>
+      <label>Código de persiana<input type="text" data-bind-marco="persianaCode" value="${esc(m.persianaCode)}" ${m.persiana ? "" : "disabled"}></label>
+    </div>
+    <p class="componentNote">Marco de conjunto: el marco de todo el vano, independiente del marco de cada hoja. Haz clic en cualquiera de sus 4 lados (el borde exterior grueso del dibujo) o en "Marco" en el explorador.</p>
+  </div>`;
+}
+
 function renderPropertiesPanel(leaf, dims) {
   const spec = leaf.spec;
   const fp = state.focusPart;
   const cls = (part, extra) => `${fp === part ? "partFocus" : ""} ${extra || ""}`.trim();
   const opt = (val, list) => list.map((o) => `<option ${o === val ? "selected" : ""}>${esc(o)}</option>`).join("");
   const fs = state.focusSide;
-  const sideSpec = fs ? spec.sides[fs] : null;
+  const sideSpec = fp === "marco" && fs ? spec.sides[fs] : null;
+  const glassSideSpec = fp === "vidrio" && fs ? spec.glassSides[fs] : null;
   return `<div class="componentEditor">
-    <div class="componentTitle"><span>COMPONENTE SELECCIONADO${fp ? " · " + esc(fp.toUpperCase()) : ""}${fp === "marco" && fs ? " · LADO " + esc(SIDE_LABEL[fs].toUpperCase()) : ""}</span><b>${esc(wingName(leaf.wing))}</b><small>${dims ? `${Math.round(dims.wMm)} × ${Math.round(dims.hMm)} mm` : ""}</small></div>
+    <div class="componentTitle"><span>COMPONENTE SELECCIONADO${fp ? " · " + esc(fp.toUpperCase()) : ""}${(sideSpec || glassSideSpec) ? " · LADO " + esc(SIDE_LABEL[fs].toUpperCase()) : ""}</span><b>${esc(wingName(leaf.wing))}</b><small>${dims ? `${Math.round(dims.wMm)} × ${Math.round(dims.hMm)} mm` : ""}</small></div>
     ${sideSpec ? `<div class="sideEditor">
       <b>Lado — ${esc(SIDE_LABEL[fs])}</b>
       <label class="checkRow"><input type="checkbox" data-bind-side="reinforcement" ${sideSpec.reinforcement ? "checked" : ""}> Refuerzo galvanizado en este lado</label>
       <label>Notas de este lado<textarea data-bind-side="notes" placeholder="Mecanizado, drenaje, restricciones de este lado...">${esc(sideSpec.notes)}</textarea></label>
+    </div>` : ""}
+    ${glassSideSpec ? `<div class="sideEditor">
+      <b>Vidrio · Lado — ${esc(SIDE_LABEL[fs])}</b>
+      <div class="componentGrid">
+        <label>Ángulo 1<input type="number" data-bind-glass-side="angulo1" data-numeric="true" value="${glassSideSpec.angulo1}"></label>
+        <label>Ángulo 2<input type="number" data-bind-glass-side="angulo2" data-numeric="true" value="${glassSideSpec.angulo2}"></label>
+        <label>Radio<input type="number" data-bind-glass-side="radio" data-numeric="true" value="${glassSideSpec.radio}"></label>
+        <label>Altura del arco<input type="number" data-bind-glass-side="arco" data-numeric="true" value="${glassSideSpec.arco}"></label>
+      </div>
+      <label>Notas de este lado<textarea data-bind-glass-side="notes" placeholder="Corte especial, bisel, forma...">${esc(glassSideSpec.notes)}</textarea></label>
     </div>` : ""}
     <div class="componentGrid">
       <label class="${cls('marco')}">Estado<select data-bind-spec="state">${opt(spec.state, ["Fija", "Móvil", "Inactiva"])}</select></label>
@@ -2567,7 +2666,7 @@ function todayStr() {
 }
 
 function renderCotizacionDoc(calc, sys, glass, color) {
-  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}</div>`;
+  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits()}</div>`;
   const specRows = [
     ["Dimensiones", `${state.width.toLocaleString()} mm × ${state.height.toLocaleString()} mm`],
     ["Perfil del sistema", `${esc(state.brand)} - ${esc(sys.name)} / ${esc(color.name)}`],
@@ -2785,10 +2884,20 @@ function renderApp() {
       ${sys.sourced ? `<p class="sourceNote"><b>✓ Datos reales</b> — precio de marco/hoja tomado de la lista EXWORK Veracruz (rev. ABR_22), convertido a MXN @ ${EUR_MXN}.</p>` : `<p class="sourceNote">Precio de marco/hoja estimado (sin lista de precios de origen para este sistema).</p>`}
       ${hasRailOptions ? `<label>Tipo de riel<select data-bind="rail" data-numeric="true">${sys.rails.map((x) => `<option value="${x}" ${x === state.rail ? "selected" : ""}>${x === 1 ? "Monorriel" : x + " rieles"}</option>`).join("")}</select></label>` : ""}
       ${block("02", "Composición", "Haz clic en el marco, la hoja, el vidrio o el herraje del dibujo para seleccionar esa parte, o usa la paleta para dividir y asignar tipos de apertura.")}
-      <div class="explorerTree">${walkLeaves(state.tree).map((leaf, i) => `
-        <button type="button" class="explorerLeaf ${leaf.id === state.selectedId && !state.focusSide ? "active" : ""}" data-action="explorer-select" data-id="${leaf.id}">Hoja ${i + 1} · ${esc(wingName(leaf.wing))}</button>
-        <div class="explorerSides">${["top", "bottom", "left", "right"].map((s) => `<button type="button" class="explorerSide ${leaf.id === state.selectedId && state.focusSide === s ? "active" : ""}" data-action="explorer-side" data-id="${leaf.id}" data-side="${s}">Lado - ${SIDE_LABEL[s]}</button>`).join("")}</div>`
-      ).join("")}</div>
+      <div class="explorerTree">
+        <button type="button" class="explorerMarco ${state.focusScope === "assembly" && !state.focusSide ? "active" : ""}" data-action="explorer-marco">Marco</button>
+        <div class="explorerSides">${["top", "bottom", "left", "right"].map((s) => `<button type="button" class="explorerSide ${state.focusScope === "assembly" && state.focusSide === s ? "active" : ""}" data-action="explorer-marco-side" data-side="${s}">Lado - ${SIDE_LABEL[s]}</button>`).join("")}</div>
+        ${walkLeaves(state.tree).map((leaf, i) => {
+          const leafActive = state.focusScope === "leaf" && leaf.id === state.selectedId;
+          const hasSash = leaf.wing !== "fixed" && leaf.wing !== "inactive";
+          return `
+        <button type="button" class="explorerLeaf ${leafActive && !state.focusSide && state.focusPart !== "herraje" && state.focusPart !== "vidrio" ? "active" : ""}" data-action="explorer-select" data-id="${leaf.id}" data-part="marco">Hoja ${i + 1} · ${esc(wingName(leaf.wing))}</button>
+        <div class="explorerSides">${["top", "bottom", "left", "right"].map((s) => `<button type="button" class="explorerSide ${leafActive && state.focusPart === "marco" && state.focusSide === s ? "active" : ""}" data-action="explorer-side" data-id="${leaf.id}" data-side="${s}">Lado - ${SIDE_LABEL[s]}</button>`).join("")}</div>
+        ${hasSash ? `<button type="button" class="explorerGancho ${leafActive && state.focusPart === "herraje" ? "active" : ""}" data-action="explorer-select" data-id="${leaf.id}" data-part="herraje">Gancho - Herraje</button>` : ""}
+        <div class="explorerVidrioHeader">Vidrio</div>
+        <div class="explorerSides">${["top", "bottom", "left", "right"].map((s) => `<button type="button" class="explorerSide ${leafActive && state.focusPart === "vidrio" && state.focusSide === s ? "active" : ""}" data-action="explorer-glass-side" data-id="${leaf.id}" data-side="${s}">Lado - ${SIDE_LABEL[s]}</button>`).join("")}</div>`;
+        }).join("")}
+      </div>
       ${block("03", "Geometría", "Cotas generales en milímetros.")}
       <div class="inputGrid">
         <label>Ancho<input id="f-width" type="number" min="1" value="${state.width}" data-bind="width" data-numeric="true"></label>
@@ -2839,7 +2948,7 @@ function renderApp() {
     : state.view === "3D"
     ? `<div class="scene3dSlot" id="scene3dSlot"></div><div class="scene3dHint">Arrastra para rotar · rueda para acercar · clic derecho para desplazar</div>`
     : `<div class="modelStage">
-        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}</div>
+        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits()}</div>
       </div>`;
 
   const visualPanel = `<section class="visualPanel">
@@ -2912,7 +3021,7 @@ function renderApp() {
   const quotePanel = `<aside class="quotePanel">
     <div class="quoteHead"><div><span>PROPIEDADES</span><strong>${esc(state.designation)}</strong></div><span class="badge ${warnings.length ? "warning" : ""}">${warnings.length ? `${warnings.length} alerta${warnings.length > 1 ? "s" : ""}` : "Compatible"}</span></div>
     ${warnings.length ? `<div class="warnings">${warnings.map((x) => `<p>⚠ ${esc(x)}</p>`).join("")}</div>` : ""}
-    ${state.tab === "Diseño" && selectedLeaf ? renderPropertiesPanel(selectedLeaf, selectedDims) : ""}
+    ${state.tab === "Diseño" && state.focusScope === "assembly" ? renderMarcoPanel() : state.tab === "Diseño" && selectedLeaf ? renderPropertiesPanel(selectedLeaf, selectedDims) : ""}
     ${quoteBody}
   </aside>`;
 
@@ -2996,24 +3105,60 @@ root.addEventListener("click", (e) => {
   if (action === "reset-tree") { handleResetTree(); render(); return; }
   if (action === "explorer-select") {
     state.activeTool = { mode: "select" };
+    state.focusScope = "leaf";
     state.selectedId = el.dataset.id;
-    state.focusPart = "marco";
+    state.focusPart = el.dataset.part || "marco";
     state.focusSide = null;
     render();
     return;
   }
   if (action === "explorer-side") {
     state.activeTool = { mode: "select" };
+    state.focusScope = "leaf";
     state.selectedId = el.dataset.id;
     state.focusPart = "marco";
     state.focusSide = el.dataset.side;
     render();
     return;
   }
+  if (action === "explorer-glass-side") {
+    state.activeTool = { mode: "select" };
+    state.focusScope = "leaf";
+    state.selectedId = el.dataset.id;
+    state.focusPart = "vidrio";
+    state.focusSide = el.dataset.side;
+    render();
+    return;
+  }
+  if (action === "explorer-marco") {
+    state.activeTool = { mode: "select" };
+    state.focusScope = "assembly";
+    state.focusPart = "marco";
+    state.focusSide = null;
+    render();
+    return;
+  }
+  if (action === "explorer-marco-side") {
+    state.activeTool = { mode: "select" };
+    state.focusScope = "assembly";
+    state.focusPart = "marco";
+    state.focusSide = el.dataset.side;
+    render();
+    return;
+  }
   if (action === "part-click") {
+    if (el.dataset.scope === "assembly") {
+      state.activeTool = { mode: "select" };
+      state.focusScope = "assembly";
+      state.focusPart = "marco";
+      state.focusSide = el.dataset.side || null;
+      render();
+      return;
+    }
     const id = el.dataset.id;
     const part = el.dataset.part;
     if (state.activeTool.mode === "select") {
+      state.focusScope = "leaf";
       state.selectedId = id;
       state.focusPart = part;
       state.focusSide = el.dataset.side || null;
@@ -3021,6 +3166,7 @@ root.addEventListener("click", (e) => {
       const paneEl = el.closest("[data-leaf]");
       const rect = paneEl.getBoundingClientRect();
       handleLeafClick(id, e.clientX, e.clientY, rect);
+      state.focusScope = "leaf";
       state.focusPart = null;
       state.focusSide = null;
     }
@@ -3047,6 +3193,29 @@ function handleFieldChange(e) {
   if (t.dataset.bindSpecBool) {
     const node = findNode(state.tree, state.selectedId);
     if (node && node.kind === "leaf") { state.tree = updateSpecFn(state.tree, node.id, { [t.dataset.bindSpecBool]: t.checked }); render(); }
+    return;
+  }
+  if (t.dataset.bindMarco) {
+    const v = t.type === "checkbox" ? t.checked : t.value;
+    state.marco = updateMarcoFn(state.marco, { [t.dataset.bindMarco]: v });
+    render();
+    return;
+  }
+  if (t.dataset.bindMarcoSide) {
+    if (state.focusSide) {
+      const patch = { [t.dataset.bindMarcoSide]: t.type === "checkbox" ? t.checked : t.value };
+      state.marco = updateMarcoSideFn(state.marco, state.focusSide, patch);
+      render();
+    }
+    return;
+  }
+  if (t.dataset.bindGlassSide) {
+    const node = findNode(state.tree, state.selectedId);
+    if (node && node.kind === "leaf" && state.focusSide) {
+      const raw = t.dataset.numeric === "true" ? Number(t.value) : t.value;
+      state.tree = updateGlassSideSpecFn(state.tree, node.id, state.focusSide, { [t.dataset.bindGlassSide]: raw });
+      render();
+    }
     return;
   }
   if (t.dataset.bindSide) {
