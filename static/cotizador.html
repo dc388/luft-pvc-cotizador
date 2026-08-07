@@ -98,16 +98,21 @@ a{color:inherit}
 .splitNode{display:flex;min-width:0;min-height:0;position:relative}
 .splitNode.axisCol{flex-direction:row}
 .splitNode.axisRow{flex-direction:column}
-.pane{flex:1;position:relative;border-style:solid;border-color:#24352e;background:var(--frame,#dfe2dc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);overflow:hidden;min-width:0}
+.pane{flex:1;position:relative;border-style:solid;border-color:#24352e;background:var(--frame,#dfe2dc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);overflow:hidden;min-width:0;--ring:max(9%,12px)}
 .whiteFrame .pane{border-color:#e8eae5}
 .pane.selectedPane{outline:4px solid var(--accent);outline-offset:-4px;box-shadow:inset 0 0 0 2px #14231c}
-.sashRing{position:absolute;inset:max(9%,12px);background:var(--frame,#dfe2dc);filter:brightness(.82);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.2);pointer-events:none}
+.sashRing{position:absolute;inset:var(--ring);background:var(--frame,#dfe2dc);filter:brightness(.82);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.2);pointer-events:none}
 .glassFill{position:absolute;inset:max(17%,22px);background:linear-gradient(145deg,#9cbec4cc,#e9f2f0cc 55%,#91b8c2cc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);pointer-events:none;overflow:hidden}
 .glassFill:after{content:"";position:absolute;width:160%;height:14px;background:#ffffff44;transform:rotate(-35deg);top:24%;left:-30%}
 .hit{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer}
 .hit:hover{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent)}
-.hitMarco{inset:0;z-index:1}
-.hitHoja{inset:max(9%,12px);z-index:2;display:grid;place-items:center}
+.hitMarcoSide{z-index:1}
+.hitMarcoSide.marcoSideFocus{background:color-mix(in srgb, var(--accent) 45%, transparent);box-shadow:inset 0 0 0 2px var(--accent)}
+.hitMarcoTop{top:0;left:0;right:0;height:var(--ring)}
+.hitMarcoBottom{bottom:0;left:0;right:0;height:var(--ring)}
+.hitMarcoLeft{top:var(--ring);bottom:var(--ring);left:0;width:var(--ring)}
+.hitMarcoRight{top:var(--ring);bottom:var(--ring);right:0;width:var(--ring)}
+.hitHoja{inset:var(--ring);z-index:2;display:grid;place-items:center}
 .hitVidrio{inset:max(17%,22px);z-index:3}
 .hitHerraje{position:absolute;z-index:5;bottom:6px;left:6px;width:24px;height:24px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:12px;display:grid;place-items:center}
 .motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#2870a2;font-size:18px;pointer-events:none}
@@ -128,6 +133,17 @@ a{color:inherit}
 .metricRow strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 
 .toolbox{position:relative;flex:0 0 auto;align-self:flex-start;margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 24px var(--shadow);max-height:calc(100% - 32px);overflow:auto}
+.explorerTree{display:flex;flex-direction:column;gap:2px;margin-top:6px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.explorerLeaf{text-align:left;padding:7px 10px;font-size:9px;font-weight:bold;background:var(--paper);border:0;border-bottom:1px solid var(--line);color:var(--ink);cursor:pointer}
+.explorerLeaf.active{background:color-mix(in srgb, var(--accent) 16%, var(--paper));color:var(--accent)}
+.explorerSides{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
+.explorerSide{padding:6px 4px;font-size:7.5px;letter-spacing:.02em;background:var(--surface);border:0;border-right:1px solid var(--line);color:var(--muted);cursor:pointer}
+.explorerSide:last-child{border-right:0}
+.explorerSide.active{background:var(--accent);color:#fff}
+.sideEditor{border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:8px;display:flex;flex-direction:column;gap:8px}
+.sideEditor b{font-size:9px;letter-spacing:.06em;color:var(--accent)}
+.sideEditor label{display:flex;flex-direction:column;gap:4px;font-size:9px;color:var(--muted)}
+.sideEditor .checkRow{flex-direction:row;align-items:center;gap:6px}
 .toolboxGroup{display:flex;flex-direction:column;gap:6px}
 .toolboxGroup>span{font-size:8px;letter-spacing:.08em;color:var(--muted);font-weight:bold}
 .toolboxGrid{display:grid;grid-template-columns:repeat(4,28px);gap:5px}
@@ -1870,8 +1886,14 @@ function defaultSpecFor(wing) {
   };
 }
 
+function defaultSides() {
+  const side = () => ({ reinforcement: false, notes: "" });
+  return { top: side(), bottom: side(), left: side(), right: side() };
+}
+const SIDE_LABEL = { top: "Arriba", bottom: "Abajo", left: "Izquierda", right: "Derecha" };
+
 function createLeaf(wing, spec) {
-  return { kind: "leaf", id: crypto.randomUUID(), wing: wing || "fixed", spec: Object.assign({ glass: "Heredar vidrio general", notes: "", mallorquina: false }, defaultSpecFor(wing || "fixed"), spec || {}) };
+  return { kind: "leaf", id: crypto.randomUUID(), wing: wing || "fixed", spec: Object.assign({ glass: "Heredar vidrio general", notes: "", mallorquina: false, sides: defaultSides() }, defaultSpecFor(wing || "fixed"), spec || {}) };
 }
 
 function createDefaultTree() {
@@ -1917,6 +1939,13 @@ function setWingFn(tree, id, wing) {
 
 function updateSpecFn(tree, id, patch) {
   return mapLeaf(tree, id, (leaf) => ({ kind: "leaf", id: leaf.id, wing: leaf.wing, spec: Object.assign({}, leaf.spec, patch) }));
+}
+
+function updateSideSpecFn(tree, id, side, patch) {
+  return mapLeaf(tree, id, (leaf) => ({
+    kind: "leaf", id: leaf.id, wing: leaf.wing,
+    spec: Object.assign({}, leaf.spec, { sides: Object.assign({}, leaf.spec.sides, { [side]: Object.assign({}, leaf.spec.sides[side], patch) }) }),
+  }));
 }
 
 function removeSplitFn(tree, splitId) {
@@ -2085,7 +2114,7 @@ const state = {
   margin: 35, installation: 1200, transport: 450, discount: 0,
   code: "001", designation: "V01", location: "Cocina",
   client: "", clientAddress: "", deliveryDate: "",
-  tree: createDefaultTree(), selectedId: "", activeTool: { mode: "select" }, focusPart: null,
+  tree: createDefaultTree(), selectedId: "", activeTool: { mode: "select" }, focusPart: null, focusSide: null,
   profileSearch: "", profileSystemFilter: "Todos",
   selfCheck: null,
 };
@@ -2100,6 +2129,7 @@ function handleMerge() {
   state.tree = removeSplitFn(state.tree, parentId);
   state.selectedId = parentId;
   state.focusPart = null;
+  state.focusSide = null;
 }
 
 function handleResetTree() {
@@ -2107,6 +2137,7 @@ function handleResetTree() {
   state.selectedId = firstLeafId(state.tree);
   state.activeTool = { mode: "select" };
   state.focusPart = null;
+  state.focusSide = null;
 }
 
 function handleLeafClick(id, clientX, clientY, rect) {
@@ -2236,7 +2267,7 @@ function buildScene3D() {
   const color = colorsByBrand[state.brand][Math.min(state.colorIndex, colorsByBrand[state.brand].length - 1)];
   const depthMm = sys.depth;
   const frameHex = colorToHex3D(color);
-  const isSelectedPart = (id, part) => state.selectedId === id && (!state.focusPart || state.focusPart === part);
+  const isSelectedPart = (id, part, side) => state.selectedId === id && (!state.focusPart || state.focusPart === part) && (part !== "marco" || !state.focusSide || !side || state.focusSide === side);
 
   const frameMat = new THREE.MeshStandardMaterial({ color: frameHex, roughness: 0.5, metalness: 0.12 });
   const sashMat = new THREE.MeshStandardMaterial({ color: frameHex, roughness: 0.55, metalness: 0.1 });
@@ -2245,7 +2276,7 @@ function buildScene3D() {
   const selMat = new THREE.MeshStandardMaterial({ color: "#1D6CA6", roughness: 0.35, metalness: 0.2, emissive: "#1D6CA6", emissiveIntensity: 0.22 });
 
   function addBox(x, y, z, sx, sy, sz, mat, tag, selMatOverride) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.0005, sx), Math.max(0.0005, sy), Math.max(0.0005, sz)), tag && isSelectedPart(tag.id, tag.part) ? (selMatOverride || selMat) : mat);
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.0005, sx), Math.max(0.0005, sy), Math.max(0.0005, sz)), tag && isSelectedPart(tag.id, tag.part, tag.side) ? (selMatOverride || selMat) : mat);
     mesh.position.set(x, y, z);
     if (tag) { mesh.userData = tag; clickable3d.push(mesh); }
     group.add(mesh);
@@ -2286,10 +2317,10 @@ function buildScene3D() {
     const rectTag = { x, y, w: ww, h: hh };
     const hasSash = node.wing !== "fixed" && node.wing !== "inactive";
 
-    addBox(cx, cy + leafH / 2 - FW / 2, 0, leafW, FW, D, frameMat, { id: node.id, part: "marco", rect: rectTag });
-    addBox(cx, cy - leafH / 2 + FW / 2, 0, leafW, FW, D, frameMat, { id: node.id, part: "marco", rect: rectTag });
-    addBox(cx - leafW / 2 + FW / 2, cy, 0, FW, leafH, D, frameMat, { id: node.id, part: "marco", rect: rectTag });
-    addBox(cx + leafW / 2 - FW / 2, cy, 0, FW, leafH, D, frameMat, { id: node.id, part: "marco", rect: rectTag });
+    addBox(cx, cy + leafH / 2 - FW / 2, 0, leafW, FW, D, frameMat, { id: node.id, part: "marco", side: "top", rect: rectTag });
+    addBox(cx, cy - leafH / 2 + FW / 2, 0, leafW, FW, D, frameMat, { id: node.id, part: "marco", side: "bottom", rect: rectTag });
+    addBox(cx - leafW / 2 + FW / 2, cy, 0, FW, leafH, D, frameMat, { id: node.id, part: "marco", side: "left", rect: rectTag });
+    addBox(cx + leafW / 2 - FW / 2, cy, 0, FW, leafH, D, frameMat, { id: node.id, part: "marco", side: "right", rect: rectTag });
 
     if (hasSash) {
       const sw = Math.max(0.01, leafW - FW * 2), sh = Math.max(0.01, leafH - FW * 2);
@@ -2326,6 +2357,7 @@ function handle3DClick(e) {
   if (tool.mode === "select") {
     state.selectedId = tag.id;
     state.focusPart = tag.part;
+    state.focusSide = tag.side || null;
     render();
     return;
   }
@@ -2337,7 +2369,7 @@ function handle3DClick(e) {
     const result = splitLeafFn(state.tree, tag.id, tool.axis, fraction);
     const node = findNode(result, tag.id);
     state.tree = result;
-    if (node && node.kind === "split") { state.selectedId = node.children[0].id; state.focusPart = null; }
+    if (node && node.kind === "split") { state.selectedId = node.children[0].id; state.focusPart = null; state.focusSide = null; }
     state.activeTool = { mode: "select" };
     render();
     return;
@@ -2345,6 +2377,7 @@ function handle3DClick(e) {
   state.tree = setWingFn(state.tree, tag.id, tool.wing);
   state.selectedId = tag.id;
   state.focusPart = null;
+  state.focusSide = null;
   state.activeTool = { mode: "select" };
   render();
 }
@@ -2388,10 +2421,15 @@ function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis, edges) 
     ? `<button type="button" class="hit hitHerraje" title="Herraje / manilla" data-action="part-click" data-part="herraje" data-id="${node.id}">⚙</button>`
     : "";
   const borderWidth = `${edges.top ? 5 : 2}px ${edges.right ? 5 : 2}px ${edges.bottom ? 5 : 2}px ${edges.left ? 5 : 2}px`;
+  const isSideFocused = (side) => node.id === selectedId && state.focusPart === "marco" && state.focusSide === side;
+  const marcoSideHit = (side, label) => `<button type="button" class="hit hitMarcoSide hitMarco${side.charAt(0).toUpperCase()}${side.slice(1)} ${isSideFocused(side) ? "marcoSideFocus" : ""}" title="Marco · Lado ${label}" data-action="part-click" data-part="marco" data-side="${side}" data-id="${node.id}" aria-label="Marco - Lado ${label} de ${esc(wingName(node.wing))}"></button>`;
   return `<div class="pane ${node.id === selectedId ? "selectedPane" : ""}" style="flex:${flexBasis};border-width:${borderWidth}" data-leaf="${node.id}">
     ${hasSash ? `<div class="sashRing"></div>` : ""}
     <div class="glassFill"></div>
-    <button type="button" class="hit hitMarco" title="Marco / estado" data-action="part-click" data-part="marco" data-id="${node.id}" aria-label="Marco de ${esc(wingName(node.wing))}"></button>
+    ${marcoSideHit("top", "Arriba")}
+    ${marcoSideHit("bottom", "Abajo")}
+    ${marcoSideHit("left", "Izquierda")}
+    ${marcoSideHit("right", "Derecha")}
     ${hojaHit}
     <button type="button" class="hit hitVidrio" title="Vidrio" data-action="part-click" data-part="vidrio" data-id="${node.id}"></button>
     ${herrajeHit}
@@ -2444,8 +2482,15 @@ function renderPropertiesPanel(leaf, dims) {
   const fp = state.focusPart;
   const cls = (part, extra) => `${fp === part ? "partFocus" : ""} ${extra || ""}`.trim();
   const opt = (val, list) => list.map((o) => `<option ${o === val ? "selected" : ""}>${esc(o)}</option>`).join("");
+  const fs = state.focusSide;
+  const sideSpec = fs ? spec.sides[fs] : null;
   return `<div class="componentEditor">
-    <div class="componentTitle"><span>COMPONENTE SELECCIONADO${fp ? " · " + esc(fp.toUpperCase()) : ""}</span><b>${esc(wingName(leaf.wing))}</b><small>${dims ? `${Math.round(dims.wMm)} × ${Math.round(dims.hMm)} mm` : ""}</small></div>
+    <div class="componentTitle"><span>COMPONENTE SELECCIONADO${fp ? " · " + esc(fp.toUpperCase()) : ""}${fp === "marco" && fs ? " · LADO " + esc(SIDE_LABEL[fs].toUpperCase()) : ""}</span><b>${esc(wingName(leaf.wing))}</b><small>${dims ? `${Math.round(dims.wMm)} × ${Math.round(dims.hMm)} mm` : ""}</small></div>
+    ${sideSpec ? `<div class="sideEditor">
+      <b>Lado — ${esc(SIDE_LABEL[fs])}</b>
+      <label class="checkRow"><input type="checkbox" data-bind-side="reinforcement" ${sideSpec.reinforcement ? "checked" : ""}> Refuerzo galvanizado en este lado</label>
+      <label>Notas de este lado<textarea data-bind-side="notes" placeholder="Mecanizado, drenaje, restricciones de este lado...">${esc(sideSpec.notes)}</textarea></label>
+    </div>` : ""}
     <div class="componentGrid">
       <label class="${cls('marco')}">Estado<select data-bind-spec="state">${opt(spec.state, ["Fija", "Móvil", "Inactiva"])}</select></label>
       <label class="${cls('hoja')}">Tipo de apertura<select data-bind-spec="opening">${opt(spec.opening, Array.from(new Set(Object.values(OPENING_BY_WING))))}</select></label>
@@ -2456,7 +2501,7 @@ function renderPropertiesPanel(leaf, dims) {
       <label class="wide checkRow"><input type="checkbox" data-bind-spec-bool="mallorquina" ${spec.mallorquina ? "checked" : ""}> Persiana Mallorquina exterior (lamas orientables, accesorio de sombra)</label>
       <label class="wide">Observaciones<textarea data-bind-spec="notes" placeholder="Mecanizado, altura de manilla, restricciones...">${esc(spec.notes)}</textarea></label>
     </div>
-    <p class="componentNote">Selecciona carros, cierres y manillas según el peso del vidrio, tamaño de hoja y geometría del perfil. Haz clic directamente en el marco, la hoja, el vidrio o el herraje del dibujo para saltar aquí.</p>
+    <p class="componentNote">Selecciona carros, cierres y manillas según el peso del vidrio, tamaño de hoja y geometría del perfil. Haz clic directamente en el marco, la hoja, el vidrio o el herraje del dibujo para saltar aquí — el marco se divide en 4 lados independientes (arriba/abajo/izquierda/derecha).</p>
     ${canMerge() ? '<button type="button" class="fullButton" data-action="merge">Combinar con hoja vecina <span>×</span></button>' : ""}
   </div>`;
 }
@@ -2706,6 +2751,10 @@ function renderApp() {
       ${sys.sourced ? `<p class="sourceNote"><b>✓ Datos reales</b> — precio de marco/hoja tomado de la lista EXWORK Veracruz (rev. ABR_22), convertido a MXN @ ${EUR_MXN}.</p>` : `<p class="sourceNote">Precio de marco/hoja estimado (sin lista de precios de origen para este sistema).</p>`}
       ${hasRailOptions ? `<label>Tipo de riel<select data-bind="rail" data-numeric="true">${sys.rails.map((x) => `<option value="${x}" ${x === state.rail ? "selected" : ""}>${x === 1 ? "Monorriel" : x + " rieles"}</option>`).join("")}</select></label>` : ""}
       ${block("02", "Composición", "Haz clic en el marco, la hoja, el vidrio o el herraje del dibujo para seleccionar esa parte, o usa la paleta para dividir y asignar tipos de apertura.")}
+      <div class="explorerTree">${walkLeaves(state.tree).map((leaf, i) => `
+        <button type="button" class="explorerLeaf ${leaf.id === state.selectedId && !state.focusSide ? "active" : ""}" data-action="explorer-select" data-id="${leaf.id}">Hoja ${i + 1} · ${esc(wingName(leaf.wing))}</button>
+        <div class="explorerSides">${["top", "bottom", "left", "right"].map((s) => `<button type="button" class="explorerSide ${leaf.id === state.selectedId && state.focusSide === s ? "active" : ""}" data-action="explorer-side" data-id="${leaf.id}" data-side="${s}">Lado - ${SIDE_LABEL[s]}</button>`).join("")}</div>`
+      ).join("")}</div>
       ${block("03", "Geometría", "Cotas generales en milímetros.")}
       <div class="inputGrid">
         <label>Ancho<input id="f-width" type="number" min="1" value="${state.width}" data-bind="width" data-numeric="true"></label>
@@ -2911,17 +2960,35 @@ root.addEventListener("click", (e) => {
   if (action === "tool-wing") { state.activeTool = { mode: "assign-wing", wing: el.dataset.wing }; render(); return; }
   if (action === "merge") { handleMerge(); render(); return; }
   if (action === "reset-tree") { handleResetTree(); render(); return; }
+  if (action === "explorer-select") {
+    state.activeTool = { mode: "select" };
+    state.selectedId = el.dataset.id;
+    state.focusPart = "marco";
+    state.focusSide = null;
+    render();
+    return;
+  }
+  if (action === "explorer-side") {
+    state.activeTool = { mode: "select" };
+    state.selectedId = el.dataset.id;
+    state.focusPart = "marco";
+    state.focusSide = el.dataset.side;
+    render();
+    return;
+  }
   if (action === "part-click") {
     const id = el.dataset.id;
     const part = el.dataset.part;
     if (state.activeTool.mode === "select") {
       state.selectedId = id;
       state.focusPart = part;
+      state.focusSide = el.dataset.side || null;
     } else {
       const paneEl = el.closest("[data-leaf]");
       const rect = paneEl.getBoundingClientRect();
       handleLeafClick(id, e.clientX, e.clientY, rect);
       state.focusPart = null;
+      state.focusSide = null;
     }
     render();
     return;
@@ -2946,6 +3013,15 @@ function handleFieldChange(e) {
   if (t.dataset.bindSpecBool) {
     const node = findNode(state.tree, state.selectedId);
     if (node && node.kind === "leaf") { state.tree = updateSpecFn(state.tree, node.id, { [t.dataset.bindSpecBool]: t.checked }); render(); }
+    return;
+  }
+  if (t.dataset.bindSide) {
+    const node = findNode(state.tree, state.selectedId);
+    if (node && node.kind === "leaf" && state.focusSide) {
+      const patch = { [t.dataset.bindSide]: t.type === "checkbox" ? t.checked : t.value };
+      state.tree = updateSideSpecFn(state.tree, node.id, state.focusSide, patch);
+      render();
+    }
   }
 }
 root.addEventListener("input", handleFieldChange);
