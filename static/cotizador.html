@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>LUFT PVC · Cotizador</title>
 <meta name="description" content="Cotizador técnico de cancelería de PVC con catálogo real Aluplast (EXWORK Veracruz, rev. ABR_22) y editor compositivo de ventanas estilo RA Workshop.">
 <style>
@@ -349,6 +350,10 @@ a{color:inherit}
 .docTitle{font-family:Georgia,serif;font-size:24px;margin:10px 0 0;letter-spacing:-.02em}
 .docMeta{text-align:right;font-size:9px;color:var(--muted);line-height:1.6}
 .docMeta b{color:var(--ink);font-weight:bold}
+.docMetaRow{display:flex;justify-content:space-between;gap:24px;margin:0 0 18px}
+.docClientBlock{font-size:9px;color:var(--muted);line-height:1.6}
+.docClientBlock b{color:var(--ink);font-weight:bold}
+.docDiagramCaption{text-align:center;font-size:8px;color:var(--muted);margin-top:6px}
 .docIntro{font-size:9.5px;line-height:1.6;color:var(--muted);margin:0 0 16px;max-width:62ch}
 .docGroupTitle{font-size:11px;font-weight:800;margin:18px 0 6px;padding-top:12px;border-top:1px solid var(--line);color:var(--ink)}
 .docGroupTitle:first-of-type{padding-top:0;border-top:0;margin-top:0}
@@ -2028,7 +2033,7 @@ function defaultGlassSides() {
 }
 function defaultMarco() {
   return {
-    profileCode: "", reinforcement: false, reinforcementCode: "",
+    profileCode: "", hojaProfileCode: "", reinforcement: false, reinforcementCode: "",
     mosquitero: false, mosquiteroCode: "", persiana: false, persianaCode: "",
     sides: defaultSides(),
   };
@@ -2160,6 +2165,11 @@ function splitterLengthM(node, widthMm, heightMm) {
 // there so a degenerate size still produces a finite, orderable-if-wrong cost, not NaN).
 const GLASS_BITE_MM = 120;
 const GLASS_MIN_MM = 100;
+// The width/height inputs only ever had min="1" -- a real PVC/aluminum window can't physically
+// be built below roughly this size (hardware, minimum profile overlap, minimum glass all need
+// room), and with no floor the canvas just rendered an unusable sliver a few px wide with no
+// warning at all, which read as "the app is broken" rather than "that's not a valid window."
+const MIN_OPENING_MM = 300;
 
 function calcQuote(p) {
   const w = p.width / 1000, h = p.height / 1000;
@@ -2924,7 +2934,8 @@ function renderMarcoPanel() {
       <label>Notas de este lado<textarea data-bind-marco-side="notes" placeholder="Mecanizado, drenaje, restricciones de este lado...">${esc(sideSpec.notes)}</textarea></label>
     </div>` : ""}
     <div class="componentGrid">
-      <label class="wide">Perfil - código<input type="text" data-bind-marco="profileCode" value="${esc(m.profileCode)}" placeholder="Catálogo real: pendiente (ver Fase 2)"></label>
+      <label class="wide">Marco - código<input type="text" data-bind-marco="profileCode" value="${esc(m.profileCode)}" placeholder="Catálogo real: pendiente (ver Fase 2)"></label>
+      <label class="wide">Hoja - código<input type="text" data-bind-marco="hojaProfileCode" value="${esc(m.hojaProfileCode)}" placeholder="Catálogo real: pendiente (ver Fase 2)"></label>
       <label class="checkRow"><input type="checkbox" data-bind-marco="reinforcement" ${m.reinforcement ? "checked" : ""}> Reforzamiento</label>
       <label>Código de refuerzo<input type="text" data-bind-marco="reinforcementCode" value="${esc(m.reinforcementCode)}" ${m.reinforcement ? "" : "disabled"}></label>
       <label class="checkRow"><input type="checkbox" data-bind-marco="mosquitero" ${m.mosquitero ? "checked" : ""}> Mosquitero</label>
@@ -3010,27 +3021,33 @@ function todayStr() {
 function renderCotizacionDoc(calc, sys, glass, color) {
   const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"};--ar:${state.width}/${state.height};--label-ink:${labelInkFor(color.hex)}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(false)}${renderDimLines(state.width, state.height, true)}</div>`;
   const marcoProfile = profileFamilies.find((f) => f.code === state.marco.profileCode);
+  const hojaProfile = profileFamilies.find((f) => f.code === state.marco.hojaProfileCode);
   const reinforcementMatch = state.marco.reinforcement ? reinforcementProfile(state.marco.reinforcementCode) : null;
   const specRows = [
     ["Dimensiones", `${state.width.toLocaleString()} mm × ${state.height.toLocaleString()} mm`],
     ["Perfil del sistema", `${esc(state.brand)} - ${esc(sys.name)} / ${esc(color.name)}`],
-    ["Configuración", esc(configSummary(calc))],
   ];
   if (state.marco.profileCode) specRows.push(["Marco", `${esc(state.marco.profileCode)}${marcoProfile ? " — " + esc(marcoProfile.name) : " (perfil no encontrado en catálogo)"}`]);
+  if (state.marco.hojaProfileCode) specRows.push(["Hoja", `${esc(state.marco.hojaProfileCode)}${hojaProfile ? " — " + esc(hojaProfile.name) : " (perfil no encontrado en catálogo)"}`]);
   if (state.marco.reinforcement && state.marco.reinforcementCode) specRows.push(["Reforzamiento", `${esc(state.marco.reinforcementCode)}${reinforcementMatch ? " — " + esc(reinforcementMatch.name) : " (perfil no encontrado en catálogo)"}`]);
   specRows.push(
     ["Fittings", `Herrajes ${esc(state.brand)} (Con instalación)`],
     ["Vidrio", esc(glass.name)],
+    ["Tipo de apertura", esc(configSummary(calc))],
     ["Cantidad", `${state.qty} pza.`],
   );
   const iva = calc.total * 0.16;
   return `<div class="reportDoc"><div class="docPage">
     <div class="docHeader">
       <div><div class="docBrandRow"><span class="brandMark">L</span><b>LUFT PVC</b></div><h1 class="docTitle">Cotización del cliente</h1></div>
-      <div class="docMeta">
+    </div>
+    <div class="docMetaRow">
+      <div class="docClientBlock">
         <div>Cliente: <b>${esc(state.client || "—")}</b></div>
         <div>Dirección: <b>${esc(state.clientAddress || "—")}</b></div>
         <div>Proyecto: <b>${esc(state.designation)} · ${esc(state.location)}</b></div>
+      </div>
+      <div class="docMeta">
         <div>Fecha: <b>${todayStr()}</b></div>
         <div>Entrega: <b>${fmtDate(state.deliveryDate)}</b></div>
       </div>
@@ -3040,7 +3057,7 @@ function renderCotizacionDoc(calc, sys, glass, color) {
       <div class="docItemHead">${esc(state.code)} — Componente ${esc(state.designation)}</div>
       <div class="docItemBody">
         <table class="docSpecTable">${specRows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("")}</table>
-        <div class="docDiagramBox">${itemDiagram}</div>
+        <div class="docDiagramBox"><div>${itemDiagram}<p class="docDiagramCaption">Vista desde interior.</p></div></div>
       </div>
     </div>
     <table class="docTable">
@@ -3208,16 +3225,24 @@ function renderProjectCorteDoc() {
   const groupsHtml = groups.map((g) => {
     const sysG = catalog[g.brand][Math.min(g.systemIndex, catalog[g.brand].length - 1)];
     const colorG = colorsByBrand[g.brand][Math.min(g.colorIndex, colorsByBrand[g.brand].length - 1)];
+    // Built as separate consts in the SAME order they're placed in the template below --
+    // a template literal's ${} expressions evaluate left-to-right, but a statement above the
+    // return runs before ALL of them, which used to hand reinforcement piece numbers 1-3 to a
+    // section that then visually prints last (after Marco/Hoja/Junquillo, which counted from 4).
+    const marcoHtml = renderCorteCategory("Marco", g.marco, 1, counter);
+    const travesanosHtml = renderCorteCategory("Travesaño", g.travesanos, 1, counter);
+    const hojasHtml = renderCorteCategory("Hoja", g.hojas, 1, counter);
+    const junquillosHtml = renderCorteCategory("Junquillo", g.junquillos, 1, counter);
     const reinforcementHtml = Object.entries(g.reinforcementByCode).map(([code, pieces]) => {
       const match = reinforcementProfile(code);
       const title = match ? `Reforzamiento — ${esc(match.code)} ${esc(match.name)}` : `Reforzamiento — ${esc(code)} (no encontrado en catálogo)`;
       return renderCorteCategory(title, pieces, 1, counter);
     }).join("");
     return `<h2 class="docGroupTitle">${esc(g.brand)} · ${esc(sysG.name)} · ${esc(colorG.name)} — ${g.openings.length} vano(s): ${g.openings.map((o) => esc(o.designation)).join(", ")}</h2>
-      ${renderCorteCategory("Marco", g.marco, 1, counter)}
-      ${renderCorteCategory("Travesaño", g.travesanos, 1, counter)}
-      ${renderCorteCategory("Hoja", g.hojas, 1, counter)}
-      ${renderCorteCategory("Junquillo", g.junquillos, 1, counter)}
+      ${marcoHtml}
+      ${travesanosHtml}
+      ${hojasHtml}
+      ${junquillosHtml}
       ${reinforcementHtml}`;
   }).join("");
   return `<div class="reportDoc"><div class="docPage">
@@ -3358,6 +3383,7 @@ function renderApp() {
   const hasRailOptions = sys.rails.some((x) => x > 0);
   const maxBarSpan = BAR_LENGTH_MM - KERF_MM;
   const warnings = []
+    .concat(state.width < MIN_OPENING_MM || state.height < MIN_OPENING_MM ? [`Medida menor al mínimo fabricable de ${MIN_OPENING_MM} × ${MIN_OPENING_MM} mm — se ajustará al salir del campo.`] : [])
     .concat(state.width > sys.maxW || state.height > sys.maxH ? [`Medida supera el límite de referencia ${sys.maxW} × ${sys.maxH} mm.`] : [])
     .concat(glass.thickness > sys.glazing ? [`Vidrio de ${glass.thickness} mm supera el galce de referencia (${sys.glazing} mm).`] : [])
     .concat(state.rail > 0 && !sys.rails.includes(state.rail) ? [`El sistema no contempla ${state.rail} riel(es).`] : [])
@@ -3418,8 +3444,8 @@ function renderApp() {
       </div>
       ${block("03", "Geometría", "Cotas generales en milímetros.")}
       <div class="inputGrid">
-        <label>Ancho<input id="f-width" type="number" min="1" value="${state.width}" data-bind="width" data-numeric="true"></label>
-        <label>Alto<input id="f-height" type="number" min="1" value="${state.height}" data-bind="height" data-numeric="true"></label>
+        <label>Ancho<input id="f-width" type="number" min="${MIN_OPENING_MM}" value="${state.width}" data-bind="width" data-numeric="true"></label>
+        <label>Alto<input id="f-height" type="number" min="${MIN_OPENING_MM}" value="${state.height}" data-bind="height" data-numeric="true"></label>
         <label>Cant.<input id="f-qty" type="number" min="1" value="${state.qty}" data-bind="qty" data-numeric="true"></label>
       </div>
       ${block("04", "Materiales", "Color, aplicación y vidrio.")}
@@ -3765,7 +3791,12 @@ function handleFieldChange(e) {
   if (t.dataset.bindProject) { state.project[t.dataset.bindProject] = t.value; render(); return; }
   if (t.dataset.bind) {
     let v = t.dataset.numeric === "true" ? Number(t.value) : t.value;
-    if (["width", "height", "qty"].includes(t.dataset.bind)) v = Math.max(1, v);
+    if (t.dataset.bind === "qty") v = Math.max(1, v);
+    // Only enforce the real minimum on commit (blur/Enter), not on every keystroke -- clamping
+    // live on "input" fought typing itself: after the first digit got snapped up to 300, the
+    // field's rebuilt value became "300" and the next digit appended to THAT instead of the
+    // number the user was actually typing (e.g. typing "1200" digit-by-digit never reached it).
+    if (["width", "height"].includes(t.dataset.bind) && e.type === "change") v = Math.max(MIN_OPENING_MM, v);
     state[t.dataset.bind] = v;
     render();
     return;
