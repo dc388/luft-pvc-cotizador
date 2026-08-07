@@ -2789,11 +2789,18 @@ function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis, edges) 
     : "";
   const edgeWidth = (v) => (v === true ? 5 : v === "overlap" ? 1 : 2);
   const borderWidth = `${edgeWidth(edges.top)}px ${edgeWidth(edges.right)}px ${edgeWidth(edges.bottom)}px ${edgeWidth(edges.left)}px`;
-  const isSideFocused = (side) => state.focusScope === "leaf" && node.id === selectedId && state.focusPart === "marco" && state.focusSide === side;
+  const marcoIsFocusedHere = state.focusScope === "leaf" && node.id === selectedId && state.focusPart === "marco";
+  // No focusSide with focusPart==="marco" means "the whole marco", not "no marco side" -- every
+  // side highlights together so it reads as one complete frame selection, matching what the 3D
+  // viewer's isSelectedPart already does. A specific focusSide narrows to just that one side.
+  const isSideFocused = (side) => marcoIsFocusedHere && (!state.focusSide || state.focusSide === side);
   const isGlassSideFocused = (side) => state.focusScope === "leaf" && node.id === selectedId && state.focusPart === "vidrio" && state.focusSide === side;
   const marcoSideHit = (side, label) => `<button type="button" class="hit hitMarcoSide hitMarco${side.charAt(0).toUpperCase()}${side.slice(1)} ${isSideFocused(side) ? "marcoSideFocus" : ""}" title="Marco · Lado ${label}" data-action="part-click" data-part="marco" data-side="${side}" data-id="${node.id}" aria-label="Marco - Lado ${label} de ${esc(wingName(node.wing))}"></button>`;
   const vidrioSideHit = (side, label) => `<button type="button" class="hit hitVidrioSide hitVidrio${side.charAt(0).toUpperCase()}${side.slice(1)} ${isGlassSideFocused(side) ? "marcoSideFocus" : ""}" title="Vidrio · Lado ${label}" data-action="part-click" data-part="vidrio" data-side="${side}" data-id="${node.id}" aria-label="Vidrio - Lado ${label}"></button>`;
-  return `<div class="pane ${node.id === selectedId ? "selectedPane" : ""}" style="flex:${flexBasis};border-width:${borderWidth}" data-leaf="${node.id}">
+  // Suppress the whole-leaf outline while a marco side (or the whole marco) is the focus --
+  // the marcoSideFocus highlight(s) above already trace the leaf's perimeter, so showing both
+  // at once reads as two overlapping frames instead of one clear selection.
+  return `<div class="pane ${node.id === selectedId && !marcoIsFocusedHere ? "selectedPane" : ""}" style="flex:${flexBasis};border-width:${borderWidth}" data-leaf="${node.id}">
     ${hasSash ? `<div class="sashRing"></div>` : ""}
     <div class="glassFill"></div>
     ${marcoSideHit("top", "Arriba")}
