@@ -115,6 +115,7 @@ a{color:inherit}
 .hitHoja{inset:var(--ring);z-index:2;display:grid;place-items:center}
 .hitVidrio{inset:max(17%,22px);z-index:3}
 .hitHerraje{position:absolute;z-index:5;bottom:6px;left:6px;width:24px;height:24px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:12px;display:grid;place-items:center}
+.cierreCentral{position:absolute;top:50%;transform:translate(-50%,-50%);z-index:6;width:22px;height:22px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:11px;border:0;padding:0;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}
 .motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#2870a2;font-size:18px;pointer-events:none}
 .pane em{position:absolute;z-index:4;bottom:4px;right:34px;font-size:8px;font-style:normal;color:#325248;pointer-events:none}
 .openingLines{position:absolute;inset:0;display:block;background:linear-gradient(32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%),linear-gradient(-32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%);pointer-events:none}
@@ -2391,15 +2392,47 @@ function motionGlyph(wing, spec) {
   return (wingDefs.find((w) => w.id === wing) || {}).icon || "?";
 }
 
+const SLIDING_WINGS = ["sliding", "lift-slide", "folding-sliding"];
+const isSlidingLeaf = (n) => n.kind === "leaf" && SLIDING_WINGS.includes(n.wing);
+
+// A 4-leaf sliding group meeting at its middle run gets a central lock (cierre central) instead
+// of a mullion — matches real corredera hardware. Splits are always binary, so a flat run of 4
+// sliding leaves can end up as any nesting shape; scanning the flattened, x-sorted rects finds
+// the true visual center (boundary between leaf 2 and 3 of any contiguous 4-sliding run)
+// regardless of how the tree happens to be nested.
+function renderCentralLocks(tree, widthMm, heightMm) {
+  const rects = flattenToRects(tree, widthMm, heightMm).slice().sort((a, b) => a.x - b.x);
+  const markers = [];
+  for (let i = 0; i + 3 < rects.length; i++) {
+    const run = rects.slice(i, i + 4);
+    const sameRow = run.every((r) => Math.abs(r.y - run[0].y) < 0.01 && Math.abs(r.h - run[0].h) < 0.01);
+    const contiguous = run.every((r, idx) => idx === 0 || Math.abs(r.x - (run[idx - 1].x + run[idx - 1].w)) < 0.01);
+    const allSliding = run.every((r) => SLIDING_WINGS.includes(r.wing));
+    if (sameRow && contiguous && allSliding) {
+      const centerX = run[1].x + run[1].w;
+      markers.push(`<button type="button" class="cierreCentral" title="Cierre central" data-action="part-click" data-part="herraje" data-id="${run[2].id}" style="left:${((centerX / widthMm) * 100).toFixed(3)}%">⚿</button>`);
+    }
+  }
+  return markers.join("");
+}
+
 function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis, edges) {
   edges = edges || { top: true, right: true, bottom: true, left: true };
   if (node.kind === "split") {
     const axisClass = node.axis === "row" ? "axisRow" : "axisCol";
     const n = node.children.length;
     const children = node.children.map((child, i) => {
+      // Sliding leaves that meet mid-run don't get a structural travesaño between them —
+      // real correderas overlap/interlock there, so that shared edge renders far thinner
+      // than a genuine mullion shared by e.g. two casement leaves.
+      const slideNeighbor = (j) => j >= 0 && j < n && isSlidingLeaf(child) && isSlidingLeaf(node.children[j]);
       const childEdges = node.axis === "col"
-        ? { top: edges.top, bottom: edges.bottom, left: i === 0 ? edges.left : false, right: i === n - 1 ? edges.right : false }
-        : { top: i === 0 ? edges.top : false, bottom: i === n - 1 ? edges.bottom : false, left: edges.left, right: edges.right };
+        ? { top: edges.top, bottom: edges.bottom,
+            left: i === 0 ? edges.left : (slideNeighbor(i - 1) ? "overlap" : false),
+            right: i === n - 1 ? edges.right : (slideNeighbor(i + 1) ? "overlap" : false) }
+        : { top: i === 0 ? edges.top : (slideNeighbor(i - 1) ? "overlap" : false),
+            bottom: i === n - 1 ? edges.bottom : (slideNeighbor(i + 1) ? "overlap" : false),
+            left: edges.left, right: edges.right };
       return renderFrameNode(
         child,
         node.axis === "col" ? widthMm * node.ratios[i] : widthMm,
@@ -2420,7 +2453,8 @@ function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis, edges) 
   const herrajeHit = hasSash
     ? `<button type="button" class="hit hitHerraje" title="Herraje / manilla" data-action="part-click" data-part="herraje" data-id="${node.id}">⚙</button>`
     : "";
-  const borderWidth = `${edges.top ? 5 : 2}px ${edges.right ? 5 : 2}px ${edges.bottom ? 5 : 2}px ${edges.left ? 5 : 2}px`;
+  const edgeWidth = (v) => (v === true ? 5 : v === "overlap" ? 1 : 2);
+  const borderWidth = `${edgeWidth(edges.top)}px ${edgeWidth(edges.right)}px ${edgeWidth(edges.bottom)}px ${edgeWidth(edges.left)}px`;
   const isSideFocused = (side) => node.id === selectedId && state.focusPart === "marco" && state.focusSide === side;
   const marcoSideHit = (side, label) => `<button type="button" class="hit hitMarcoSide hitMarco${side.charAt(0).toUpperCase()}${side.slice(1)} ${isSideFocused(side) ? "marcoSideFocus" : ""}" title="Marco · Lado ${label}" data-action="part-click" data-part="marco" data-side="${side}" data-id="${node.id}" aria-label="Marco - Lado ${label} de ${esc(wingName(node.wing))}"></button>`;
   return `<div class="pane ${node.id === selectedId ? "selectedPane" : ""}" style="flex:${flexBasis};border-width:${borderWidth}" data-leaf="${node.id}">
@@ -2533,7 +2567,7 @@ function todayStr() {
 }
 
 function renderCotizacionDoc(calc, sys, glass, color) {
-  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}</div>`;
+  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}</div>`;
   const specRows = [
     ["Dimensiones", `${state.width.toLocaleString()} mm × ${state.height.toLocaleString()} mm`],
     ["Perfil del sistema", `${esc(state.brand)} - ${esc(sys.name)} / ${esc(color.name)}`],
@@ -2805,7 +2839,7 @@ function renderApp() {
     : state.view === "3D"
     ? `<div class="scene3dSlot" id="scene3dSlot"></div><div class="scene3dHint">Arrastra para rotar · rueda para acercar · clic derecho para desplazar</div>`
     : `<div class="modelStage">
-        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}</div>
+        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}</div>
       </div>`;
 
   const visualPanel = `<section class="visualPanel">
