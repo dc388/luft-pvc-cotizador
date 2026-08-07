@@ -72,7 +72,7 @@ textarea{background:color-mix(in srgb, var(--paper) 85%, transparent);color:var(
 a{color:inherit}
 .glass{background:var(--glass-spec),var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);border:1px solid var(--glass-border);box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight),var(--glass-bevel)}
 
-.topbar{height:76px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;background:var(--glass-spec),var(--glass-bg-strong);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);border-bottom:1px solid var(--glass-border);box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight),var(--glass-bevel);position:sticky;top:0;z-index:20;gap:12px}
+.topbar{height:76px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;background:var(--glass-spec),var(--glass-bg-strong);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);border:1px solid var(--glass-border);border-radius:var(--r-2xl);box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight),var(--glass-bevel);position:sticky;top:14px;z-index:20;gap:12px;margin:0 16px 14px}
 .brand{color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:12px;letter-spacing:.08em;font-size:18px}
 .brand b{color:var(--accent);transition:color .2s}
 .brandMark{width:38px;height:38px;border-radius:50%;background:linear-gradient(140deg, color-mix(in srgb, var(--accent) 88%, #6cd48a), var(--accent));color:#fff;display:grid;place-items:center;font-weight:900;transition:background .2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 10px color-mix(in srgb, var(--accent) 55%, transparent)}
@@ -85,11 +85,12 @@ a{color:inherit}
 .selfCheckBadge.ok{background:color-mix(in srgb, var(--ok-bg) 75%, transparent);color:var(--ok-fg);border-color:color-mix(in srgb, var(--ok-fg) 25%, transparent)}
 .selfCheckBadge.warn{background:color-mix(in srgb, var(--warn-bg) 75%, transparent);color:var(--warn-fg);border-color:color-mix(in srgb, var(--warn-fg) 25%, transparent)}
 
-.moduleNav{height:42px;display:flex;justify-content:center;gap:4px;background:var(--glass-spec),var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);border-bottom:1px solid var(--glass-border);position:sticky;top:76px;z-index:19}
-.moduleNav button{border:0;background:transparent;padding:0 24px;font-size:11px;color:var(--muted);border-bottom:2px solid transparent}
-.moduleNav button.active{color:var(--accent);font-weight:bold;border-bottom-color:var(--accent)}
+.moduleNav{height:42px;display:flex;justify-content:center;gap:4px;background:var(--glass-spec),var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);border:1px solid var(--glass-border);border-radius:var(--r-pill);box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight),var(--glass-bevel);position:sticky;top:98px;z-index:19;margin:0 16px 8px;overflow:hidden}
+.moduleNav button{border:0;background:transparent;padding:0 24px;margin:6px 0;font-size:11px;color:var(--muted);border-radius:var(--r-pill);transition:transform .12s cubic-bezier(.32,1.5,.5,1),background .2s,color .15s}
+.moduleNav button.active{color:#fff;font-weight:bold;background:var(--accent);box-shadow:0 3px 10px -2px color-mix(in srgb, var(--accent) 60%, transparent)}
+.moduleNav button:active{transform:scale(.94)}
 
-.workspace{display:grid;grid-template-columns:360px minmax(460px,1fr) 390px;min-height:calc(100vh - 76px)}
+.workspace{display:grid;grid-template-columns:360px minmax(460px,1fr) 390px;min-height:calc(100vh - 140px)}
 .configPanel,.quotePanel{background:var(--glass-spec),var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(200%) contrast(1.03);backdrop-filter:blur(var(--glass-blur)) saturate(200%) contrast(1.03);padding:28px;border-right:1px solid var(--glass-border);overflow:auto}
 .quotePanel{border-right:0;border-left:1px solid var(--glass-border);padding:0 26px 24px}
 .eyebrow{color:var(--accent);font-weight:bold;margin-bottom:10px}
@@ -100,13 +101,13 @@ a{color:inherit}
 .step div{display:flex;flex-direction:column;gap:3px}
 .step b{font-size:13px}
 .step small{color:var(--muted);font-size:11px}
-.segmented{display:grid;grid-template-columns:1fr 1fr;margin:14px 0 12px;border:1px solid var(--glass-border);border-radius:18px;padding:3px;background:color-mix(in srgb, var(--paper) 55%, transparent)}
-.segmented button{border:0;background:transparent;padding:10px;font-size:10px;font-weight:800;color:var(--muted);border-radius:11px}
+.segmented{display:grid;grid-template-columns:1fr 1fr;margin:14px 0 12px;border:1px solid var(--glass-border);border-radius:var(--r-pill);padding:3px;background:color-mix(in srgb, var(--paper) 55%, transparent)}
+.segmented button{border:0;background:transparent;padding:10px;font-size:10px;font-weight:800;color:var(--muted);border-radius:var(--r-pill)}
 .segmented button.selected{background:var(--accent);color:#fff;box-shadow:0 3px 10px -2px color-mix(in srgb, var(--accent) 60%, transparent)}
 .configPanel label,.additional label{display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--muted);font-weight:bold;margin-top:10px}
 .inputGrid{display:grid;grid-template-columns:1fr 1fr 80px;gap:8px}
 .inputGrid.two{grid-template-columns:1fr 1fr}
-.summaryCard{margin-top:16px;display:grid;grid-template-columns:1fr 1.4fr;border:1px solid var(--glass-border);border-radius:18px;overflow:hidden}
+.summaryCard{margin-top:16px;display:grid;grid-template-columns:1fr 1.4fr;border:1px solid var(--glass-border);border-radius:var(--r-md);overflow:hidden}
 .summaryCard span,.summaryCard b{padding:9px;font-size:10px;border-bottom:1px solid var(--glass-border)}
 .summaryCard span{background:color-mix(in srgb, var(--paper) 60%, transparent);color:var(--muted)}
 .sourceNote{font-size:9px;color:var(--muted);line-height:1.4;margin:6px 0 0}
@@ -115,11 +116,11 @@ a{color:inherit}
 .visualPanel{display:flex;flex-direction:column;min-width:0}
 .visualHeader{height:54px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:9px;letter-spacing:.09em;color:var(--muted);background:var(--glass-spec),var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);border-bottom:1px solid var(--glass-border)}
 .statusDot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4bb17c;margin-right:8px}
-.viewSwitch{display:flex;background:color-mix(in srgb, var(--paper) 55%, transparent);border-radius:14px;padding:2px}
-.viewSwitch button{border:0;background:transparent;font-size:10px;padding:7px 12px;border-radius:11px;color:var(--ink)}
+.viewSwitch{display:flex;background:color-mix(in srgb, var(--paper) 55%, transparent);border-radius:var(--r-pill);padding:2px}
+.viewSwitch button{border:0;background:transparent;font-size:10px;padding:7px 12px;border-radius:var(--r-pill);color:var(--ink)}
 .viewSwitch .active{background:var(--glass-spec),var(--glass-bg-strong);box-shadow:0 2px 8px -2px rgba(0,0,0,.15)}
 .presetRow{display:flex;gap:6px;padding:8px 22px;border-bottom:1px solid var(--glass-border);background:var(--glass-spec),var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur));backdrop-filter:blur(var(--glass-blur));overflow-x:auto}
-.presetRow button{border:1px solid var(--glass-border);background:color-mix(in srgb, var(--paper) 60%, transparent);padding:6px 12px;border-radius:20px;font-size:9px;color:var(--ink);white-space:nowrap}
+.presetRow button{border:1px solid var(--glass-border);background:color-mix(in srgb, var(--paper) 60%, transparent);padding:6px 12px;border-radius:var(--r-pill);font-size:9px;color:var(--ink);white-space:nowrap}
 .presetRow button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .canvas.view-3D .canvasStage{padding:20px}
 .scene3dSlot{width:100%;height:100%;position:relative;min-height:1px}
@@ -173,22 +174,33 @@ a{color:inherit}
 .motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#2870a2;font-size:18px;pointer-events:none}
 .openingLines{position:absolute;inset:0;display:block;background:linear-gradient(32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%),linear-gradient(-32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%);pointer-events:none}
 .paneDim{position:absolute;z-index:4;bottom:3px;left:50%;transform:translateX(-50%);color:var(--label-ink,#274d3e);font-size:7px;letter-spacing:.02em;font-variant-numeric:tabular-nums;pointer-events:none;white-space:nowrap;text-shadow:0 1px 3px rgba(255,255,255,.7),0 1px 3px rgba(0,0,0,.35)}
-.hoverTip{position:absolute;z-index:20;pointer-events:none;top:0;left:0;transform:translate(-9999px,-9999px);opacity:0;transition:opacity .08s;background:var(--glass-spec),var(--glass-bg-strong);-webkit-backdrop-filter:blur(var(--glass-blur));backdrop-filter:blur(var(--glass-blur));border:1px solid var(--glass-border);border-radius:9px;padding:5px 10px;font-size:10px;font-weight:600;color:var(--ink);box-shadow:0 6px 18px -6px rgba(0,0,0,.35);white-space:nowrap}
+.hoverTip{position:absolute;z-index:20;pointer-events:none;top:0;left:0;transform:translate(-9999px,-9999px);opacity:0;transition:opacity .08s;background:var(--glass-spec),var(--glass-bg-strong);-webkit-backdrop-filter:blur(var(--glass-blur));backdrop-filter:blur(var(--glass-blur));border:1px solid var(--glass-border);border-radius:var(--r-pill);padding:5px 10px;font-size:10px;font-weight:600;color:var(--ink);box-shadow:0 6px 18px -6px rgba(0,0,0,.35);white-space:nowrap}
 .hoverTip.show{opacity:1}
-.dim{position:absolute;color:var(--muted);font-size:10px;letter-spacing:.07em}
-.dim.top{top:40px;left:19%;right:19%;border-top:1px solid var(--line);text-align:center}
-.dim.top span{background:var(--paper);padding:0 8px;position:relative;top:-7px}
-.dim.side{left:42px;top:20%;bottom:20%;border-left:1px solid var(--line);display:flex;align-items:center}
-.dim.side span{background:var(--paper);padding:6px;transform:rotate(-90deg);margin-left:-24px}
-.editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--glass-spec),var(--glass-bg-strong);-webkit-backdrop-filter:blur(16px) saturate(200%) contrast(1.03);backdrop-filter:blur(16px) saturate(200%) contrast(1.03);color:var(--accent);border:1px solid color-mix(in srgb, var(--accent) 35%, var(--glass-border));padding:7px 11px;border-radius:20px;font-size:8px;letter-spacing:.06em;text-align:center;max-width:70%;z-index:7;box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight),var(--glass-bevel)}
-.specChip{position:absolute;left:24px;bottom:22px;background:var(--glass-spec),var(--glass-bg-strong);-webkit-backdrop-filter:blur(16px) saturate(200%) contrast(1.03);backdrop-filter:blur(16px) saturate(200%) contrast(1.03);border:1px solid var(--glass-border);border-radius:20px;padding:10px 13px;display:flex;flex-direction:column;font-size:10px;gap:3px;box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight),var(--glass-bevel)}
+.dimLine{position:absolute;pointer-events:none}
+/* -15px compensates for .window's own 15px border -- absolute left/right:0 would otherwise
+   align to the padding edge (inside the frame), dimensioning the daylight opening instead of
+   the real overall opening size construction actually cares about. */
+.dimLineH{left:-15px;right:-15px;height:0;border-top:1px solid var(--muted)}
+.dimLineV{top:-15px;bottom:-15px;width:0;border-left:1px solid var(--muted)}
+.dimTick{position:absolute;background:var(--muted)}
+.dimLineH .dimTick{top:-4px;width:1px;height:9px;transform:rotate(35deg)}
+.dimLineH .dimTick.l{left:0}
+.dimLineH .dimTick.r{right:0}
+.dimLineV .dimTick{left:-4px;width:9px;height:1px;transform:rotate(35deg)}
+.dimLineV .dimTick.t{top:0}
+.dimLineV .dimTick.b{bottom:0}
+.dimLabel{position:absolute;top:50%;left:50%;font-size:9px;letter-spacing:.05em;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;background:var(--paper);padding:0 5px}
+.dimLabelH{transform:translate(-50%,-50%)}
+.dimLabelV{transform:translate(-50%,-50%) rotate(-90deg)}
+.editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--glass-spec),var(--glass-bg-strong);-webkit-backdrop-filter:blur(16px) saturate(200%) contrast(1.03);backdrop-filter:blur(16px) saturate(200%) contrast(1.03);color:var(--accent);border:1px solid color-mix(in srgb, var(--accent) 35%, var(--glass-border));padding:7px 11px;border-radius:var(--r-pill);font-size:8px;letter-spacing:.06em;text-align:center;max-width:70%;z-index:7;box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight),var(--glass-bevel)}
+.specChip{position:absolute;left:24px;bottom:22px;background:var(--glass-spec),var(--glass-bg-strong);-webkit-backdrop-filter:blur(16px) saturate(200%) contrast(1.03);backdrop-filter:blur(16px) saturate(200%) contrast(1.03);border:1px solid var(--glass-border);border-radius:var(--r-pill);padding:10px 13px;display:flex;flex-direction:column;font-size:10px;gap:3px;box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight),var(--glass-bevel)}
 .specChip span{color:var(--muted)}
 .metricRow{height:74px;display:grid;grid-template-columns:repeat(4,1fr);background:var(--glass-spec),var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur));backdrop-filter:blur(var(--glass-blur));border-top:1px solid var(--glass-border)}
 .metricRow div{padding:16px;border-right:1px solid var(--glass-border);display:flex;flex-direction:column;gap:8px}
 .metricRow strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 
-.toolbox{position:relative;flex:0 0 auto;align-self:flex-start;margin-top:16px;background:var(--glass-spec),var(--glass-bg-strong);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);border:1px solid var(--glass-border);border-radius:22px;padding:12px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight),var(--glass-bevel);max-height:calc(100% - 32px);overflow:auto}
-.explorerTree{display:flex;flex-direction:column;gap:2px;margin-top:6px;border:1px solid var(--glass-border);border-radius:14px;overflow:hidden}
+.toolbox{position:relative;flex:0 0 auto;align-self:flex-start;margin-top:16px;background:var(--glass-spec),var(--glass-bg-strong);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);backdrop-filter:blur(var(--glass-blur)) saturate(205%) contrast(1.04);border:1px solid var(--glass-border);border-radius:var(--r-xl);padding:12px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight),var(--glass-bevel);max-height:calc(100% - 32px);overflow:auto}
+.explorerTree{display:flex;flex-direction:column;gap:2px;margin-top:6px;border:1px solid var(--glass-border);border-radius:var(--r-sm);overflow:hidden}
 .explorerLeaf{text-align:left;padding:7px 10px;font-size:9px;font-weight:bold;background:color-mix(in srgb, var(--paper) 55%, transparent);border:0;border-bottom:1px solid var(--glass-border);color:var(--ink);cursor:pointer}
 .explorerLeaf.active{background:color-mix(in srgb, var(--accent) 16%, var(--paper));color:var(--accent)}
 .explorerMarco{text-align:left;padding:8px 10px;font-size:9.5px;font-weight:800;letter-spacing:.04em;background:color-mix(in srgb, var(--accent) 8%, var(--paper) 55%);border:0;border-bottom:1px solid var(--glass-border);color:var(--ink);cursor:pointer}
@@ -207,16 +219,16 @@ a{color:inherit}
 .openingActions{display:flex;align-items:center;gap:2px;padding:0 6px;background:color-mix(in srgb, var(--paper) 55%, transparent)}
 .openingActions button{border:0;background:transparent;color:var(--muted);font-size:11px;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;cursor:pointer}
 .openingActions button:hover{background:color-mix(in srgb, var(--accent) 20%, transparent);color:var(--accent)}
-.sideEditor{border:1px solid var(--glass-border);border-radius:14px;padding:10px;margin-top:8px;display:flex;flex-direction:column;gap:8px;background:color-mix(in srgb, var(--paper) 40%, transparent)}
+.sideEditor{border:1px solid var(--glass-border);border-radius:var(--r-sm);padding:10px;margin-top:8px;display:flex;flex-direction:column;gap:8px;background:color-mix(in srgb, var(--paper) 40%, transparent)}
 .sideEditor b{font-size:9px;letter-spacing:.06em;color:var(--accent)}
 .sideEditor label{display:flex;flex-direction:column;gap:4px;font-size:9px;color:var(--muted)}
 .sideEditor .checkRow{flex-direction:row;align-items:center;gap:6px}
 .toolboxGroup{display:flex;flex-direction:column;gap:6px}
 .toolboxGroup>span{font-size:8px;letter-spacing:.08em;color:var(--muted);font-weight:bold}
 .toolboxGrid{display:grid;grid-template-columns:repeat(4,28px);gap:5px}
-.toolboxGrid button{width:28px;height:28px;border:1px solid var(--glass-border);background:color-mix(in srgb, var(--paper) 55%, transparent);border-radius:10px;font-size:14px;color:var(--accent);display:grid;place-items:center;padding:0}
+.toolboxGrid button{width:28px;height:28px;border:1px solid var(--glass-border);background:color-mix(in srgb, var(--paper) 55%, transparent);border-radius:var(--r-xs);font-size:14px;color:var(--accent);display:grid;place-items:center;padding:0}
 .toolboxGrid button.active{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 3px 10px -2px color-mix(in srgb, var(--accent) 60%, transparent)}
-.toolboxAction{width:100%;border:1px solid var(--glass-border);background:color-mix(in srgb, var(--paper) 55%, transparent);border-radius:12px;padding:7px 8px;font-size:9px;text-align:left;color:var(--ink)}
+.toolboxAction{width:100%;border:1px solid var(--glass-border);background:color-mix(in srgb, var(--paper) 55%, transparent);border-radius:var(--r-sm);padding:7px 8px;font-size:9px;text-align:left;color:var(--ink)}
 .toolboxAction:disabled{opacity:.4;cursor:not-allowed}
 
 .sectionRender{width:70%;display:grid;grid-template-columns:220px 1fr;gap:25px;align-items:center}
@@ -230,12 +242,12 @@ a{color:inherit}
 .quoteHead{height:72px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
 .quoteHead>div{display:flex;flex-direction:column;gap:4px}
 .quoteHead strong{font-size:20px}
-.badge{background:color-mix(in srgb, var(--ok-bg) 78%, transparent);color:var(--ok-fg)!important;padding:7px 9px;border-radius:20px;letter-spacing:0!important;font-size:10px;border:1px solid color-mix(in srgb, var(--ok-fg) 22%, transparent)}
+.badge{background:color-mix(in srgb, var(--ok-bg) 78%, transparent);color:var(--ok-fg)!important;padding:7px 9px;border-radius:var(--r-pill);letter-spacing:0!important;font-size:10px;border:1px solid color-mix(in srgb, var(--ok-fg) 22%, transparent)}
 .badge.warning{background:color-mix(in srgb, var(--warn-bg) 78%, transparent)!important;color:var(--warn-fg)!important;border-color:color-mix(in srgb, var(--warn-fg) 22%, transparent)}
 .warnings{background:color-mix(in srgb, var(--warn-bg) 80%, transparent);border:1px solid var(--warn-line);border-radius:12px;margin:10px 0;padding:8px}
 .warnings p{margin:3px;font-size:9px;color:var(--warn-fg)}
 
-.componentEditor{border:1px solid var(--glass-border);border-radius:20px;overflow:hidden;margin:10px 0 14px;box-shadow:var(--glass-shadow)}
+.componentEditor{border:1px solid var(--glass-border);border-radius:var(--r-lg);overflow:hidden;margin:10px 0 14px;box-shadow:var(--glass-shadow)}
 .componentTitle{background:color-mix(in srgb, var(--accent) 88%, transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;padding:12px;display:grid;grid-template-columns:1fr auto;gap:3px;transition:background .2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
 .componentTitle span{grid-column:1/3;font-size:7px;letter-spacing:.14em;color:#ffffffbb}
 .componentTitle b{font-size:15px}
@@ -249,7 +261,7 @@ a{color:inherit}
 .componentGrid .checkRow input{width:auto;height:auto}
 .partFocus{outline:2px solid var(--accent);outline-offset:1px;background:color-mix(in srgb, var(--accent) 10%, transparent)}
 .componentNote{font-size:8px;line-height:1.45;color:var(--warn-fg);background:var(--warn-bg);margin:0;padding:9px}
-.fullButton{width:100%;border:1.5px solid var(--accent);background:transparent;padding:12.5px 14px;border-radius:16px;color:var(--accent);font-size:11px;font-weight:bold;display:flex;justify-content:space-between;margin-top:10px;transition:background .15s,color .15s}
+.fullButton{width:100%;border:1.5px solid var(--accent);background:transparent;padding:12.5px 14px;border-radius:var(--r-lg);color:var(--accent);font-size:11px;font-weight:bold;display:flex;justify-content:space-between;margin-top:10px;transition:background .15s,color .15s}
 .fullButton:hover{background:var(--accent);color:#fff}
 
 .propertyGroup{margin-bottom:14px}
@@ -261,7 +273,7 @@ a{color:inherit}
 .line{display:flex;justify-content:space-between;padding:7px 0;color:var(--muted);font-size:11px}
 .line b{color:var(--ink)}
 .direct{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding:10px 0;font-size:10px}
-.totalBox{background:linear-gradient(150deg, color-mix(in srgb, var(--accent) 92%, transparent), color-mix(in srgb, var(--accent) 74%, #12a8b8));-webkit-backdrop-filter:blur(16px) saturate(200%) contrast(1.03);backdrop-filter:blur(16px) saturate(200%) contrast(1.03);color:#fff;border-radius:22px;padding:16px;margin:12px 0;transition:background .2s;box-shadow:0 14px 34px -10px color-mix(in srgb, var(--accent) 55%, transparent),inset 0 1px 0 rgba(255,255,255,.3)}
+.totalBox{background:linear-gradient(150deg, color-mix(in srgb, var(--accent) 92%, transparent), color-mix(in srgb, var(--accent) 74%, #12a8b8));-webkit-backdrop-filter:blur(16px) saturate(200%) contrast(1.03);backdrop-filter:blur(16px) saturate(200%) contrast(1.03);color:#fff;border-radius:var(--r-xl);padding:16px;margin:12px 0;transition:background .2s;box-shadow:0 14px 34px -10px color-mix(in srgb, var(--accent) 55%, transparent),inset 0 1px 0 rgba(255,255,255,.3)}
 .totalBox>span{color:#ffffffcc;display:flex;justify-content:space-between}
 .totalBox small{font-size:8px}
 .totalBox>strong{display:block;font-family:Georgia,serif;font-size:28px;margin:8px 0 14px;font-variant-numeric:tabular-nums}
@@ -367,6 +379,14 @@ a{color:inherit}
 .cutPieceTable th,.cutPieceTable td{border:1px solid var(--line);padding:4px 6px;text-align:left}
 @media print{.reportDoc{border:0;border-radius:0}.docPage{padding:0}.docPageBreak{border-top:0;page-break-before:always;margin-top:0;padding-top:26px}}
 
+.primary,.selfCheckBadge,.segmented button,.viewSwitch button,.presetRow button,.toolboxGrid button,.toolboxAction,.fullButton,.explorerSide,.explorerLeaf,.explorerMarco,.explorerGancho,.openingActions button{transition:transform .12s cubic-bezier(.32,1.5,.5,1),background .2s,border-color .2s,color .15s,box-shadow .2s}
+.primary:active,.segmented button:active,.viewSwitch button:active,.presetRow button:active,.toolboxGrid button:active,.toolboxAction:active,.fullButton:active,.explorerSide:active,.explorerLeaf:active,.explorerMarco:active,.explorerGancho:active,.openingActions button:active{transform:scale(.94)}
+.selfCheckBadge:active{transform:scale(.96)}
+@media (hover:hover){
+  .primary:hover{filter:brightness(1.06)}
+  .toolboxGrid button:not(.active):hover,.toolboxAction:not(:disabled):hover,.presetRow button:not(.active):hover{background:color-mix(in srgb, var(--accent) 14%, var(--paper) 55%)}
+}
+
 .sources{background:var(--surface);color:var(--muted);padding:18px 30px;font-size:9px;text-align:center;border-top:1px solid var(--line)}
 .sources a{color:var(--accent)}
 
@@ -388,6 +408,8 @@ a{color:inherit}
   .inputGrid{grid-template-columns:1fr 1fr}
   .inputGrid label:last-child{grid-column:1/3}
   .window{width:88%;border-width:9px}
+  .dimLineH{left:-9px;right:-9px}
+  .dimLineV{top:-9px;bottom:-9px}
   .moduleNav{top:auto;overflow:auto;justify-content:flex-start}
   .moduleNav button{padding:0 16px}
   .toolbox{display:none}
@@ -2707,6 +2729,26 @@ function renderAssemblyMarcoHits(showFocus) {
   return hit("top", "Arriba") + hit("bottom", "Abajo") + hit("left", "Izquierda") + hit("right", "Derecha");
 }
 
+// Real architectural dimension lines (extension ticks + a line spanning the full edge, label
+// centered on it) instead of a plain corner "W=4000mm" label -- the corner-label version didn't
+// read as something an architect would produce, and its position was only ever an approximate
+// guess at where the window happened to sit rather than tied to the window's real edges. These
+// are rendered as children of `.window` itself (already `position:relative`, `overflow:visible`
+// in every context that uses it) so they're pixel-exact regardless of aspect ratio or how big the
+// box is drawn -- the same markup works for the live canvas and the tiny report diagram alike.
+function renderDimLines(widthMm, heightMm, compact) {
+  const off = compact ? 20 : 26;
+  const fmt = (mm) => `${Math.round(mm).toLocaleString()} mm`;
+  return `<div class="dimLine dimLineH" style="top:-${off}px">
+      <span class="dimTick l"></span><span class="dimTick r"></span>
+      <span class="dimLabel dimLabelH">${fmt(widthMm)}</span>
+    </div>
+    <div class="dimLine dimLineV" style="left:-${off}px">
+      <span class="dimTick t"></span><span class="dimTick b"></span>
+      <span class="dimLabel dimLabelV">${fmt(heightMm)}</span>
+    </div>`;
+}
+
 function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis, edges) {
   edges = edges || { top: true, right: true, bottom: true, left: true };
   if (node.kind === "split") {
@@ -2903,7 +2945,7 @@ function todayStr() {
 }
 
 function renderCotizacionDoc(calc, sys, glass, color) {
-  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"};--ar:${state.width}/${state.height};--label-ink:${labelInkFor(color.hex)}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(false)}</div>`;
+  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"};--ar:${state.width}/${state.height};--label-ink:${labelInkFor(color.hex)}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(false)}${renderDimLines(state.width, state.height, true)}</div>`;
   const specRows = [
     ["Dimensiones", `${state.width.toLocaleString()} mm × ${state.height.toLocaleString()} mm`],
     ["Perfil del sistema", `${esc(state.brand)} - ${esc(sys.name)} / ${esc(color.name)}`],
@@ -3349,7 +3391,7 @@ function renderApp() {
     : state.view === "3D"
     ? `<div class="scene3dSlot" id="scene3dSlot"></div><div class="scene3dHint">Arrastra para rotar · rueda para acercar · clic derecho para desplazar</div>`
     : `<div class="modelStage" style="--ar:${state.width}/${state.height}">
-        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"};--label-ink:${labelInkFor(color.hex)}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(true)}</div>
+        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"};--label-ink:${labelInkFor(color.hex)}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(true)}${renderDimLines(state.width, state.height, false)}</div>
       </div>`;
 
   const visualPanel = `<section class="visualPanel">
@@ -3360,7 +3402,7 @@ function renderApp() {
     <div class="canvas view-${state.view.replace("ó", "o")}">
       ${state.tab === "Diseño" ? renderToolbox() : ""}
       <div class="canvasStage">
-        ${state.view !== "3D" ? `<div class="dim top"><span>W=${state.width.toLocaleString()} mm</span></div><div class="dim side"><span>H=${state.height.toLocaleString()} mm</span></div>` : ""}
+
         ${canvasInner}
         <div class="editHint">${esc(toolHint())}</div>
         <div class="specChip"><b>${esc(state.brand)} · ${esc(sys.name)}</b><span>${sys.depth} mm · ${esc(sys.chambers)} · ${state.rail ? `${state.rail} riel${state.rail > 1 ? "es" : ""}` : "practicable"}</span><span>${esc(glass.name)} · ${esc(state.face)}</span></div>
