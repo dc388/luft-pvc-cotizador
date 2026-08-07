@@ -127,14 +127,15 @@ a{color:inherit}
 .splitNode{display:flex;min-width:0;min-height:0;position:relative}
 .splitNode.axisCol{flex-direction:row}
 .splitNode.axisRow{flex-direction:column}
-.pane{flex:1;position:relative;border-style:solid;border-color:#24352e;background:var(--frame,#dfe2dc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);overflow:hidden;min-width:0;--ring:max(9%,12px)}
+.pane{flex:1;position:relative;border-style:solid;border-color:#24352e;background:linear-gradient(135deg, color-mix(in srgb, var(--frame,#dfe2dc) 80%, white) 0%, var(--frame,#dfe2dc) 42%, color-mix(in srgb, var(--frame,#dfe2dc) 78%, black) 100%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.3),inset 0 0 0 2px rgba(255,255,255,.06);overflow:hidden;min-width:0;--ring:max(9%,12px)}
 .whiteFrame .pane{border-color:#e8eae5}
 .pane.selectedPane{outline:4px solid var(--accent);outline-offset:-4px;box-shadow:inset 0 0 0 2px #14231c}
-.sashRing{position:absolute;inset:var(--ring);background:var(--frame,#dfe2dc);filter:brightness(.82);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.2);pointer-events:none}
-.glassFill{position:absolute;inset:max(17%,22px);background:linear-gradient(145deg,#9cbec4cc,#e9f2f0cc 55%,#91b8c2cc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);pointer-events:none;overflow:hidden}
-.glassFill:after{content:"";position:absolute;width:160%;height:14px;background:#ffffff44;transform:rotate(-35deg);top:24%;left:-30%}
-.hit{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer}
-.hit:hover{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent)}
+.sashRing{position:absolute;inset:var(--ring);background:linear-gradient(135deg, color-mix(in srgb, var(--frame,#dfe2dc) 62%, black) 0%, color-mix(in srgb, var(--frame,#dfe2dc) 90%, white) 48%, color-mix(in srgb, var(--frame,#dfe2dc) 58%, black) 100%);box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.55),0 0 0 1.5px rgba(255,255,255,.3);pointer-events:none}
+.glassFill{position:absolute;inset:max(17%,22px);background:linear-gradient(150deg,#d3edf1 0%,#f1fafb 30%,#b6dde3 62%,#7fb4bf 100%);box-shadow:inset 0 0 0 1.5px rgba(10,30,35,.4),inset 0 10px 18px -8px rgba(255,255,255,.8);pointer-events:none;overflow:hidden}
+.glassFill:after{content:"";position:absolute;width:170%;height:14%;min-height:10px;background:linear-gradient(90deg,transparent,#ffffffb0,transparent);transform:rotate(-35deg);top:18%;left:-35%}
+.glassFill:before{content:"";position:absolute;width:170%;height:7%;min-height:5px;background:linear-gradient(90deg,transparent,#ffffff70,transparent);transform:rotate(-35deg);top:55%;left:-35%}
+.hit{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer;transition:background .1s,box-shadow .1s}
+.hit:hover{background:color-mix(in srgb, var(--accent) 38%, transparent);box-shadow:inset 0 0 0 2px var(--accent)}
 .hitMarcoSide{z-index:1}
 .hitMarcoSide.marcoSideFocus{background:color-mix(in srgb, var(--accent) 45%, transparent);box-shadow:inset 0 0 0 2px var(--accent)}
 .hitMarcoTop{top:0;left:0;right:0;height:var(--ring)}
@@ -144,13 +145,14 @@ a{color:inherit}
 .hitHoja{inset:var(--ring);z-index:2;display:grid;place-items:center}
 .hitVidrio{inset:max(17%,22px);z-index:3}
 .hitVidrioSide{z-index:4}
-.hitVidrioTop{top:max(17%,22px);left:max(17%,22px);right:max(17%,22px);height:10px}
-.hitVidrioBottom{bottom:max(17%,22px);left:max(17%,22px);right:max(17%,22px);height:10px}
-.hitVidrioLeft{top:max(17%,22px);bottom:max(17%,22px);left:max(17%,22px);width:10px}
-.hitVidrioRight{top:max(17%,22px);bottom:max(17%,22px);right:max(17%,22px);width:10px}
-.hitHerraje{position:absolute;z-index:5;bottom:6px;left:6px;width:24px;height:24px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:12px;display:grid;place-items:center}
-.hitAssemblyMarco{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer;z-index:8}
-.hitAssemblyMarco:hover{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent)}
+.hitVidrioTop{top:max(17%,22px);left:max(17%,22px);right:max(17%,22px);height:16px}
+.hitVidrioBottom{bottom:max(17%,22px);left:max(17%,22px);right:max(17%,22px);height:16px}
+.hitVidrioLeft{top:max(17%,22px);bottom:max(17%,22px);left:max(17%,22px);width:16px}
+.hitVidrioRight{top:max(17%,22px);bottom:max(17%,22px);right:max(17%,22px);width:16px}
+.hitHerraje{position:absolute;z-index:5;bottom:6px;left:6px;width:18px;height:18px;border-radius:50%;background:#ffffffb0;color:#274d3e;font-size:10px;display:grid;place-items:center;transition:background .1s,box-shadow .1s}
+.hitHerraje:hover{background:color-mix(in srgb, var(--accent) 55%, #ffffffd9);box-shadow:inset 0 0 0 2px var(--accent)}
+.hitAssemblyMarco{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer;z-index:8;transition:background .1s,box-shadow .1s}
+.hitAssemblyMarco:hover{background:color-mix(in srgb, var(--accent) 30%, transparent);box-shadow:inset 0 0 0 2px var(--accent)}
 .hitAssemblyMarco.marcoSideFocus{background:color-mix(in srgb, var(--accent) 55%, transparent);box-shadow:inset 0 0 0 2px var(--accent)}
 .hitAssemblyMarcoTop{top:-15px;left:-15px;right:-15px;height:15px}
 .hitAssemblyMarcoBottom{bottom:-15px;left:-15px;right:-15px;height:15px}
@@ -159,7 +161,9 @@ a{color:inherit}
 .cierreCentral{position:absolute;top:50%;transform:translate(-50%,-50%);z-index:6;width:22px;height:22px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:11px;border:0;padding:0;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}
 .motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#2870a2;font-size:18px;pointer-events:none}
 .openingLines{position:absolute;inset:0;display:block;background:linear-gradient(32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%),linear-gradient(-32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%);pointer-events:none}
-.paneDim{position:absolute;z-index:4;bottom:3px;left:50%;transform:translateX(-50%);color:#274d3e;font-size:7px;letter-spacing:.02em;font-variant-numeric:tabular-nums;pointer-events:none;white-space:nowrap;text-shadow:0 1px 2px #ffffffb0}
+.paneDim{position:absolute;z-index:4;bottom:3px;left:50%;transform:translateX(-50%);color:var(--label-ink,#274d3e);font-size:7px;letter-spacing:.02em;font-variant-numeric:tabular-nums;pointer-events:none;white-space:nowrap;text-shadow:0 1px 3px rgba(255,255,255,.7),0 1px 3px rgba(0,0,0,.35)}
+.hoverTip{position:absolute;z-index:20;pointer-events:none;top:0;left:0;transform:translate(-9999px,-9999px);opacity:0;transition:opacity .08s;background:var(--glass-bg-strong);-webkit-backdrop-filter:blur(var(--glass-blur));backdrop-filter:blur(var(--glass-blur));border:1px solid var(--glass-border);border-radius:9px;padding:5px 10px;font-size:10px;font-weight:600;color:var(--ink);box-shadow:0 6px 18px -6px rgba(0,0,0,.35);white-space:nowrap}
+.hoverTip.show{opacity:1}
 .dim{position:absolute;color:var(--muted);font-size:10px;letter-spacing:.07em}
 .dim.top{top:40px;left:19%;right:19%;border-top:1px solid var(--line);text-align:center}
 .dim.top span{background:var(--paper);padding:0 8px;position:relative;top:-7px}
@@ -1909,6 +1913,16 @@ const COMPANY = {
 
 const money = (v) => Number(v || 0).toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+// Relative luminance (WCAG) of a #rrggbb hex color -- used to pick a legible dimension-label
+// ink color regardless of how light or dark the chosen frame color is.
+function relLuminance(hex) {
+  const h = (hex || "#dfe2dc").replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255);
+  const lin = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+const labelInkFor = (hex) => (relLuminance(hex) > 0.45 ? "#1b2a23" : "#f1f5f2");
 const wingName = (id) => (wingDefs.find((w) => w.id === id) || {}).name || id;
 
 // ---------- TREE ----------
@@ -1961,6 +1975,7 @@ function defaultMarco() {
   };
 }
 const SIDE_LABEL = { top: "Arriba", bottom: "Abajo", left: "Izquierda", right: "Derecha" };
+const PART_LABEL = { marco: "Marco", hoja: "Hoja", vidrio: "Vidrio", herraje: "Herraje" };
 
 function createLeaf(wing, spec) {
   return { kind: "leaf", id: crypto.randomUUID(), wing: wing || "fixed", spec: Object.assign({ glass: "Heredar vidrio general", notes: "", mallorquina: false, sides: defaultSides(), glassSides: defaultGlassSides() }, defaultSpecFor(wing || "fixed"), spec || {}) };
@@ -2254,6 +2269,8 @@ const VIEW_MODES = ["2D", "3D", "Sección"];
 const PRESETS_3D = ["Frente", "Planta", "Perfil", "Isométrica"];
 let scene3d, camera3d, renderer3d, controls3d, canvas3d, raycaster3d;
 let clickable3d = [];
+let hovered3d = null;
+const hoverMat3d = new THREE.MeshStandardMaterial({ color: "#ffb020", roughness: 0.4, metalness: 0.15, emissive: "#ffb020", emissiveIntensity: 0.4 });
 
 function colorToHex3D(color) {
   if (color.hex) return color.hex;
@@ -2296,6 +2313,9 @@ function init3D() {
     if (Math.hypot(dx, dy) > 5) return; // was an orbit/pan drag, not a click
     handle3DClick(e);
   });
+  canvas3d.style.cursor = "grab";
+  canvas3d.addEventListener("pointermove", handle3DHover);
+  canvas3d.addEventListener("pointerleave", clear3DHover);
 
   requestAnimationFrame(animate3D);
 }
@@ -2350,6 +2370,7 @@ function buildScene3D() {
   const old = scene3d.getObjectByName("model");
   if (old) { scene3d.remove(old); disposeObject3D(old); }
   clickable3d = [];
+  hovered3d = null; // meshes from the previous build are about to be disposed -- drop any stale hover ref
 
   const group = new THREE.Group();
   group.name = "model";
@@ -2367,9 +2388,10 @@ function buildScene3D() {
   const selMat = new THREE.MeshStandardMaterial({ color: "#1D6CA6", roughness: 0.35, metalness: 0.2, emissive: "#1D6CA6", emissiveIntensity: 0.22 });
 
   function addBox(x, y, z, sx, sy, sz, mat, tag, selMatOverride) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.0005, sx), Math.max(0.0005, sy), Math.max(0.0005, sz)), tag && isSelectedPart(tag.id, tag.part, tag.side) ? (selMatOverride || selMat) : mat);
+    const restingMat = tag && isSelectedPart(tag.id, tag.part, tag.side) ? (selMatOverride || selMat) : mat;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.0005, sx), Math.max(0.0005, sy), Math.max(0.0005, sz)), restingMat);
     mesh.position.set(x, y, z);
-    if (tag) { mesh.userData = tag; clickable3d.push(mesh); }
+    if (tag) { mesh.userData = tag; mesh.userData.baseMaterial = restingMat; clickable3d.push(mesh); }
     group.add(mesh);
     return mesh;
   }
@@ -2472,6 +2494,44 @@ function handle3DClick(e) {
   state.focusSide = null;
   state.activeTool = { mode: "select" };
   render();
+}
+
+// Continuous pointermove raycasting so the user sees what they're about to click BEFORE
+// clicking -- mirrors the hover-preview convention standard in CAD tools (AutoCAD/ZWCAD
+// "selection preview") and the three.js pointermove-raycast hover pattern. Swaps in a
+// distinct hover material without touching the "selected" material baked in at build time
+// (mesh.userData.baseMaterial, set by buildScene3D's addBox), and restores it on hover-out.
+function handle3DHover(e) {
+  const rect = canvas3d.getBoundingClientRect();
+  const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  const ny = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster3d.setFromCamera({ x: nx, y: ny }, camera3d);
+  const hits = raycaster3d.intersectObjects(clickable3d, false);
+  const mesh = hits.length ? hits[0].object : null;
+  if (mesh === hovered3d) { if (mesh) positionHoverTip(e); return; }
+  if (hovered3d) hovered3d.material = hovered3d.userData.baseMaterial;
+  hovered3d = mesh;
+  const tip = document.getElementById("hoverTip");
+  if (mesh) {
+    mesh.material = hoverMat3d;
+    canvas3d.style.cursor = "pointer";
+    if (tip) {
+      const tag = mesh.userData;
+      tip.textContent = PART_LABEL[tag.part] + (tag.part === "marco" && tag.side ? " · " + SIDE_LABEL[tag.side] : "");
+      tip.classList.add("show");
+      positionHoverTip(e);
+    }
+  } else {
+    canvas3d.style.cursor = "grab";
+    if (tip) tip.classList.remove("show");
+  }
+}
+
+function clear3DHover() {
+  if (hovered3d) { hovered3d.material = hovered3d.userData.baseMaterial; hovered3d = null; }
+  canvas3d.style.cursor = "grab";
+  const tip = document.getElementById("hoverTip");
+  if (tip) tip.classList.remove("show");
 }
 
 // ---------- RENDER ----------
@@ -2711,7 +2771,7 @@ function todayStr() {
 }
 
 function renderCotizacionDoc(calc, sys, glass, color) {
-  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"};--ar:${state.width}/${state.height}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(false)}</div>`;
+  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"};--ar:${state.width}/${state.height};--label-ink:${labelInkFor(color.hex)}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(false)}</div>`;
   const specRows = [
     ["Dimensiones", `${state.width.toLocaleString()} mm × ${state.height.toLocaleString()} mm`],
     ["Perfil del sistema", `${esc(state.brand)} - ${esc(sys.name)} / ${esc(color.name)}`],
@@ -2993,7 +3053,7 @@ function renderApp() {
     : state.view === "3D"
     ? `<div class="scene3dSlot" id="scene3dSlot"></div><div class="scene3dHint">Arrastra para rotar · rueda para acercar · clic derecho para desplazar</div>`
     : `<div class="modelStage" style="--ar:${state.width}/${state.height}">
-        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(true)}</div>
+        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"};--label-ink:${labelInkFor(color.hex)}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(true)}</div>
       </div>`;
 
   const visualPanel = `<section class="visualPanel">
@@ -3008,6 +3068,7 @@ function renderApp() {
         ${canvasInner}
         <div class="editHint">${esc(toolHint())}</div>
         <div class="specChip"><b>${esc(state.brand)} · ${esc(sys.name)}</b><span>${sys.depth} mm · ${esc(sys.chambers)} · ${state.rail ? `${state.rail} riel${state.rail > 1 ? "es" : ""}` : "practicable"}</span><span>${esc(glass.name)} · ${esc(state.face)}</span></div>
+        <div id="hoverTip" class="hoverTip"></div>
       </div>
     </div>
     <div class="metricRow">
@@ -3218,6 +3279,39 @@ root.addEventListener("click", (e) => {
     render();
     return;
   }
+});
+
+// Positions the shared #hoverTip beside the cursor, relative to .canvasStage (its own
+// positioning context) -- reused by both the 2D delegated hover below and the 3D raycasting
+// hover in handle3DHover, so there is one tooltip and one placement rule for both views.
+function positionHoverTip(e) {
+  const tip = document.getElementById("hoverTip");
+  const stage = document.querySelector(".canvasStage");
+  if (!tip || !stage) return;
+  const rect = stage.getBoundingClientRect();
+  tip.style.transform = `translate(${e.clientX - rect.left + 16}px, ${e.clientY - rect.top + 16}px)`;
+}
+
+const HOVER_SELECTOR = ".hit,.hitAssemblyMarco,.cierreCentral";
+root.addEventListener("pointerover", (e) => {
+  const el = e.target.closest(HOVER_SELECTOR);
+  if (!el || !el.title) return;
+  const tip = document.getElementById("hoverTip");
+  if (!tip) return;
+  tip.textContent = el.title;
+  tip.classList.add("show");
+  positionHoverTip(e);
+});
+root.addEventListener("pointermove", (e) => {
+  if (!e.target.closest(HOVER_SELECTOR)) return;
+  const tip = document.getElementById("hoverTip");
+  if (tip && tip.classList.contains("show")) positionHoverTip(e);
+});
+root.addEventListener("pointerout", (e) => {
+  const el = e.target.closest(HOVER_SELECTOR);
+  if (!el || (e.relatedTarget && el.contains(e.relatedTarget))) return;
+  const tip = document.getElementById("hoverTip");
+  if (tip) tip.classList.remove("show");
 });
 
 function handleFieldChange(e) {
