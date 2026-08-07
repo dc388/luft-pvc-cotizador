@@ -2766,6 +2766,22 @@ function motionGlyph(wing, spec) {
 const SLIDING_WINGS = ["sliding", "lift-slide", "folding-sliding", "sliding-fixed"];
 const isSlidingLeaf = (n) => n.kind === "leaf" && SLIDING_WINGS.includes(n.wing);
 
+// Finds the leaf(s) that actually touch a given side of a subtree. Splits are always binary, so
+// a subtree built from repeated splitting can nest arbitrarily deep -- a split node's immediate
+// children are not necessarily the leaves touching its outer edge. Used so sliding-adjacency
+// checks compare true visual neighbors instead of tree siblings (mirrors flattenToRects' approach
+// in renderCentralLocks, which had to solve the same nesting problem).
+function edgeLeaves(node, side) {
+  if (node.kind === "leaf") return [node];
+  const axisMatches = (side === "left" || side === "right") ? node.axis === "col" : node.axis === "row";
+  if (axisMatches) {
+    const idx = (side === "left" || side === "top") ? 0 : node.children.length - 1;
+    return edgeLeaves(node.children[idx], side);
+  }
+  return node.children.reduce((a, c) => a.concat(edgeLeaves(c, side)), []);
+}
+const allSlidingLeaves = (leaves) => leaves.length > 0 && leaves.every(isSlidingLeaf);
+
 // A 4-leaf sliding group meeting at its middle run gets a central lock (cierre central) instead
 // of a mullion — matches real corredera hardware. Splits are always binary, so a flat run of 4
 // sliding leaves can end up as any nesting shape; scanning the flattened, x-sorted rects finds
@@ -2824,7 +2840,12 @@ function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis, edges) 
       // Sliding leaves that meet mid-run don't get a structural travesaño between them —
       // real correderas overlap/interlock there, so that shared edge renders far thinner
       // than a genuine mullion shared by e.g. two casement leaves.
-      const slideNeighbor = (j) => j >= 0 && j < n && isSlidingLeaf(child) && isSlidingLeaf(node.children[j]);
+      const slideNeighbor = (j) => {
+        if (j < 0 || j >= n) return false;
+        const side = node.axis === "col" ? (j < i ? "left" : "right") : (j < i ? "top" : "bottom");
+        const otherSide = { left: "right", right: "left", top: "bottom", bottom: "top" }[side];
+        return allSlidingLeaves(edgeLeaves(child, side)) && allSlidingLeaves(edgeLeaves(node.children[j], otherSide));
+      };
       const childEdges = node.axis === "col"
         ? { top: edges.top, bottom: edges.bottom,
             left: i === 0 ? edges.left : (slideNeighbor(i - 1) ? "overlap" : false),
