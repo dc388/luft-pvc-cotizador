@@ -87,13 +87,13 @@ a{color:inherit}
 .scene3dHint{position:absolute;bottom:14px;right:14px;font-size:8px;color:var(--muted);background:var(--surface);border:1px solid var(--line);padding:5px 9px;border-radius:20px;pointer-events:none}
 .canvas{position:relative;flex:1;min-height:500px;display:flex;align-items:stretch;gap:16px;padding:16px;background-color:var(--paper);background-image:linear-gradient(color-mix(in srgb, var(--ink) 6%, transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb, var(--ink) 6%, transparent) 1px,transparent 1px);background-size:28px 28px}
 .canvasStage{position:relative;flex:1;min-width:0;display:grid;place-items:center;padding:54px}
-.modelStage{width:min(76%,650px);perspective:1100px;position:relative;display:grid;place-items:center}
-.modelStage .window{width:100%;max-height:420px}
+.modelStage{width:min(76%,650px,calc(420px * var(--ar,1.818)));aspect-ratio:var(--ar,1.818);perspective:1100px;position:relative;display:grid;place-items:center}
+.modelStage .window{width:100%;height:100%}
 .view-3D .modelStage{transform-style:preserve-3d;transform:rotateY(-24deg) rotateX(3deg);filter:drop-shadow(28px 28px 24px var(--shadow))}
 .view-3D .window{transform-style:preserve-3d;box-shadow:none}
 .modelSide{position:absolute;top:0;right:-22px;width:24px;height:100%;background:linear-gradient(90deg,#0c1713,#35473f);transform-origin:left;transform:rotateY(90deg);border:1px solid #08100d}
 .modelSill{position:absolute;left:0;right:0;bottom:-20px;height:22px;background:linear-gradient(#23332c,#0d1814);transform-origin:top;transform:rotateX(-90deg)}
-.window{width:min(76%,650px);max-height:420px;border:15px solid #1d2924;background:linear-gradient(135deg,#b9d5d7,#e5eeee 45%,#afcdd0);display:flex;box-shadow:0 24px 40px var(--shadow);position:relative;min-height:190px}
+.window{width:min(76%,650px);aspect-ratio:var(--ar,1.818);border:15px solid #1d2924;background:linear-gradient(135deg,#b9d5d7,#e5eeee 45%,#afcdd0);display:flex;box-shadow:0 24px 40px var(--shadow);position:relative;min-height:0}
 .window.whiteFrame{border-color:#f7f7f2;box-shadow:0 0 0 1px #aeb8b1,0 24px 40px var(--shadow)}
 .splitNode{display:flex;min-width:0;min-height:0;position:relative}
 .splitNode.axisCol{flex-direction:row}
@@ -284,7 +284,7 @@ a{color:inherit}
 .docSpecTable td{border-bottom:1px solid var(--line);padding:7px 10px}
 .docSpecTable td:first-child{color:var(--muted);width:38%}
 .docDiagramBox{display:flex;align-items:center;justify-content:center;padding:16px;background:var(--paper);border-left:1px solid var(--line)}
-.docDiagramBox .window{width:100%;max-width:220px;max-height:140px;min-height:70px}
+.docDiagramBox .window{width:min(100%,220px,calc(140px * var(--ar,1.818)));aspect-ratio:var(--ar,1.818);min-height:0}
 .docDiagramBox .paneHardware,.docDiagramBox .paneDim,.docDiagramBox .pane em,.docDiagramBox .hitHerraje,.docDiagramBox .cierreCentral{display:none}
 .docTable{border-collapse:collapse;width:100%;font-size:9px;margin-bottom:4px}
 .docTable th,.docTable td{border:1px solid var(--line);padding:6px 8px;text-align:left}
@@ -2686,7 +2686,7 @@ function todayStr() {
 }
 
 function renderCotizacionDoc(calc, sys, glass, color) {
-  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(false)}</div>`;
+  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"};--ar:${state.width}/${state.height}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(false)}</div>`;
   const specRows = [
     ["Dimensiones", `${state.width.toLocaleString()} mm × ${state.height.toLocaleString()} mm`],
     ["Perfil del sistema", `${esc(state.brand)} - ${esc(sys.name)} / ${esc(color.name)}`],
@@ -2967,7 +2967,7 @@ function renderApp() {
     ? `<div class="sectionRender"><div class="profileSection"><span class="chamber"></span><span class="chamber"></span><span class="chamber"></span><i class="glassSection" style="width:${Math.max(8, glass.thickness / 2)}px"></i></div><div class="sectionInfo"><b>Sección de sistema</b><span>Profundidad: ${sys.depth} mm</span><span>Acristalamiento: ${glass.thickness} mm</span><span>${state.rail ? `${state.rail} riel${state.rail > 1 ? "es" : ""}` : "Doble contacto"}</span></div></div>`
     : state.view === "3D"
     ? `<div class="scene3dSlot" id="scene3dSlot"></div><div class="scene3dHint">Arrastra para rotar · rueda para acercar · clic derecho para desplazar</div>`
-    : `<div class="modelStage">
+    : `<div class="modelStage" style="--ar:${state.width}/${state.height}">
         <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(true)}</div>
       </div>`;
 
