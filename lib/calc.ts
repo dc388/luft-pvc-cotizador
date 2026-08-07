@@ -112,3 +112,77 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
     direct, sale, total: sale * qty, utility: (sale - direct) * qty, bars, waste,
   };
 }
+
+// ---------- CUT-LIST OPTIMIZER (real 1D bin packing, first-fit-decreasing) ----------
+export const BAR_LENGTH_MM = 5800;
+export const KERF_MM = 5;
+
+export type CutPiece = { label: string; length: number; angle: string };
+export type PackedBar = { pieces: CutPiece[]; used: number; waste: number };
+export type CutList = { marco: CutPiece[]; travesanos: CutPiece[]; hojas: CutPiece[]; junquillos: CutPiece[] };
+
+export function packBars(pieces: CutPiece[], barLength: number, kerf: number): PackedBar[] {
+  const sorted = [...pieces].sort((a, b) => b.length - a.length);
+  const bars: { pieces: CutPiece[] }[] = [];
+  for (const piece of sorted) {
+    let placed = false;
+    for (const bar of bars) {
+      const used = bar.pieces.reduce((a, p) => a + p.length, 0) + bar.pieces.length * kerf;
+      if (used + piece.length <= barLength) {
+        bar.pieces.push(piece);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) bars.push({ pieces: [piece] });
+  }
+  return bars.map((bar) => {
+    const used = bar.pieces.reduce((a, p) => a + p.length, 0) + Math.max(0, bar.pieces.length - 1) * kerf;
+    return { pieces: bar.pieces, used, waste: barLength - used };
+  });
+}
+
+// Derives real cut pieces from the tree: 4 outer marco pieces regardless of splits, one
+// travesaño per internal divider (its own actual cross-axis length), 4 hoja pieces per
+// non-fixed/inactive leaf (fixed/inactive leaves glaze straight into marco/travesaño, no
+// sash), and 4 junquillo (glazing bead) pieces per leaf.
+export function buildCutList(tree: FrameNode, width: number, height: number): CutList {
+  const marco: CutPiece[] = [
+    { label: "Marco: Abajo", length: width, angle: "45°" },
+    { label: "Marco: Arriba", length: width, angle: "45°" },
+    { label: "Marco: Izquierda", length: height, angle: "45°" },
+    { label: "Marco: Derecha", length: height, angle: "45°" },
+  ];
+  const travesanos: CutPiece[] = [];
+  (function walk(node: FrameNode, w: number, h: number) {
+    if (node.kind === "leaf") return;
+    const crossLen = Math.round(node.axis === "col" ? h : w);
+    for (let i = 0; i < node.children.length - 1; i++) travesanos.push({ label: "Travesaño", length: crossLen, angle: "90°" });
+    node.children.forEach((child, i) => {
+      const cw = node.axis === "col" ? w * node.ratios[i] : w;
+      const ch = node.axis === "row" ? h * node.ratios[i] : h;
+      walk(child, cw, ch);
+    });
+  })(tree, width, height);
+  const hojas: CutPiece[] = [];
+  const junquillos: CutPiece[] = [];
+  flattenToRects(tree, width, height).forEach((r, i) => {
+    const label = `Hoja ${String.fromCharCode(65 + i)}`;
+    const w = Math.round(r.w), h = Math.round(r.h);
+    if (r.wing !== "fixed" && r.wing !== "inactive") {
+      hojas.push(
+        { label: `${label}: Arriba`, length: w, angle: "45°" },
+        { label: `${label}: Abajo`, length: w, angle: "45°" },
+        { label: `${label}: Izquierda`, length: h, angle: "45°" },
+        { label: `${label}: Derecha`, length: h, angle: "45°" }
+      );
+    }
+    junquillos.push(
+      { label: `${label}: Arriba`, length: w, angle: "90°" },
+      { label: `${label}: Abajo`, length: w, angle: "90°" },
+      { label: `${label}: Izquierda`, length: h, angle: "90°" },
+      { label: `${label}: Derecha`, length: h, angle: "90°" }
+    );
+  });
+  return { marco, travesanos, hojas, junquillos };
+}

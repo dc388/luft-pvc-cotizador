@@ -1,10 +1,22 @@
-import type { FrameNode, LeafNode, PaneSpec, WingType } from "@/types/domain";
+import type {
+  FrameNode,
+  GlassSide,
+  GlassSides,
+  LeafNode,
+  Marco,
+  PaneSpec,
+  Side,
+  Sides,
+  WingType,
+} from "@/types/domain";
+import { wingDefs } from "@/data/wings";
 
 const OPENING_BY_WING: Record<WingType, string> = {
   fixed: "Sin apertura",
   sliding: "Corredera",
   "lift-slide": "Corredera elevadora",
   "folding-sliding": "Plegable corrediza",
+  "sliding-fixed": "Corredera fija (sin apertura)",
   "casement-in": "Abatible interior",
   "casement-out": "Abatible exterior",
   "tilt-turn": "Oscilobatiente",
@@ -24,15 +36,61 @@ const HANDLE_BY_WING: Partial<Record<WingType, string>> = {
   jalousie: "Manivela jalousie",
 };
 
+// Movable sliding-family wings only -- a "corredera fija" leaf sits in the same track group
+// visually (no travesaño between it and its movable siblings, see SLIDING_WINGS in lib/calc.ts
+// and components/editor) but has no rollers/handle/adapter of its own, so it's excluded here.
+export const MOVABLE_SLIDING_WINGS: WingType[] = ["sliding", "lift-slide", "folding-sliding"];
+
+// Every wing in the sliding family, including the non-movable "corredera fija" variant --
+// used wherever a shared-track visual rule applies (no structural mullion between neighbors).
+export const SLIDING_WINGS: WingType[] = ["sliding", "lift-slide", "folding-sliding", "sliding-fixed"];
+
+export const SIDE_LABEL: Record<keyof Sides, string> = { top: "Arriba", bottom: "Abajo", left: "Izquierda", right: "Derecha" };
+
 export function defaultSpecFor(wing: WingType): Partial<PaneSpec> {
-  const fixed = wing === "fixed" || wing === "inactive";
-  const directional = wing === "sliding" || wing === "lift-slide" || wing === "folding-sliding";
+  const fixed = wing === "fixed" || wing === "inactive" || wing === "sliding-fixed";
+  const movableSliding = MOVABLE_SLIDING_WINGS.includes(wing);
   return {
     state: wing === "inactive" ? "Inactiva" : fixed ? "Fija" : "Móvil",
     opening: OPENING_BY_WING[wing],
-    direction: directional ? "Derecha" : "N/A",
+    direction: movableSliding ? "Derecha" : "N/A",
     hardware: fixed ? "Sin herraje" : HARDWARE_BY_WING[wing] ?? "Roto · cierre multipunto",
     handle: fixed ? "Sin manilla" : HANDLE_BY_WING[wing] ?? "Harmony con tetones",
+    handlePosition: fixed ? 0 : 1000,
+    pocketType: movableSliding ? "Ninguno" : "N/A",
+    useGancho: movableSliding,
+    useAdaptador: movableSliding,
+  };
+}
+
+function defaultSide(): Side {
+  return { reinforcement: false, notes: "" };
+}
+
+export function defaultSides(): Sides {
+  return { top: defaultSide(), bottom: defaultSide(), left: defaultSide(), right: defaultSide() };
+}
+
+function defaultGlassSide(): GlassSide {
+  // 45°/45° = miter of a standard rectangular pane corner, matching what RA Workshop
+  // shows for a plain rectangular glass side (radio/arco only matter for shaped glass).
+  return { angulo1: 45, angulo2: 45, radio: 0, arco: 0, notes: "" };
+}
+
+export function defaultGlassSides(): GlassSides {
+  return { top: defaultGlassSide(), bottom: defaultGlassSide(), left: defaultGlassSide(), right: defaultGlassSide() };
+}
+
+export function defaultMarco(): Marco {
+  return {
+    profileCode: "",
+    reinforcement: false,
+    reinforcementCode: "",
+    mosquitero: false,
+    mosquiteroCode: "",
+    persiana: false,
+    persianaCode: "",
+    sides: defaultSides(),
   };
 }
 
@@ -41,7 +99,15 @@ export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>): 
     kind: "leaf",
     id: crypto.randomUUID(),
     wing,
-    spec: { ...defaultSpecFor(wing), glass: "Heredar vidrio general", notes: "", mallorquina: false, ...spec } as PaneSpec,
+    spec: {
+      glass: "Heredar vidrio general",
+      notes: "",
+      mallorquina: false,
+      sides: defaultSides(),
+      glassSides: defaultGlassSides(),
+      ...defaultSpecFor(wing),
+      ...spec,
+    } as PaneSpec,
   };
 }
 
@@ -121,6 +187,28 @@ export function updateSpec(tree: FrameNode, id: string, patch: Partial<PaneSpec>
   return mapLeaf(tree, id, (leaf) => ({ ...leaf, spec: { ...leaf.spec, ...patch } }));
 }
 
+export function updateSide(tree: FrameNode, id: string, side: keyof Sides, patch: Partial<Side>): FrameNode {
+  return mapLeaf(tree, id, (leaf) => ({
+    ...leaf,
+    spec: { ...leaf.spec, sides: { ...leaf.spec.sides, [side]: { ...leaf.spec.sides[side], ...patch } } },
+  }));
+}
+
+export function updateGlassSide(tree: FrameNode, id: string, side: keyof GlassSides, patch: Partial<GlassSide>): FrameNode {
+  return mapLeaf(tree, id, (leaf) => ({
+    ...leaf,
+    spec: { ...leaf.spec, glassSides: { ...leaf.spec.glassSides, [side]: { ...leaf.spec.glassSides[side], ...patch } } },
+  }));
+}
+
+export function updateMarco(marco: Marco, patch: Partial<Marco>): Marco {
+  return { ...marco, ...patch };
+}
+
+export function updateMarcoSide(marco: Marco, side: keyof Sides, patch: Partial<Side>): Marco {
+  return { ...marco, sides: { ...marco.sides, [side]: { ...marco.sides[side], ...patch } } };
+}
+
 // Collapses a split back into a single leaf, keeping the first leaf child's
 // wing/spec. Only meaningful when both children are leaves (see canMerge in
 // app/page.tsx) — collapsing a split with a sub-tree child would discard it.
@@ -157,4 +245,21 @@ export function flattenToRects(tree: FrameNode, width: number, height: number, x
     }
   });
   return rects;
+}
+
+export function isSlidingLeaf(node: FrameNode): boolean {
+  return node.kind === "leaf" && SLIDING_WINGS.includes(node.wing);
+}
+
+export function wingName(wing: WingType): string {
+  return wingDefs.find((w) => w.id === wing)?.name ?? wing;
+}
+
+// Glyph shown in the middle of a leaf's own hoja hit area: an arrow for movable sliding
+// wings (direction-dependent), "FIJO" for anything that doesn't open, otherwise the wing's
+// own toolbox icon.
+export function motionGlyph(wing: WingType, direction: string): string {
+  if (MOVABLE_SLIDING_WINGS.includes(wing)) return direction === "Izquierda" ? "←" : "→";
+  if (wing === "fixed" || wing === "inactive" || wing === "sliding-fixed") return "FIJO";
+  return wingDefs.find((w) => w.id === wing)?.icon ?? "?";
 }
