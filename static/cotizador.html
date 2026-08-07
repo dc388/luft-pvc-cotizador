@@ -285,6 +285,7 @@ a{color:inherit}
 .docSpecTable td:first-child{color:var(--muted);width:38%}
 .docDiagramBox{display:flex;align-items:center;justify-content:center;padding:16px;background:var(--paper);border-left:1px solid var(--line)}
 .docDiagramBox .window{width:100%;max-width:220px;max-height:140px;min-height:70px}
+.docDiagramBox .paneHardware,.docDiagramBox .paneDim,.docDiagramBox .pane em,.docDiagramBox .hitHerraje,.docDiagramBox .cierreCentral{display:none}
 .docTable{border-collapse:collapse;width:100%;font-size:9px;margin-bottom:4px}
 .docTable th,.docTable td{border:1px solid var(--line);padding:6px 8px;text-align:left}
 .docTable th{background:color-mix(in srgb, var(--accent) 8%, var(--paper));font-size:8.5px;letter-spacing:.02em;color:var(--ink)}
@@ -2468,8 +2469,10 @@ function renderCentralLocks(tree, widthMm, heightMm) {
   return markers.join("");
 }
 
-function renderAssemblyMarcoHits() {
-  const isFocused = (side) => state.focusScope === "assembly" && state.focusPart === "marco" && state.focusSide === side;
+function renderAssemblyMarcoHits(showFocus) {
+  // showFocus=false for the static report diagram -- the report must never reflect
+  // whatever happens to be selected in the live editor at the moment it's printed.
+  const isFocused = (side) => showFocus && state.focusScope === "assembly" && state.focusPart === "marco" && state.focusSide === side;
   const hit = (side, label) => `<button type="button" class="hitAssemblyMarco hitAssemblyMarco${side.charAt(0).toUpperCase()}${side.slice(1)} ${isFocused(side) ? "marcoSideFocus" : ""}" title="Marco de conjunto · Lado ${label}" data-action="part-click" data-scope="assembly" data-side="${side}" aria-label="Marco de conjunto - Lado ${label}"></button>`;
   return hit("top", "Arriba") + hit("bottom", "Abajo") + hit("left", "Izquierda") + hit("right", "Derecha");
 }
@@ -2666,7 +2669,7 @@ function todayStr() {
 }
 
 function renderCotizacionDoc(calc, sys, glass, color) {
-  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits()}</div>`;
+  const itemDiagram = `<div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, "", "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(false)}</div>`;
   const specRows = [
     ["Dimensiones", `${state.width.toLocaleString()} mm × ${state.height.toLocaleString()} mm`],
     ["Perfil del sistema", `${esc(state.brand)} - ${esc(sys.name)} / ${esc(color.name)}`],
@@ -2948,7 +2951,7 @@ function renderApp() {
     : state.view === "3D"
     ? `<div class="scene3dSlot" id="scene3dSlot"></div><div class="scene3dHint">Arrastra para rotar · rueda para acercar · clic derecho para desplazar</div>`
     : `<div class="modelStage">
-        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits()}</div>
+        <div class="window ${color.name === "Blanco" ? "whiteFrame" : ""}" style="--frame:${color.hex || "#dfe2dc"}">${renderFrameNode(state.tree, state.width, state.height, state.selectedId, "1 1 100%")}${renderCentralLocks(state.tree, state.width, state.height)}${renderAssemblyMarcoHits(true)}</div>
       </div>`;
 
   const visualPanel = `<section class="visualPanel">
