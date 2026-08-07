@@ -11,6 +11,7 @@ export const wingDefs: WingDef[] = [
   { id: "sliding", name: "Corrediza", icon: "⇆", group: "Corredera" },
   { id: "lift-slide", name: "Corredera elevadora", icon: "⇑", group: "Corredera", isNew: true },
   { id: "folding-sliding", name: "Plegable corrediza", icon: "»", group: "Corredera", isNew: true },
+  { id: "sliding-fixed", name: "Corredera fija", icon: "⇹", group: "Corredera", isNew: true },
   { id: "casement-in", name: "Abatible interior", icon: "◩", group: "Practicable" },
   { id: "casement-out", name: "Abatible exterior", icon: "◪", group: "Practicable" },
   { id: "tilt-turn", name: "Oscilobatiente", icon: "⌂", group: "Practicable" },

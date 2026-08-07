@@ -1,7 +1,37 @@
 export type Brand = "Aluplast" | "Deceuninck";
 export type Tab = "Resumen" | "Diseño" | "Consumo" | "Servicios" | "Informes";
-export type Report = "Oferta" | "Producción" | "Perfiles" | "Herrajes" | "Vidrio" | "Costos";
-export type ViewMode = "Frente" | "Sección" | "3D";
+export type Report = "Cotización" | "Optimización de corte" | "Pedido de vidrio" | "Producción" | "Herrajes" | "Costos";
+export type ViewMode = "2D" | "Sección" | "3D";
+export type ViewPreset3D = "Frente" | "Planta" | "Perfil" | "Isométrica";
+
+// One side (top/bottom/left/right) of a leaf's own marco, or of the assembly
+// marco — an independently selectable/editable sub-part, not just informative
+// text on the whole frame.
+export type Side = { reinforcement: boolean; notes: string };
+export type Sides = Record<"top" | "bottom" | "left" | "right", Side>;
+
+// One side of a leaf's glass/glazing bead — cut geometry of the junquillo
+// (length comes from the leaf rect itself; angulo1/angulo2/radio/arco describe
+// the corner cut), matching what RA Workshop shows under Vidrio > Lado.
+export type GlassSide = { angulo1: number; angulo2: number; radio: number; arco: number; notes: string };
+export type GlassSides = Record<"top" | "bottom" | "left" | "right", GlassSide>;
+
+// The marco of the whole opening (assembly-level frame), independent of each
+// leaf's own marco — lives at state level, not inside the tree.
+export type Marco = {
+  profileCode: string;
+  reinforcement: boolean;
+  reinforcementCode: string;
+  mosquitero: boolean;
+  mosquiteroCode: string;
+  persiana: boolean;
+  persianaCode: string;
+  sides: Sides;
+};
+
+// Which "level" the current selection focuses: a leaf inside the tree, or the
+// assembly marco (state.marco) that isn't part of the tree at all.
+export type FocusScope = "leaf" | "assembly";
 
 export type PaneSpec = {
   state: string;
@@ -13,6 +43,14 @@ export type PaneSpec = {
   notes: string;
   /** Exterior louvre shutter accessory (Mallorquina) — not a wing type, see lib/tree.ts. */
   mallorquina: boolean;
+  sides: Sides;
+  glassSides: GlassSides;
+  /** Pocket-system type; only meaningful for movable sliding wings (see MOVABLE_SLIDING_WINGS). */
+  pocketType: string;
+  useGancho: boolean;
+  useAdaptador: boolean;
+  /** Handle position along the leaf, in mm. 0 for fixed/inactive/sliding-fixed leaves. */
+  handlePosition: number;
 };
 
 // Opening/leaf types a cell in the composed window can be assigned, modeled on
@@ -22,6 +60,7 @@ export type WingType =
   | "sliding"
   | "lift-slide"
   | "folding-sliding"
+  | "sliding-fixed"
   | "casement-in"
   | "casement-out"
   | "tilt-turn"
@@ -78,6 +117,6 @@ export type System = {
 };
 
 export type GlassItem = { name: string; thickness: number; price: number; type: string };
-export type ColorItem = { name: string; code: string; factor: number };
+export type ColorItem = { name: string; code: string; factor: number; hex?: string };
 export type ProfileItem = { code: string; name: string; role: string; status: string };
 export type ProfileFamily = { system: string; name: string; code: string; priceEUR: number; variants: number };
