@@ -1,5 +1,5 @@
 import type { ColorItem, FrameNode, GlassItem, PaneSpec, System, WingType } from "@/types/domain";
-import { flattenToLeafFrames } from "./tree";
+import { flattenToLeafFrames, hasSashWing, isOperableWing } from "./tree";
 
 // Representative rate for the Mallorquina louvre-shutter accessory (avg. of the 5
 // Mallorquina families' base EUR/m prices * EUR_MXN) — modeled as a per-leaf add-on, not a
@@ -31,6 +31,7 @@ export type QuoteCalc = {
   reinforce: number;
   seals: number;
   accessories: number;
+  hardwareCount: number;
   addons: number;
   consumables: number;
   direct: number;
@@ -91,19 +92,20 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
       wMm: r.fabW,
       hMm: r.fabH,
       glassArea: Math.max(0, (wM - 0.12) * (hM - 0.12)),
-      sashPerimeter: 2 * (wM + hM),
+      sashPerimeter: hasSashWing(r.wing) ? 2 * (wM + hM) : 0,
     };
   });
 
   const frameM = perimeter + splitterLengthM(tree, width, height);
   const sashM = leaves.reduce((a, l) => a + l.sashPerimeter, 0);
   const glassArea = leaves.reduce((a, l) => a + l.glassArea, 0);
+  const hardwareCount = leaves.filter((l) => isOperableWing(l.wing)).length;
 
   const profileCost = (frameM * sys.frame + sashM * sys.sash) * color.factor;
   const glassCost = glassArea * glass.price;
   const reinforce = (frameM + sashM) * 78;
   const seals = (frameM + sashM) * 24;
-  const accessories = sys.hardware + leaves.length * 110 + rail * 165;
+  const accessories = sys.hardware + hardwareCount * 110 + rail * 165;
   const addons = leaves.reduce((a, l) => a + (l.spec.mallorquina ? (l.wMm / 1000) * MALLORQUINA_RATE_MXN_PER_M * 2 : 0), 0);
   const consumables = (profileCost + glassCost) * 0.045;
   const direct = profileCost + glassCost + reinforce + seals + accessories + addons + consumables + installation + transport;
@@ -113,7 +115,7 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
 
   return {
     w, h, area, perimeter, leaves, frameM, sashM, glassArea,
-    profileCost, glassCost, reinforce, seals, accessories, addons, consumables,
+    profileCost, glassCost, reinforce, seals, accessories, hardwareCount, addons, consumables,
     direct, sale, total: sale * qty, utility: (sale - direct) * qty, bars, waste,
   };
 }
@@ -153,10 +155,10 @@ export function packBars(pieces: CutPiece[], barLength: number, kerf: number): P
 // sash), and 4 junquillo (glazing bead) pieces per leaf.
 export function buildCutList(tree: FrameNode, width: number, height: number, sys: System): CutList {
   const marco: CutPiece[] = [
-    { label: "Marco: Abajo", length: width, angle: "45°" },
-    { label: "Marco: Arriba", length: width, angle: "45°" },
-    { label: "Marco: Izquierda", length: height, angle: "45°" },
-    { label: "Marco: Derecha", length: height, angle: "45°" },
+    { label: "Marco: Abajo", length: Math.round(width), angle: "45°" },
+    { label: "Marco: Arriba", length: Math.round(width), angle: "45°" },
+    { label: "Marco: Izquierda", length: Math.round(height), angle: "45°" },
+    { label: "Marco: Derecha", length: Math.round(height), angle: "45°" },
   ];
   const travesanos: CutPiece[] = [];
   (function walk(node: FrameNode, w: number, h: number) {

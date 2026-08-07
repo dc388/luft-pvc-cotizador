@@ -3,7 +3,8 @@
 import type { CSSProperties, MouseEvent } from "react";
 import type { FocusScope } from "@/types/domain";
 import type { LeafFrame } from "@/lib/tree";
-import { motionGlyph, wingName, SLIDING_WINGS } from "@/lib/tree";
+import { hasSashWing, isOperableWing, wingName, MOVABLE_SLIDING_WINGS, SLIDING_WINGS } from "@/lib/tree";
+import { HandleIcon, MotionArrowIcon, WingIcon } from "./icons";
 import { SIDES, SIDE_LABELS, type Edges, type PartKind, type SideKey } from "./frameTypes";
 
 type Props = {
@@ -31,12 +32,15 @@ function edgeWidth(v: Edges["top"] | undefined): number {
 // marco sides, its hoja, its vidrio + 4 glass sides, and its herraje.
 export function FrameNodeView({ frame, overallWidthMm, overallHeightMm, zIndex, selectedId, focusScope, focusPart, focusSide, onPartClick }: Props) {
   const { id, wing, spec, edges: e } = frame;
-  const hasSash = wing !== "fixed" && wing !== "inactive";
-  const isOperable = hasSash && wing !== "sliding-fixed";
+  const hasSash = hasSashWing(wing);
+  const isOperable = isOperableWing(wing);
   const showOpeningLines = isOperable && !SLIDING_WINGS.includes(wing);
-  const glyph = motionGlyph(wing, spec.direction);
+  const isFixedGlyph = wing === "fixed" || wing === "inactive" || wing === "sliding-fixed";
+  const isMovableSliding = MOVABLE_SLIDING_WINGS.includes(wing);
   const borderWidth = `${edgeWidth(e.top)}px ${edgeWidth(e.right)}px ${edgeWidth(e.bottom)}px ${edgeWidth(e.left)}px`;
-  const isSideFocused = (side: SideKey) => focusScope === "leaf" && id === selectedId && focusPart === "marco" && focusSide === side;
+  // No specific side picked (focusSide === null) means the whole marco is focused -- matches
+  // Scene3D's isSelectedPart, which highlights all four sides in that case.
+  const isSideFocused = (side: SideKey) => focusScope === "leaf" && id === selectedId && focusPart === "marco" && (!focusSide || focusSide === side);
   const isGlassSideFocused = (side: SideKey) => focusScope === "leaf" && id === selectedId && focusPart === "vidrio" && focusSide === side;
 
   const style: CSSProperties = {
@@ -65,11 +69,21 @@ export function FrameNodeView({ frame, overallWidthMm, overallHeightMm, zIndex, 
       ))}
       {hasSash ? (
         <button type="button" className="hit hitHoja" title="Hoja / tipo de apertura" onClick={(ev) => onPartClick(id, "hoja", null, ev)}>
-          <span className="motion">{glyph}</span>
+          <span className="motion">
+            {isFixedGlyph ? (
+              <b className="motionFixed">FIJO</b>
+            ) : isMovableSliding ? (
+              <MotionArrowIcon direction={spec.direction} size={26} />
+            ) : (
+              <WingIcon id={wing} size={24} />
+            )}
+          </span>
           {showOpeningLines && <i className="openingLines" />}
         </button>
       ) : (
-        <span className="motion">{glyph}</span>
+        <span className="motion">
+          <WingIcon id={wing} size={22} />
+        </span>
       )}
       <button type="button" className="hit hitVidrio" title="Vidrio" onClick={(ev) => onPartClick(id, "vidrio", null, ev)} />
       {SIDES.map((side) => (
@@ -84,7 +98,7 @@ export function FrameNodeView({ frame, overallWidthMm, overallHeightMm, zIndex, 
       ))}
       {isOperable && (
         <button type="button" className="hit hitHerraje" title="Herraje / manilla" onClick={(ev) => onPartClick(id, "herraje", null, ev)}>
-          ⚙
+          <HandleIcon size={14} />
         </button>
       )}
       <em>{wingName(wing)}</em>

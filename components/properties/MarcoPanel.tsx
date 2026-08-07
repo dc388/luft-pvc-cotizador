@@ -43,7 +43,7 @@ export function MarcoPanel({ marco: m, focusSide: fs, onChange, onChangeSide }: 
       <div className="componentGrid">
         <label className="wide">
           Perfil - código
-          <input type="text" value={m.profileCode} placeholder="Catálogo real: pendiente (ver Fase 2)" onChange={(e) => onChange({ profileCode: e.target.value })} />
+          <input type="text" autoComplete="off" value={m.profileCode} placeholder="Catálogo real: pendiente (ver Fase 2)" onChange={(e) => onChange({ profileCode: e.target.value })} />
         </label>
         <label className="checkRow">
           <input type="checkbox" checked={m.reinforcement} onChange={(e) => onChange({ reinforcement: e.target.checked })} />
@@ -51,7 +51,7 @@ export function MarcoPanel({ marco: m, focusSide: fs, onChange, onChangeSide }: 
         </label>
         <label>
           Código de refuerzo
-          <input type="text" value={m.reinforcementCode} disabled={!m.reinforcement} onChange={(e) => onChange({ reinforcementCode: e.target.value })} />
+          <input type="text" autoComplete="off" value={m.reinforcementCode} disabled={!m.reinforcement} onChange={(e) => onChange({ reinforcementCode: e.target.value })} />
         </label>
         <label className="checkRow">
           <input type="checkbox" checked={m.mosquitero} onChange={(e) => onChange({ mosquitero: e.target.checked })} />
@@ -59,7 +59,7 @@ export function MarcoPanel({ marco: m, focusSide: fs, onChange, onChangeSide }: 
         </label>
         <label>
           Código de mosquitero
-          <input type="text" value={m.mosquiteroCode} disabled={!m.mosquitero} onChange={(e) => onChange({ mosquiteroCode: e.target.value })} />
+          <input type="text" autoComplete="off" value={m.mosquiteroCode} disabled={!m.mosquitero} onChange={(e) => onChange({ mosquiteroCode: e.target.value })} />
         </label>
         <label className="checkRow">
           <input type="checkbox" checked={m.persiana} onChange={(e) => onChange({ persiana: e.target.checked })} />
@@ -67,7 +67,7 @@ export function MarcoPanel({ marco: m, focusSide: fs, onChange, onChangeSide }: 
         </label>
         <label>
           Código de persiana
-          <input type="text" value={m.persianaCode} disabled={!m.persiana} onChange={(e) => onChange({ persianaCode: e.target.value })} />
+          <input type="text" autoComplete="off" value={m.persianaCode} disabled={!m.persiana} onChange={(e) => onChange({ persianaCode: e.target.value })} />
         </label>
       </div>
       <p className="componentNote">
