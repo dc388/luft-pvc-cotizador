@@ -1845,6 +1845,7 @@ const wingDefs = [
   { id: "sliding", name: "Corrediza", icon: "⇆", group: "Corredera" },
   { id: "lift-slide", name: "Corredera elevadora", icon: "⇑", group: "Corredera", isNew: true },
   { id: "folding-sliding", name: "Plegable corrediza", icon: "»", group: "Corredera", isNew: true },
+  { id: "sliding-fixed", name: "Corredera fija", icon: "⇹", group: "Corredera", isNew: true },
   { id: "casement-in", name: "Abatible interior", icon: "◩", group: "Practicable" },
   { id: "casement-out", name: "Abatible exterior", icon: "◪", group: "Practicable" },
   { id: "tilt-turn", name: "Oscilobatiente", icon: "⌂", group: "Practicable" },
@@ -1886,22 +1887,32 @@ const wingName = (id) => (wingDefs.find((w) => w.id === id) || {}).name || id;
 // ---------- TREE ----------
 const OPENING_BY_WING = {
   fixed: "Sin apertura", sliding: "Corredera", "lift-slide": "Corredera elevadora", "folding-sliding": "Plegable corrediza",
+  "sliding-fixed": "Corredera fija (sin apertura)",
   "casement-in": "Abatible interior", "casement-out": "Abatible exterior", "tilt-turn": "Oscilobatiente", project: "Proyectante",
   hopper: "Proyectante inferior", jalousie: "Persiana de cristal", pivot: "Pivotante",
   door: "Abatible interior", inactive: "Sin apertura",
 };
 const HARDWARE_BY_WING = { "lift-slide": "Roto · sistema elevador (lift-slide)", pivot: "Bisagra pivote reforzada" };
 const HANDLE_BY_WING = { jalousie: "Manivela jalousie" };
+// Movable sliding-family wings only -- a "corredera fija" leaf sits in the same track group
+// visually (no travesaño between it and its movable siblings, see SLIDING_WINGS below) but has
+// no rollers/handle/adapter of its own, so it's excluded here.
+const MOVABLE_SLIDING_WINGS = ["sliding", "lift-slide", "folding-sliding"];
 
 function defaultSpecFor(wing) {
-  const fixed = wing === "fixed" || wing === "inactive";
-  const directional = wing === "sliding" || wing === "lift-slide" || wing === "folding-sliding";
+  const fixed = wing === "fixed" || wing === "inactive" || wing === "sliding-fixed";
+  const directional = MOVABLE_SLIDING_WINGS.includes(wing);
+  const movableSliding = MOVABLE_SLIDING_WINGS.includes(wing);
   return {
     state: wing === "inactive" ? "Inactiva" : fixed ? "Fija" : "Móvil",
     opening: OPENING_BY_WING[wing],
     direction: directional ? "Derecha" : "N/A",
     hardware: fixed ? "Sin herraje" : (HARDWARE_BY_WING[wing] || "Roto · cierre multipunto"),
     handle: fixed ? "Sin manilla" : (HANDLE_BY_WING[wing] || "Harmony con tetones"),
+    handlePosition: fixed ? 0 : 1000,
+    pocketType: movableSliding ? "Ninguno" : "N/A",
+    useGancho: movableSliding,
+    useAdaptador: movableSliding,
   };
 }
 
@@ -2440,12 +2451,12 @@ function handle3DClick(e) {
 const root = document.getElementById("app");
 
 function motionGlyph(wing, spec) {
-  if (wing === "sliding" || wing === "lift-slide" || wing === "folding-sliding") return spec.direction === "Izquierda" ? "←" : "→";
-  if (wing === "fixed" || wing === "inactive") return "FIJO";
+  if (MOVABLE_SLIDING_WINGS.includes(wing)) return spec.direction === "Izquierda" ? "←" : "→";
+  if (wing === "fixed" || wing === "inactive" || wing === "sliding-fixed") return "FIJO";
   return (wingDefs.find((w) => w.id === wing) || {}).icon || "?";
 }
 
-const SLIDING_WINGS = ["sliding", "lift-slide", "folding-sliding"];
+const SLIDING_WINGS = ["sliding", "lift-slide", "folding-sliding", "sliding-fixed"];
 const isSlidingLeaf = (n) => n.kind === "leaf" && SLIDING_WINGS.includes(n.wing);
 
 // A 4-leaf sliding group meeting at its middle run gets a central lock (cierre central) instead
@@ -2506,12 +2517,13 @@ function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis, edges) 
     return `<div class="splitNode ${axisClass}" style="flex:${flexBasis}">${children}</div>`;
   }
   const hasSash = node.wing !== "fixed" && node.wing !== "inactive";
-  const showOpeningLines = hasSash && node.wing !== "sliding" && node.wing !== "lift-slide" && node.wing !== "folding-sliding";
+  const isOperable = hasSash && node.wing !== "sliding-fixed";
+  const showOpeningLines = isOperable && !SLIDING_WINGS.includes(node.wing);
   const glyph = esc(motionGlyph(node.wing, node.spec));
   const hojaHit = hasSash
     ? `<button type="button" class="hit hitHoja" title="Hoja / tipo de apertura" data-action="part-click" data-part="hoja" data-id="${node.id}"><span class="motion">${glyph}</span>${showOpeningLines ? '<i class="openingLines"></i>' : ""}</button>`
     : `<span class="motion">${glyph}</span>`;
-  const herrajeHit = hasSash
+  const herrajeHit = isOperable
     ? `<button type="button" class="hit hitHerraje" title="Herraje / manilla" data-action="part-click" data-part="herraje" data-id="${node.id}">⚙</button>`
     : "";
   const edgeWidth = (v) => (v === true ? 5 : v === "overlap" ? 1 : 2);
@@ -2635,6 +2647,11 @@ function renderPropertiesPanel(leaf, dims) {
       <label class="wide ${cls('herraje')}">Herraje<select data-bind-spec="hardware">${opt(spec.hardware, HARDWARE_OPTIONS)}</select></label>
       <label class="wide ${cls('herraje')}">Manilla / cierre<select data-bind-spec="handle">${opt(spec.handle, HANDLE_OPTIONS)}</select></label>
       <label class="wide checkRow"><input type="checkbox" data-bind-spec-bool="mallorquina" ${spec.mallorquina ? "checked" : ""}> Persiana Mallorquina exterior (lamas orientables, accesorio de sombra)</label>
+      ${MOVABLE_SLIDING_WINGS.includes(leaf.wing) ? `
+      <label class="${cls('herraje')}">Tipo de bolsillo<select data-bind-spec="pocketType">${opt(spec.pocketType, ["Ninguno", "Bolsillo sencillo", "Bolsillo doble"])}</select></label>
+      <label class="checkRow ${cls('herraje')}"><input type="checkbox" data-bind-spec-bool="useGancho" ${spec.useGancho ? "checked" : ""}> Utilizar gancho</label>
+      <label class="checkRow ${cls('herraje')}"><input type="checkbox" data-bind-spec-bool="useAdaptador" ${spec.useAdaptador ? "checked" : ""}> Utilizar adaptador</label>` : ""}
+      ${leaf.wing !== "fixed" && leaf.wing !== "inactive" && leaf.wing !== "sliding-fixed" ? `<label class="${cls('herraje')}">Posición de manilla (mm)<input type="number" data-bind-spec="handlePosition" data-numeric="true" value="${spec.handlePosition}"></label>` : ""}
       <label class="wide">Observaciones<textarea data-bind-spec="notes" placeholder="Mecanizado, altura de manilla, restricciones...">${esc(spec.notes)}</textarea></label>
     </div>
     <p class="componentNote">Selecciona carros, cierres y manillas según el peso del vidrio, tamaño de hoja y geometría del perfil. Haz clic directamente en el marco, la hoja, el vidrio o el herraje del dibujo para saltar aquí — el marco se divide en 4 lados independientes (arriba/abajo/izquierda/derecha).</p>
@@ -2892,11 +2909,11 @@ function renderApp() {
         <div class="explorerSides">${["top", "bottom", "left", "right"].map((s) => `<button type="button" class="explorerSide ${state.focusScope === "assembly" && state.focusSide === s ? "active" : ""}" data-action="explorer-marco-side" data-side="${s}">Lado - ${SIDE_LABEL[s]}</button>`).join("")}</div>
         ${walkLeaves(state.tree).map((leaf, i) => {
           const leafActive = state.focusScope === "leaf" && leaf.id === state.selectedId;
-          const hasSash = leaf.wing !== "fixed" && leaf.wing !== "inactive";
+          const leafIsOperable = leaf.wing !== "fixed" && leaf.wing !== "inactive" && leaf.wing !== "sliding-fixed";
           return `
         <button type="button" class="explorerLeaf ${leafActive && !state.focusSide && state.focusPart !== "herraje" && state.focusPart !== "vidrio" ? "active" : ""}" data-action="explorer-select" data-id="${leaf.id}" data-part="marco">Hoja ${i + 1} · ${esc(wingName(leaf.wing))}</button>
         <div class="explorerSides">${["top", "bottom", "left", "right"].map((s) => `<button type="button" class="explorerSide ${leafActive && state.focusPart === "marco" && state.focusSide === s ? "active" : ""}" data-action="explorer-side" data-id="${leaf.id}" data-side="${s}">Lado - ${SIDE_LABEL[s]}</button>`).join("")}</div>
-        ${hasSash ? `<button type="button" class="explorerGancho ${leafActive && state.focusPart === "herraje" ? "active" : ""}" data-action="explorer-select" data-id="${leaf.id}" data-part="herraje">Gancho - Herraje</button>` : ""}
+        ${leafIsOperable ? `<button type="button" class="explorerGancho ${leafActive && state.focusPart === "herraje" ? "active" : ""}" data-action="explorer-select" data-id="${leaf.id}" data-part="herraje">Gancho - Herraje</button>` : ""}
         <div class="explorerVidrioHeader">Vidrio</div>
         <div class="explorerSides">${["top", "bottom", "left", "right"].map((s) => `<button type="button" class="explorerSide ${leafActive && state.focusPart === "vidrio" && state.focusSide === s ? "active" : ""}" data-action="explorer-glass-side" data-id="${leaf.id}" data-side="${s}">Lado - ${SIDE_LABEL[s]}</button>`).join("")}</div>`;
         }).join("")}
@@ -3190,7 +3207,8 @@ function handleFieldChange(e) {
   }
   if (t.dataset.bindSpec) {
     const node = findNode(state.tree, state.selectedId);
-    if (node && node.kind === "leaf") { state.tree = updateSpecFn(state.tree, node.id, { [t.dataset.bindSpec]: t.value }); render(); }
+    const v = t.dataset.numeric === "true" ? Number(t.value) : t.value;
+    if (node && node.kind === "leaf") { state.tree = updateSpecFn(state.tree, node.id, { [t.dataset.bindSpec]: v }); render(); }
     return;
   }
   if (t.dataset.bindSpecBool) {
