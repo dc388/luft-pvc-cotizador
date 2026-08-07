@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, type MouseEvent } from "react";
-import type { Brand, PaneSpec, Report, Tab, Tool, ViewMode } from "@/types/domain";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import type { Brand, GlassSide, Marco, PaneSpec, Report, Side, Tab, Tool, ViewMode, ViewPreset3D } from "@/types/domain";
 import { catalog, EUR_MXN } from "@/data/catalog";
 import { glassCatalog } from "@/data/glass";
 import { colors, brandAccent } from "@/data/colors";
@@ -9,6 +9,7 @@ import { profileFamilies } from "@/data/families";
 import { wingDefs } from "@/data/wings";
 import {
   createDefaultTree,
+  defaultMarco,
   findNode,
   findParentSplitId,
   firstLeafId,
@@ -16,21 +17,35 @@ import {
   removeSplit,
   setWing,
   splitLeaf,
+  updateGlassSide,
+  updateMarco,
+  updateMarcoSide,
+  updateSide,
   updateSpec,
 } from "@/lib/tree";
 import { calcQuote } from "@/lib/calc";
 import { money } from "@/lib/money";
+import { runSelfCheck, type SelfCheckResult } from "@/lib/selfCheck";
 import { Block } from "@/components/Block";
 import { TopBar, ModuleNav } from "@/components/layout/Nav";
 import { Toolbox } from "@/components/editor/Toolbox";
 import { FrameCanvas } from "@/components/editor/FrameCanvas";
 import { SectionRender } from "@/components/editor/SectionRender";
+import { Scene3D } from "@/components/editor/Scene3D";
+import { ExplorerTree } from "@/components/editor/ExplorerTree";
+import type { PartKind, SideKey } from "@/components/editor/frameTypes";
 import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
+import { MarcoPanel } from "@/components/properties/MarcoPanel";
 import { Prop, Cost, Item } from "@/components/properties/Prop";
 import { ReportPreview } from "@/components/reports/ReportPreview";
+import { CotizacionDoc } from "@/components/reports/CotizacionDoc";
+import { CorteDoc } from "@/components/reports/CorteDoc";
+import { VidrioDoc } from "@/components/reports/VidrioDoc";
 
 const TABS: Tab[] = ["Resumen", "Diseño", "Consumo", "Servicios", "Informes"];
-const REPORTS: Report[] = ["Oferta", "Producción", "Perfiles", "Herrajes", "Vidrio", "Costos"];
+const REPORTS: Report[] = ["Cotización", "Optimización de corte", "Pedido de vidrio", "Producción", "Herrajes", "Costos"];
+const VIEW_MODES: ViewMode[] = ["2D", "3D", "Sección"];
+const PRESETS_3D: ViewPreset3D[] = ["Frente", "Planta", "Perfil", "Isométrica"];
 
 export default function Home() {
   const [brand, setBrand] = useState<Brand>("Aluplast");
@@ -43,8 +58,10 @@ export default function Home() {
   const [colorIndex, setColorIndex] = useState(1);
   const [face, setFace] = useState("Ambas caras");
   const [tab, setTab] = useState<Tab>("Diseño");
-  const [view, setView] = useState<ViewMode>("Frente");
-  const [report, setReport] = useState<Report>("Vidrio");
+  const [view, setView] = useState<ViewMode>("2D");
+  const [viewPreset, setViewPreset] = useState<ViewPreset3D>("Isométrica");
+  const [presetToken, setPresetToken] = useState(0);
+  const [report, setReport] = useState<Report>("Cotización");
   const [margin, setMargin] = useState(35);
   const [installation, setInstallation] = useState(1200);
   const [transport, setTransport] = useState(450);
@@ -52,12 +69,21 @@ export default function Home() {
   const [code, setCode] = useState("001");
   const [designation, setDesignation] = useState("V01");
   const [location, setLocation] = useState("Cocina");
+  const [client, setClient] = useState("");
+  const [clientAddress, setClientAddress] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
   const [profileSearch, setProfileSearch] = useState("");
   const [profileSystemFilter, setProfileSystemFilter] = useState("Todos");
 
   const [tree, setTree] = useState(() => createDefaultTree());
   const [selectedId, setSelectedId] = useState(() => firstLeafId(tree));
   const [activeTool, setActiveTool] = useState<Tool>({ mode: "select" });
+  const [focusPart, setFocusPart] = useState<PartKind | null>(null);
+  const [focusSide, setFocusSide] = useState<SideKey | null>(null);
+  const [focusScope, setFocusScope] = useState<"leaf" | "assembly">("leaf");
+  const [marco, setMarco] = useState<Marco>(() => defaultMarco());
+  const [threeReady, setThreeReady] = useState(false);
+  const [selfCheck, setSelfCheck] = useState<SelfCheckResult | null>(null);
 
   const sys = catalog[brand][Math.min(systemIndex, catalog[brand].length - 1)];
   const glass = glassCatalog[glassIndex];
@@ -66,6 +92,8 @@ export default function Home() {
   const changeBrand = (b: Brand) => { setBrand(b); setSystemIndex(0); setColorIndex(0); setRail(catalog[b][0].rails[0]); };
   const changeSystem = (i: number) => { setSystemIndex(i); setRail(catalog[brand][i].rails[0]); };
   const changeTab = (t: Tab) => { setTab(t); if (t !== "Diseño") setActiveTool({ mode: "select" }); };
+  const changeView = (v: ViewMode) => { setView(v); if (v === "3D") setPresetToken((n) => n + 1); };
+  const changePreset = (p: ViewPreset3D) => { setViewPreset(p); setPresetToken((n) => n + 1); };
 
   const profileSystems = useMemo(() => Array.from(new Set(profileFamilies.map((f) => f.system))).sort(), []);
   const filteredFamilies = useMemo(() => {
@@ -101,34 +129,145 @@ export default function Home() {
     [calc.leaves]
   );
 
-  const handleLeafClick = (id: string, e: MouseEvent<HTMLButtonElement>) => {
-    if (activeTool.mode === "select") { setSelectedId(id); return; }
+  // ---------- Self-check: re-run whenever anything relevant to it changes, and periodically ----------
+  useEffect(() => {
+    const run = () =>
+      setSelfCheck(runSelfCheck({ tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, marco, threeReady }));
+    run();
+    const id = setInterval(run, 25000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, marco, threeReady]);
+
+  // ---------- Tree-mutation click helpers (split/assign-wing tools only apply via a leaf's own
+  // pane rect; select-tool clicks just move focus, see handlePartClick below) ----------
+  const applyLeafClick = (id: string, clientX: number, clientY: number, rect: DOMRect) => {
     if (activeTool.mode === "split") {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const fraction = activeTool.axis === "col"
-        ? (e.clientX - rect.left) / rect.width
-        : (e.clientY - rect.top) / rect.height;
-      const result = splitLeaf(tree, id, activeTool.axis, fraction);
+      const axis = activeTool.axis;
+      const fraction = axis === "col" ? (clientX - rect.left) / rect.width : (clientY - rect.top) / rect.height;
+      const result = splitLeaf(tree, id, axis, fraction);
       const node = findNode(result, id);
       setTree(result);
       if (node && node.kind === "split") setSelectedId(node.children[0].id);
       setActiveTool({ mode: "select" });
       return;
     }
+    if (activeTool.mode === "assign-wing") {
+      setTree((prev) => setWing(prev, id, activeTool.wing));
+      setSelectedId(id);
+      setActiveTool({ mode: "select" });
+    }
+  };
+
+  // Unified handler for every 2D hit zone on a leaf (marco side, hoja, vidrio, vidrio side,
+  // herraje) — mirrors static/cotizador.html's "part-click" delegated handler.
+  const handlePartClick = (id: string, part: PartKind, side: SideKey | null, e: MouseEvent<HTMLButtonElement>) => {
+    if (activeTool.mode === "select") {
+      setFocusScope("leaf");
+      setSelectedId(id);
+      setFocusPart(part);
+      setFocusSide(side);
+      return;
+    }
+    const paneEl = (e.target as HTMLElement).closest<HTMLElement>(".pane");
+    if (paneEl) applyLeafClick(id, e.clientX, e.clientY, paneEl.getBoundingClientRect());
+    setFocusScope("leaf");
+    setFocusPart(null);
+    setFocusSide(null);
+  };
+
+  // Assembly marco (state.marco) focus — always forces select mode, matching static (the
+  // assembly marco isn't a leaf, so split/assign-wing tools don't apply to it).
+  const handleAssemblyFocus = (side: SideKey | null) => {
+    setActiveTool({ mode: "select" });
+    setFocusScope("assembly");
+    setFocusPart("marco");
+    setFocusSide(side);
+  };
+
+  // The central-lock marker (⚿) sits outside any leaf's pane DOM (it's drawn at the window
+  // level, between two leaves), so unlike other hit zones it only supports select-mode focus —
+  // there's no pane rect to compute a split fraction from.
+  const handleCentralLockClick = (id: string) => {
+    if (activeTool.mode !== "select") return;
+    setFocusScope("leaf");
+    setSelectedId(id);
+    setFocusPart("herraje");
+    setFocusSide(null);
+  };
+
+  const handleExplorerSelectLeaf = (id: string, part: PartKind) => {
+    setActiveTool({ mode: "select" });
+    setFocusScope("leaf");
+    setSelectedId(id);
+    setFocusPart(part);
+    setFocusSide(null);
+  };
+  const handleExplorerLeafSide = (id: string, side: SideKey) => {
+    setActiveTool({ mode: "select" });
+    setFocusScope("leaf");
+    setSelectedId(id);
+    setFocusPart("marco");
+    setFocusSide(side);
+  };
+  const handleExplorerGlassSide = (id: string, side: SideKey) => {
+    setActiveTool({ mode: "select" });
+    setFocusScope("leaf");
+    setSelectedId(id);
+    setFocusPart("vidrio");
+    setFocusSide(side);
+  };
+
+  const handle3DSelect = (id: string, part: PartKind, side: SideKey | null) => {
+    setFocusScope("leaf");
+    setSelectedId(id);
+    setFocusPart(part);
+    setFocusSide(side);
+  };
+  const handle3DSplit = (id: string, axis: "row" | "col", fraction: number) => {
+    const result = splitLeaf(tree, id, axis, fraction);
+    const node = findNode(result, id);
+    setTree(result);
+    if (node && node.kind === "split") {
+      setSelectedId(node.children[0].id);
+      setFocusScope("leaf");
+      setFocusPart(null);
+      setFocusSide(null);
+    }
+    setActiveTool({ mode: "select" });
+  };
+  const handle3DAssignWing = (id: string) => {
+    if (activeTool.mode !== "assign-wing") return;
     setTree((prev) => setWing(prev, id, activeTool.wing));
     setSelectedId(id);
+    setFocusScope("leaf");
+    setFocusPart(null);
+    setFocusSide(null);
     setActiveTool({ mode: "select" });
   };
 
-  const updatePane = (key: keyof PaneSpec, value: string | boolean) => {
+  const updatePane = (key: keyof PaneSpec, value: string | boolean | number) => {
     if (!selectedLeaf) return;
     setTree((prev) => updateSpec(prev, selectedLeaf.id, { [key]: value } as Partial<PaneSpec>));
   };
+  const updateLeafSide = (side: SideKey, patch: Partial<Side>) => {
+    if (!selectedLeaf) return;
+    setTree((prev) => updateSide(prev, selectedLeaf.id, side, patch));
+  };
+  const updateLeafGlassSide = (side: SideKey, patch: Partial<GlassSide>) => {
+    if (!selectedLeaf) return;
+    setTree((prev) => updateGlassSide(prev, selectedLeaf.id, side, patch));
+  };
+  const handleMarcoChange = (patch: Partial<Marco>) => setMarco((prev) => updateMarco(prev, patch));
+  const handleMarcoSideChange = (side: SideKey, patch: Partial<Side>) => setMarco((prev) => updateMarcoSide(prev, side, patch));
 
   const handleMerge = () => {
     if (!parentSplitId) return;
     setTree((prev) => removeSplit(prev, parentSplitId));
     setSelectedId(parentSplitId);
+    setFocusPart(null);
+    setFocusSide(null);
+    setFocusScope("leaf");
   };
 
   const handleResetTree = () => {
@@ -136,6 +275,20 @@ export default function Home() {
     setTree(fresh);
     setSelectedId(firstLeafId(fresh));
     setActiveTool({ mode: "select" });
+    setFocusPart(null);
+    setFocusSide(null);
+    setFocusScope("leaf");
+    setMarco(defaultMarco());
+  };
+
+  // Always print one of the polished report documents, never whatever tab happened to be
+  // open — printing straight from the Diseño canvas produced a messy, unpaginated dump of the
+  // editor UI instead of a real report.
+  const handlePrint = () => {
+    setTab("Informes");
+    setActiveTool({ mode: "select" });
+    setReport("Cotización");
+    setTimeout(() => window.print(), 0);
   };
 
   const hasRailOptions = sys.rails.some((x) => x > 0);
@@ -146,15 +299,16 @@ export default function Home() {
     ...(rail > 0 && !sys.rails.includes(rail) ? [`El sistema no contempla ${rail} riel(es).`] : []),
   ];
 
-  const toolHint = activeTool.mode === "select"
-    ? "Haz clic en una hoja para seleccionarla"
-    : activeTool.mode === "split"
-    ? `Haz clic dentro de una hoja para dividirla (${activeTool.axis === "col" ? "vertical" : "horizontal"})`
-    : `Haz clic en una hoja para asignarle "${wingDefs.find((w) => w.id === activeTool.wing)?.name}"`;
+  const toolHint =
+    activeTool.mode === "select"
+      ? "Haz clic en el marco, la hoja, el vidrio o el herraje para seleccionar esa parte"
+      : activeTool.mode === "split"
+      ? `Haz clic dentro de una hoja para dividirla (${activeTool.axis === "col" ? "vertical" : "horizontal"})`
+      : `Haz clic en una hoja para asignarle "${wingDefs.find((w) => w.id === activeTool.wing)?.name}"`;
 
   return (
     <main>
-      <TopBar code={code} designation={designation} location={location} onPrint={() => window.print()} />
+      <TopBar code={code} designation={designation} location={location} onPrint={handlePrint} selfCheck={selfCheck} />
       <ModuleNav tabs={TABS} active={tab} onChange={changeTab} />
 
       <section className="workspace" id="top">
@@ -171,6 +325,10 @@ export default function Home() {
                 <label>Designación<input value={designation} onChange={(e) => setDesignation(e.target.value)} /></label>
               </div>
               <label>Ubicación / descripción<input value={location} onChange={(e) => setLocation(e.target.value)} /></label>
+              <Block n="02" title="Datos para la cotización" sub="Aparecen en la Cotización del cliente imprimible." />
+              <label>Cliente<input placeholder="Sr./Sra./Arq. ..." value={client} onChange={(e) => setClient(e.target.value)} /></label>
+              <label>Dirección del proyecto<input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} /></label>
+              <label>Fecha de entrega<input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} /></label>
               <div className="summaryCard">
                 <span>Marca</span><b>{brand}</b>
                 <span>Sistema</span><b>{sys.name}</b>
@@ -204,12 +362,24 @@ export default function Home() {
                   </select>
                 </label>
               )}
-              <Block n="02" title="Composición" sub="Usa la paleta de herramientas sobre el lienzo para dividir la ventana y asignar el tipo de cada hoja." />
+              <Block n="02" title="Composición" sub="Haz clic en el marco, la hoja, el vidrio o el herraje del dibujo para seleccionar esa parte, o usa la paleta para dividir y asignar tipos de apertura." />
+              <ExplorerTree
+                tree={tree}
+                selectedId={selectedId}
+                focusScope={focusScope}
+                focusPart={focusPart}
+                focusSide={focusSide}
+                onSelectMarco={() => handleAssemblyFocus(null)}
+                onSelectMarcoSide={(side) => handleAssemblyFocus(side)}
+                onSelectLeaf={handleExplorerSelectLeaf}
+                onSelectLeafSide={handleExplorerLeafSide}
+                onSelectGlassSide={handleExplorerGlassSide}
+              />
               <Block n="03" title="Geometría" sub="Cotas generales en milímetros." />
               <div className="inputGrid">
-                <label>Ancho<input type="number" value={width} onChange={(e) => setWidth(Number(e.target.value))} /></label>
-                <label>Alto<input type="number" value={height} onChange={(e) => setHeight(Number(e.target.value))} /></label>
-                <label>Cant.<input type="number" min="1" value={qty} onChange={(e) => setQty(Number(e.target.value))} /></label>
+                <label>Ancho<input type="number" value={width} onChange={(e) => setWidth(Math.max(1, Number(e.target.value)))} /></label>
+                <label>Alto<input type="number" value={height} onChange={(e) => setHeight(Math.max(1, Number(e.target.value)))} /></label>
+                <label>Cant.<input type="number" min="1" value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value)))} /></label>
               </div>
               <Block n="04" title="Materiales" sub="Color, aplicación y vidrio." />
               <label>Color / folio
@@ -259,7 +429,7 @@ export default function Home() {
               </div>
               <p className="notice">La optimización definitiva depende de descuentos, ángulos, soldadura, refuerzos, sierra y reglas específicas del catálogo.</p>
               <Block n="02" title="Catálogo de perfiles y accesorios" sub="Datos reales Aluplast · lista EXWORK Veracruz, revisión ABR_22 (01/05/2022). 278 familias normalizadas." />
-              <div className="inputGrid two">
+              <div className="profileFilters">
                 <label>Buscar<input type="text" value={profileSearch} onChange={(e) => setProfileSearch(e.target.value)} /></label>
                 <label>Sistema
                   <select value={profileSystemFilter} onChange={(e) => setProfileSystemFilter(e.target.value)}>
@@ -304,32 +474,74 @@ export default function Home() {
 
         <section className="visualPanel">
           <div className="visualHeader">
-            <div><span className="statusDot" />VISTA {view.toUpperCase()} · {configSummary}</div>
+            <div><span className="statusDot" />VISTA {view.toUpperCase()}{view === "3D" ? ` · ${viewPreset}` : ""} · {configSummary}</div>
             <div className="viewSwitch">
-              {(["Frente", "Sección", "3D"] as ViewMode[]).map((v) => (
-                <button key={v} className={view === v ? "active" : ""} onClick={() => setView(v)}>{v}</button>
+              {VIEW_MODES.map((v) => (
+                <button key={v} className={view === v ? "active" : ""} onClick={() => changeView(v)}>{v}</button>
               ))}
             </div>
           </div>
+          {view === "3D" && (
+            <div className="presetRow">
+              {PRESETS_3D.map((p) => (
+                <button key={p} className={viewPreset === p ? "active" : ""} onClick={() => changePreset(p)}>{p}</button>
+              ))}
+            </div>
+          )}
           <div className={`canvas view-${view.replace("ó", "o")}`}>
-            <div className="dim top"><span>W={width.toLocaleString()} mm</span></div>
-            <div className="dim side"><span>H={height.toLocaleString()} mm</span></div>
             {tab === "Diseño" && (
               <Toolbox activeTool={activeTool} onToolChange={setActiveTool} canMerge={canMerge} onMerge={handleMerge} onReset={handleResetTree} />
             )}
-            {view === "Sección" ? (
-              <SectionRender depth={sys.depth} rail={rail} glazing={glass.thickness} />
-            ) : (
-              <div className="modelStage">
-                <FrameCanvas tree={tree} width={width} height={height} selectedId={selectedId} colorName={color.name} onLeafClick={handleLeafClick} />
-                {view === "3D" && <><span className="modelSide" /><span className="modelSill" /></>}
+            <div className="canvasStage">
+              {view !== "3D" && (
+                <>
+                  <div className="dim top"><span>W={width.toLocaleString()} mm</span></div>
+                  <div className="dim side"><span>H={height.toLocaleString()} mm</span></div>
+                </>
+              )}
+              {view === "Sección" && <SectionRender depth={sys.depth} rail={rail} glazing={glass.thickness} />}
+              {view === "2D" && (
+                <FrameCanvas
+                  tree={tree}
+                  width={width}
+                  height={height}
+                  selectedId={selectedId}
+                  color={color}
+                  focusScope={focusScope}
+                  focusPart={focusPart}
+                  focusSide={focusSide}
+                  showFocus
+                  onPartClick={handlePartClick}
+                  onAssemblyMarcoClick={handleAssemblyFocus}
+                  onCentralLockClick={handleCentralLockClick}
+                />
+              )}
+              <div className={`canvas3dWrap ${view === "3D" ? "" : "canvas3dWrapHidden"}`}>
+                <Scene3D
+                  tree={tree}
+                  width={width}
+                  height={height}
+                  sys={sys}
+                  color={color}
+                  selectedId={selectedId}
+                  focusScope={focusScope}
+                  focusPart={focusPart}
+                  focusSide={focusSide}
+                  activeTool={activeTool}
+                  viewPreset={viewPreset}
+                  presetToken={presetToken}
+                  onSelect={handle3DSelect}
+                  onSplit={handle3DSplit}
+                  onAssignWing={handle3DAssignWing}
+                  onReady={() => setThreeReady(true)}
+                />
               </div>
-            )}
-            <div className="editHint">{toolHint}</div>
-            <div className="specChip">
-              <b>{brand} · {sys.name}</b>
-              <span>{sys.depth} mm · {sys.chambers} · {rail ? `${rail} riel${rail > 1 ? "es" : ""}` : "practicable"}</span>
-              <span>{glass.name} · {face}</span>
+              <div className="editHint">{toolHint}</div>
+              <div className="specChip">
+                <b>{brand} · {sys.name}</b>
+                <span>{sys.depth} mm · {sys.chambers} · {rail ? `${rail} riel${rail > 1 ? "es" : ""}` : "practicable"}</span>
+                <span>{glass.name} · {face}</span>
+              </div>
             </div>
           </div>
           <div className="metricRow">
@@ -347,19 +559,40 @@ export default function Home() {
           </div>
           {warnings.length > 0 && <div className="warnings">{warnings.map((x) => <p key={x}>⚠ {x}</p>)}</div>}
 
-          {tab === "Diseño" && selectedLeaf && (
+          {tab === "Diseño" && focusScope === "assembly" && (
+            <MarcoPanel marco={marco} focusSide={focusSide} onChange={handleMarcoChange} onChangeSide={handleMarcoSideChange} />
+          )}
+          {tab === "Diseño" && focusScope === "leaf" && selectedLeaf && (
             <PropertiesPanel
-              wing={selectedLeaf.wing}
-              spec={selectedLeaf.spec}
+              leaf={selectedLeaf}
               dims={selectedDims}
+              focusPart={focusPart}
+              focusSide={focusSide}
               canMerge={canMerge}
               onChange={updatePane}
+              onChangeSide={updateLeafSide}
+              onChangeGlassSide={updateLeafGlassSide}
               onMerge={handleMerge}
             />
           )}
 
           {tab === "Informes" ? (
-            <ReportPreview report={report} code={code} designation={designation} location={location} brand={brand} system={sys.name} qty={qty} width={width} height={height} glassName={glass.name} calc={calc} />
+            report === "Cotización" ? (
+              <CotizacionDoc
+                calc={calc} sys={sys} glass={glass} color={color} brand={brand} tree={tree} width={width} height={height} qty={qty}
+                code={code} designation={designation} location={location} client={client} clientAddress={clientAddress} deliveryDate={deliveryDate}
+                configSummary={configSummary}
+              />
+            ) : report === "Optimización de corte" ? (
+              <CorteDoc tree={tree} width={width} height={height} qty={qty} designation={designation} location={location} />
+            ) : report === "Pedido de vidrio" ? (
+              <VidrioDoc calc={calc} glass={glass} qty={qty} designation={designation} location={location} />
+            ) : (
+              <ReportPreview
+                report={report} code={code} designation={designation} location={location} brand={brand} system={sys.name} qty={qty}
+                width={width} height={height} glassName={glass.name} configSummary={configSummary} calc={calc}
+              />
+            )
           ) : (
             <>
               <div className="propertyGroup">

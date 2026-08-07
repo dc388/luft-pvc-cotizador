@@ -1,13 +1,18 @@
 "use client";
 
+import type { SelfCheckResult } from "@/lib/selfCheck";
+
 type TopBarProps = {
   code: string;
   designation: string;
   location: string;
   onPrint: () => void;
+  selfCheck: SelfCheckResult | null;
 };
 
-export function TopBar({ code, designation, location, onPrint }: TopBarProps) {
+export function TopBar({ code, designation, location, onPrint, selfCheck }: TopBarProps) {
+  const sc = selfCheck ?? { ok: true, checks: [] };
+  const scTitle = sc.checks.map((c) => `${c.pass ? "✓" : "✗"} ${c.name}`).join("\n");
   return (
     <header className="topbar">
       <a className="brand" href="#top">
@@ -19,6 +24,7 @@ export function TopBar({ code, designation, location, onPrint }: TopBarProps) {
         <strong>Oferta {code} · {designation} {location}</strong>
       </div>
       <div className="headerActions">
+        <span className={`selfCheckBadge ${sc.ok ? "ok" : "warn"}`} title={scTitle}>{sc.ok ? "✓ Sistema OK" : "⚠ Revisar"}</span>
         <button className="primary" onClick={onPrint}>Generar informe</button>
       </div>
     </header>
