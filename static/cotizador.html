@@ -5,81 +5,83 @@
   --paper:#eef1f2; --surface:#ffffff; --ink:#171b1e;
   --line:#d7dee1; --muted:#5c6b72; --warn-bg:#fff5dc; --warn-fg:#795b1a; --warn-line:#f1d792;
   --ok-bg:#e8f2e7; --ok-fg:#367558; --shadow:#14231c1f; --accent:#1D6CA6;
-  --glass-bg:color-mix(in srgb, #ffffff 62%, transparent);
-  --glass-bg-strong:color-mix(in srgb, #ffffff 78%, transparent);
-  --glass-border:color-mix(in srgb, #ffffff 55%, var(--line));
-  --glass-highlight:rgba(255,255,255,.65);
-  --glass-shadow:0 10px 34px -8px rgba(20,35,28,.16);
-  --glass-blur:22px;
+  --ambient:linear-gradient(125deg,#16267a 0%,#1a4fb4 20%,#1783c9 42%,#12a8b8 62%,#28bb8f 80%,#63c988 100%);
+  --glass-bg:color-mix(in srgb, #ffffff 58%, transparent);
+  --glass-bg-strong:color-mix(in srgb, #ffffff 74%, transparent);
+  --glass-border:color-mix(in srgb, #ffffff 65%, var(--line));
+  --glass-highlight:rgba(255,255,255,.75);
+  --glass-shadow:0 16px 40px -10px color-mix(in srgb, var(--accent) 38%, rgba(10,20,30,.28));
+  --glass-blur:30px;
 }
 @media (prefers-color-scheme: dark){
   :root{
     --paper:#12161a; --surface:#1b2126; --ink:#e6ecef;
     --line:#2b3339; --muted:#8fa0a8; --warn-bg:#3a2f10; --warn-fg:#f0cf7a; --warn-line:#5b4a1c;
     --ok-bg:#183828; --ok-fg:#7fd8ab; --shadow:#00000055;
-    --glass-bg:color-mix(in srgb, #2a3238 55%, transparent);
-    --glass-bg-strong:color-mix(in srgb, #2a3238 74%, transparent);
-    --glass-border:color-mix(in srgb, #ffffff 12%, var(--line));
-    --glass-highlight:rgba(255,255,255,.08);
-    --glass-shadow:0 10px 34px -8px rgba(0,0,0,.5);
+    --ambient:linear-gradient(125deg,#0a1442 0%,#123a86 20%,#0e5f8f 42%,#0d7d86 62%,#158463 80%,#2c9463 100%);
+    --glass-bg:color-mix(in srgb, #2a3238 48%, transparent);
+    --glass-bg-strong:color-mix(in srgb, #2a3238 68%, transparent);
+    --glass-border:color-mix(in srgb, #ffffff 16%, var(--line));
+    --glass-highlight:rgba(255,255,255,.12);
+    --glass-shadow:0 16px 40px -10px rgba(0,0,0,.55);
   }
 }
 :root[data-theme="dark"]{
   --paper:#12161a; --surface:#1b2126; --ink:#e6ecef;
   --line:#2b3339; --muted:#8fa0a8; --warn-bg:#3a2f10; --warn-fg:#f0cf7a; --warn-line:#5b4a1c;
   --ok-bg:#183828; --ok-fg:#7fd8ab; --shadow:#00000055;
-  --glass-bg:color-mix(in srgb, #2a3238 55%, transparent);
-  --glass-bg-strong:color-mix(in srgb, #2a3238 74%, transparent);
-  --glass-border:color-mix(in srgb, #ffffff 12%, var(--line));
-  --glass-highlight:rgba(255,255,255,.08);
-  --glass-shadow:0 10px 34px -8px rgba(0,0,0,.5);
+  --ambient:linear-gradient(125deg,#0a1442 0%,#123a86 20%,#0e5f8f 42%,#0d7d86 62%,#158463 80%,#2c9463 100%);
+  --glass-bg:color-mix(in srgb, #2a3238 48%, transparent);
+  --glass-bg-strong:color-mix(in srgb, #2a3238 68%, transparent);
+  --glass-border:color-mix(in srgb, #ffffff 16%, var(--line));
+  --glass-highlight:rgba(255,255,255,.12);
+  --glass-shadow:0 16px 40px -10px rgba(0,0,0,.55);
 }
 :root[data-theme="light"]{
   --paper:#eef1f2; --surface:#ffffff; --ink:#171b1e;
   --line:#d7dee1; --muted:#5c6b72; --warn-bg:#fff5dc; --warn-fg:#795b1a; --warn-line:#f1d792;
   --ok-bg:#e8f2e7; --ok-fg:#367558; --shadow:#14231c1f;
-  --glass-bg:color-mix(in srgb, #ffffff 62%, transparent);
-  --glass-bg-strong:color-mix(in srgb, #ffffff 78%, transparent);
-  --glass-border:color-mix(in srgb, #ffffff 55%, var(--line));
-  --glass-highlight:rgba(255,255,255,.65);
-  --glass-shadow:0 10px 34px -8px rgba(20,35,28,.16);
+  --ambient:linear-gradient(125deg,#16267a 0%,#1a4fb4 20%,#1783c9 42%,#12a8b8 62%,#28bb8f 80%,#63c988 100%);
+  --glass-bg:color-mix(in srgb, #ffffff 58%, transparent);
+  --glass-bg-strong:color-mix(in srgb, #ffffff 74%, transparent);
+  --glass-border:color-mix(in srgb, #ffffff 65%, var(--line));
+  --glass-highlight:rgba(255,255,255,.75);
+  --glass-shadow:0 16px 40px -10px color-mix(in srgb, var(--accent) 38%, rgba(10,20,30,.28));
 }
 *{box-sizing:border-box}
 html{background:var(--paper)}
 body{
   margin:0;color:var(--ink);font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;
-  background:
-    radial-gradient(1100px 760px at 12% -8%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
-    radial-gradient(900px 680px at 105% 8%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 58%),
-    var(--paper);
+  background:var(--ambient);
   background-attachment:fixed;
+  min-height:100vh;
 }
 button{font:inherit;cursor:pointer;color:inherit}
 button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 select,input[type=number],input[type=text]{width:100%;height:40px;border:1px solid var(--line);background:color-mix(in srgb, var(--paper) 85%, transparent);border-radius:10px;padding:0 10px;color:var(--ink);font-size:12px}
 textarea{background:color-mix(in srgb, var(--paper) 85%, transparent);color:var(--ink);border-radius:10px}
 a{color:inherit}
-.glass{background:var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(170%);backdrop-filter:blur(var(--glass-blur)) saturate(170%);border:1px solid var(--glass-border);box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight)}
+.glass{background:var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(190%);backdrop-filter:blur(var(--glass-blur)) saturate(190%);border:1px solid var(--glass-border);box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight)}
 
-.topbar{height:76px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;background:var(--glass-bg-strong);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(170%);backdrop-filter:blur(var(--glass-blur)) saturate(170%);border-bottom:1px solid var(--glass-border);box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight);position:sticky;top:0;z-index:20;gap:12px}
+.topbar{height:76px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;background:var(--glass-bg-strong);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(190%);backdrop-filter:blur(var(--glass-blur)) saturate(190%);border-bottom:1px solid var(--glass-border);box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight);position:sticky;top:0;z-index:20;gap:12px}
 .brand{color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:12px;letter-spacing:.08em;font-size:18px}
 .brand b{color:var(--accent);transition:color .2s}
-.brandMark{width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:900;transition:background .2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 8px color-mix(in srgb, var(--accent) 50%, transparent)}
+.brandMark{width:38px;height:38px;border-radius:50%;background:linear-gradient(140deg, color-mix(in srgb, var(--accent) 88%, #6cd48a), var(--accent));color:#fff;display:grid;place-items:center;font-weight:900;transition:background .2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 10px color-mix(in srgb, var(--accent) 55%, transparent)}
 .projectName{display:flex;flex-direction:column;text-align:center;gap:2px}
 .projectName span,.eyebrow,.quoteHead span,.metricRow span,.totalBox span,.priceNote{font-size:10px;letter-spacing:.12em;color:var(--muted)}
 .projectName strong{font-size:13px}
 .headerActions{display:flex;gap:8px;align-items:center}
-.primary{padding:11px 18px;border-radius:20px;border:1px solid color-mix(in srgb, #fff 35%, var(--accent));background:color-mix(in srgb, var(--accent) 82%, transparent);-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);color:#fff;font-size:12px;font-weight:bold;box-shadow:0 6px 18px -4px color-mix(in srgb, var(--accent) 60%, transparent),inset 0 1px 0 rgba(255,255,255,.35);transition:background .2s,border-color .2s}
+.primary{padding:11px 18px;border-radius:20px;border:1px solid color-mix(in srgb, #fff 35%, var(--accent));background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 88%, transparent) 0%, color-mix(in srgb, var(--accent) 78%, #12a8b8) 100%);-webkit-backdrop-filter:blur(14px) saturate(185%);backdrop-filter:blur(14px) saturate(185%);color:#fff;font-size:12px;font-weight:bold;box-shadow:0 8px 22px -4px color-mix(in srgb, var(--accent) 65%, transparent),inset 0 1px 0 rgba(255,255,255,.4);transition:background .2s,border-color .2s}
 .selfCheckBadge{font-size:9px;padding:7px 12px;border-radius:20px;font-weight:bold;cursor:default;white-space:nowrap;border:1px solid transparent;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .selfCheckBadge.ok{background:color-mix(in srgb, var(--ok-bg) 75%, transparent);color:var(--ok-fg);border-color:color-mix(in srgb, var(--ok-fg) 25%, transparent)}
 .selfCheckBadge.warn{background:color-mix(in srgb, var(--warn-bg) 75%, transparent);color:var(--warn-fg);border-color:color-mix(in srgb, var(--warn-fg) 25%, transparent)}
 
-.moduleNav{height:42px;display:flex;justify-content:center;gap:4px;background:var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(170%);backdrop-filter:blur(var(--glass-blur)) saturate(170%);border-bottom:1px solid var(--glass-border);position:sticky;top:76px;z-index:19}
+.moduleNav{height:42px;display:flex;justify-content:center;gap:4px;background:var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(190%);backdrop-filter:blur(var(--glass-blur)) saturate(190%);border-bottom:1px solid var(--glass-border);position:sticky;top:76px;z-index:19}
 .moduleNav button{border:0;background:transparent;padding:0 24px;font-size:11px;color:var(--muted);border-bottom:2px solid transparent}
 .moduleNav button.active{color:var(--accent);font-weight:bold;border-bottom-color:var(--accent)}
 
 .workspace{display:grid;grid-template-columns:360px minmax(460px,1fr) 390px;min-height:calc(100vh - 76px)}
-.configPanel,.quotePanel{background:var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(160%);backdrop-filter:blur(var(--glass-blur)) saturate(160%);padding:28px;border-right:1px solid var(--glass-border);overflow:auto}
+.configPanel,.quotePanel{background:var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(185%);backdrop-filter:blur(var(--glass-blur)) saturate(185%);padding:28px;border-right:1px solid var(--glass-border);overflow:auto}
 .quotePanel{border-right:0;border-left:1px solid var(--glass-border);padding:0 26px 24px}
 .eyebrow{color:var(--accent);font-weight:bold;margin-bottom:10px}
 .configPanel h1{font-family:Georgia,serif;font-size:40px;line-height:1.02;margin:0 0 12px;letter-spacing:-.04em;text-wrap:balance}
@@ -89,20 +91,20 @@ a{color:inherit}
 .step div{display:flex;flex-direction:column;gap:3px}
 .step b{font-size:13px}
 .step small{color:var(--muted);font-size:11px}
-.segmented{display:grid;grid-template-columns:1fr 1fr;margin:14px 0 12px;border:1px solid var(--glass-border);border-radius:14px;padding:3px;background:color-mix(in srgb, var(--paper) 55%, transparent)}
+.segmented{display:grid;grid-template-columns:1fr 1fr;margin:14px 0 12px;border:1px solid var(--glass-border);border-radius:18px;padding:3px;background:color-mix(in srgb, var(--paper) 55%, transparent)}
 .segmented button{border:0;background:transparent;padding:10px;font-size:10px;font-weight:800;color:var(--muted);border-radius:11px}
 .segmented button.selected{background:var(--accent);color:#fff;box-shadow:0 3px 10px -2px color-mix(in srgb, var(--accent) 60%, transparent)}
 .configPanel label,.additional label{display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--muted);font-weight:bold;margin-top:10px}
 .inputGrid{display:grid;grid-template-columns:1fr 1fr 80px;gap:8px}
 .inputGrid.two{grid-template-columns:1fr 1fr}
-.summaryCard{margin-top:16px;display:grid;grid-template-columns:1fr 1.4fr;border:1px solid var(--glass-border);border-radius:14px;overflow:hidden}
+.summaryCard{margin-top:16px;display:grid;grid-template-columns:1fr 1.4fr;border:1px solid var(--glass-border);border-radius:18px;overflow:hidden}
 .summaryCard span,.summaryCard b{padding:9px;font-size:10px;border-bottom:1px solid var(--glass-border)}
 .summaryCard span{background:color-mix(in srgb, var(--paper) 60%, transparent);color:var(--muted)}
 .sourceNote{font-size:9px;color:var(--muted);line-height:1.4;margin:6px 0 0}
 .sourceNote b{color:var(--ok-fg)}
 
 .visualPanel{display:flex;flex-direction:column;min-width:0}
-.visualHeader{height:54px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:9px;letter-spacing:.09em;color:var(--muted);border-bottom:1px solid var(--line)}
+.visualHeader{height:54px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:9px;letter-spacing:.09em;color:var(--muted);background:var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(190%);backdrop-filter:blur(var(--glass-blur)) saturate(190%);border-bottom:1px solid var(--glass-border)}
 .statusDot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4bb17c;margin-right:8px}
 .viewSwitch{display:flex;background:color-mix(in srgb, var(--paper) 55%, transparent);border-radius:14px;padding:2px}
 .viewSwitch button{border:0;background:transparent;font-size:10px;padding:7px 12px;border-radius:11px;color:var(--ink)}
@@ -169,14 +171,14 @@ a{color:inherit}
 .dim.top span{background:var(--paper);padding:0 8px;position:relative;top:-7px}
 .dim.side{left:42px;top:20%;bottom:20%;border-left:1px solid var(--line);display:flex;align-items:center}
 .dim.side span{background:var(--paper);padding:6px;transform:rotate(-90deg);margin-left:-24px}
-.editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--glass-bg-strong);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);color:var(--accent);border:1px solid color-mix(in srgb, var(--accent) 35%, var(--glass-border));padding:7px 11px;border-radius:20px;font-size:8px;letter-spacing:.06em;text-align:center;max-width:70%;z-index:7;box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight)}
-.specChip{position:absolute;left:24px;bottom:22px;background:var(--glass-bg-strong);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);border:1px solid var(--glass-border);border-radius:14px;padding:10px 13px;display:flex;flex-direction:column;font-size:10px;gap:3px;box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight)}
+.editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--glass-bg-strong);-webkit-backdrop-filter:blur(16px) saturate(185%);backdrop-filter:blur(16px) saturate(185%);color:var(--accent);border:1px solid color-mix(in srgb, var(--accent) 35%, var(--glass-border));padding:7px 11px;border-radius:20px;font-size:8px;letter-spacing:.06em;text-align:center;max-width:70%;z-index:7;box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight)}
+.specChip{position:absolute;left:24px;bottom:22px;background:var(--glass-bg-strong);-webkit-backdrop-filter:blur(16px) saturate(185%);backdrop-filter:blur(16px) saturate(185%);border:1px solid var(--glass-border);border-radius:20px;padding:10px 13px;display:flex;flex-direction:column;font-size:10px;gap:3px;box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight)}
 .specChip span{color:var(--muted)}
 .metricRow{height:74px;display:grid;grid-template-columns:repeat(4,1fr);background:var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur));backdrop-filter:blur(var(--glass-blur));border-top:1px solid var(--glass-border)}
 .metricRow div{padding:16px;border-right:1px solid var(--glass-border);display:flex;flex-direction:column;gap:8px}
 .metricRow strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 
-.toolbox{position:relative;flex:0 0 auto;align-self:flex-start;margin-top:16px;background:var(--glass-bg-strong);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(170%);backdrop-filter:blur(var(--glass-blur)) saturate(170%);border:1px solid var(--glass-border);border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight);max-height:calc(100% - 32px);overflow:auto}
+.toolbox{position:relative;flex:0 0 auto;align-self:flex-start;margin-top:16px;background:var(--glass-bg-strong);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(190%);backdrop-filter:blur(var(--glass-blur)) saturate(190%);border:1px solid var(--glass-border);border-radius:22px;padding:12px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight);max-height:calc(100% - 32px);overflow:auto}
 .explorerTree{display:flex;flex-direction:column;gap:2px;margin-top:6px;border:1px solid var(--glass-border);border-radius:14px;overflow:hidden}
 .explorerLeaf{text-align:left;padding:7px 10px;font-size:9px;font-weight:bold;background:color-mix(in srgb, var(--paper) 55%, transparent);border:0;border-bottom:1px solid var(--glass-border);color:var(--ink);cursor:pointer}
 .explorerLeaf.active{background:color-mix(in srgb, var(--accent) 16%, var(--paper));color:var(--accent)}
@@ -217,7 +219,7 @@ a{color:inherit}
 .warnings{background:color-mix(in srgb, var(--warn-bg) 80%, transparent);border:1px solid var(--warn-line);border-radius:12px;margin:10px 0;padding:8px}
 .warnings p{margin:3px;font-size:9px;color:var(--warn-fg)}
 
-.componentEditor{border:1px solid var(--glass-border);border-radius:16px;overflow:hidden;margin:10px 0 14px;box-shadow:var(--glass-shadow)}
+.componentEditor{border:1px solid var(--glass-border);border-radius:20px;overflow:hidden;margin:10px 0 14px;box-shadow:var(--glass-shadow)}
 .componentTitle{background:color-mix(in srgb, var(--accent) 88%, transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;padding:12px;display:grid;grid-template-columns:1fr auto;gap:3px;transition:background .2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
 .componentTitle span{grid-column:1/3;font-size:7px;letter-spacing:.14em;color:#ffffffbb}
 .componentTitle b{font-size:15px}
@@ -243,7 +245,7 @@ a{color:inherit}
 .line{display:flex;justify-content:space-between;padding:7px 0;color:var(--muted);font-size:11px}
 .line b{color:var(--ink)}
 .direct{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding:10px 0;font-size:10px}
-.totalBox{background:linear-gradient(155deg, color-mix(in srgb, var(--accent) 92%, transparent), color-mix(in srgb, var(--accent) 78%, transparent));-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);color:#fff;border-radius:18px;padding:16px;margin:12px 0;transition:background .2s;box-shadow:0 14px 34px -10px color-mix(in srgb, var(--accent) 55%, transparent),inset 0 1px 0 rgba(255,255,255,.3)}
+.totalBox{background:linear-gradient(150deg, color-mix(in srgb, var(--accent) 92%, transparent), color-mix(in srgb, var(--accent) 74%, #12a8b8));-webkit-backdrop-filter:blur(16px) saturate(185%);backdrop-filter:blur(16px) saturate(185%);color:#fff;border-radius:22px;padding:16px;margin:12px 0;transition:background .2s;box-shadow:0 14px 34px -10px color-mix(in srgb, var(--accent) 55%, transparent),inset 0 1px 0 rgba(255,255,255,.3)}
 .totalBox>span{color:#ffffffcc;display:flex;justify-content:space-between}
 .totalBox small{font-size:8px}
 .totalBox>strong{display:block;font-family:Georgia,serif;font-size:28px;margin:8px 0 14px;font-variant-numeric:tabular-nums}
@@ -1940,6 +1942,11 @@ const HANDLE_BY_WING = { jalousie: "Manivela jalousie" };
 // no rollers/handle/adapter of its own, so it's excluded here.
 const MOVABLE_SLIDING_WINGS = ["sliding", "lift-slide", "folding-sliding"];
 
+// A leaf has an actual sash frame (hoja) that glazes into it, rather than glazing straight into
+// the marco/travesaño, iff its wing isn't fixed/inactive/corredera-fija -- one shared check so
+// the sash-related places that need this (cut list, canvas glyphs, explorer tree) can't drift.
+const isOperableWing = (wing) => wing !== "fixed" && wing !== "inactive" && wing !== "sliding-fixed";
+
 function defaultSpecFor(wing) {
   const fixed = wing === "fixed" || wing === "inactive" || wing === "sliding-fixed";
   const directional = MOVABLE_SLIDING_WINGS.includes(wing);
@@ -2094,13 +2101,23 @@ function splitterLengthM(node, widthMm, heightMm) {
   return total;
 }
 
+// Flat allowance for how much of each leaf's full W/H the surrounding sash/marco rail plus
+// glazing bead eats into before the glass itself starts (2x per axis). A leaf whose remaining
+// glass dimension falls at or below GLASS_MIN_MM isn't something a real shop can glaze --
+// flagged via glassUnmanufacturable rather than silently clamped to 0 (Math.max below is only
+// there so a degenerate size still produces a finite, orderable-if-wrong cost, not NaN).
+const GLASS_BITE_MM = 120;
+const GLASS_MIN_MM = 100;
+
 function calcQuote(p) {
   const w = p.width / 1000, h = p.height / 1000;
   const area = w * h, perimeter = 2 * (w + h);
   const rects = flattenToRects(p.tree, p.width, p.height);
   const leaves = rects.map((r) => {
     const wM = r.w / 1000, hM = r.h / 1000;
-    return { id: r.id, wing: r.wing, spec: r.spec, wMm: r.w, hMm: r.h, glassArea: Math.max(0, (wM - 0.12) * (hM - 0.12)), sashPerimeter: 2 * (wM + hM) };
+    const glassWMm = r.w - GLASS_BITE_MM, glassHMm = r.h - GLASS_BITE_MM;
+    const glassUnmanufacturable = glassWMm <= GLASS_MIN_MM || glassHMm <= GLASS_MIN_MM;
+    return { id: r.id, wing: r.wing, spec: r.spec, wMm: r.w, hMm: r.h, glassWMm, glassHMm, glassUnmanufacturable, glassArea: Math.max(0, (wM - GLASS_BITE_MM / 1000) * (hM - GLASS_BITE_MM / 1000)), sashPerimeter: 2 * (wM + hM) };
   });
   const frameM = perimeter + splitterLengthM(p.tree, p.width, p.height);
   const sashM = leaves.reduce((a, l) => a + l.sashPerimeter, 0);
@@ -2114,9 +2131,20 @@ function calcQuote(p) {
   const consumables = (profileCost + glassCost) * 0.045;
   const direct = profileCost + glassCost + reinforce + seals + accessories + addons + consumables + p.installation + p.transport;
   const sale = (direct / (1 - p.margin / 100)) * (1 - p.discount / 100);
-  const bars = Math.ceil((frameM + sashM) / 6);
-  const waste = Math.max(0, bars * 6 - frameM - sashM);
-  return { w, h, area, perimeter, leaves, frameM, sashM, glassArea, profileCost, glassCost, reinforce, seals, accessories, addons, consumables, direct, sale, total: sale * p.qty, utility: (sale - direct) * p.qty, bars, waste };
+  // Real per-category bin-packing against the actual commercial bar length/kerf, instead of a
+  // flat (frameM+sashM)/6m estimate that ignored kerf and could understate real bar count by
+  // 2-4x on tall/narrow openings (a 6m nominal bar is longer than the real 5.8m stock length,
+  // and lumping frame+sash together hides that some pieces don't even share a profile).
+  const cutForBars = buildCutList(p.tree, p.width, p.height);
+  const packedCategories = [cutForBars.marco, cutForBars.travesanos, cutForBars.hojas, cutForBars.junquillos].map((pieces) => {
+    const qtyPieces = [];
+    for (let i = 0; i < p.qty; i++) qtyPieces.push(...pieces);
+    return packBars(qtyPieces, BAR_LENGTH_MM, KERF_MM);
+  });
+  const bars = packedCategories.reduce((a, c) => a + c.bars.length, 0);
+  const waste = packedCategories.reduce((a, c) => a + c.bars.reduce((x, b) => x + b.waste, 0), 0) / 1000;
+  const oversizedPieces = packedCategories.reduce((a, c) => a + c.oversized.length, 0);
+  return { w, h, area, perimeter, leaves, frameM, sashM, glassArea, profileCost, glassCost, reinforce, seals, accessories, addons, consumables, direct, sale, total: sale * p.qty, utility: (sale - direct) * p.qty, bars, waste, oversizedPieces };
 }
 
 // ---------- CUT-LIST OPTIMIZER (real 1D bin packing, first-fit-decreasing) ----------
@@ -2124,7 +2152,11 @@ const BAR_LENGTH_MM = 5800;
 const KERF_MM = 5;
 
 function packBars(pieces, barLength, kerf) {
-  const sorted = [...pieces].sort((a, b) => b.length - a.length);
+  // A piece longer than the stock bar can't be cut from a single bar at all -- packing it
+  // anyway produced a bar with negative "waste" and no indication the design needs a splice
+  // joint. Pull those out separately instead of feeding them to the bin-packer.
+  const oversized = pieces.filter((p) => p.length > barLength);
+  const sorted = pieces.filter((p) => p.length <= barLength).sort((a, b) => b.length - a.length);
   const bars = [];
   for (const piece of sorted) {
     let placed = false;
@@ -2134,10 +2166,13 @@ function packBars(pieces, barLength, kerf) {
     }
     if (!placed) bars.push({ pieces: [piece] });
   }
-  return bars.map((bar) => {
-    const used = bar.pieces.reduce((a, p) => a + p.length, 0) + Math.max(0, bar.pieces.length - 1) * kerf;
-    return { pieces: bar.pieces, used, waste: barLength - used };
-  });
+  return {
+    bars: bars.map((bar) => {
+      const used = bar.pieces.reduce((a, p) => a + p.length, 0) + Math.max(0, bar.pieces.length - 1) * kerf;
+      return { pieces: bar.pieces, used, waste: barLength - used };
+    }),
+    oversized,
+  };
 }
 
 // Derives real cut pieces from the tree: 4 outer marco pieces regardless of splits, one
@@ -2167,6 +2202,11 @@ function buildCutList(tree, width, height) {
   flattenToRects(tree, width, height).forEach((r, i) => {
     const label = `Hoja ${String.fromCharCode(65 + i)}`;
     const w = Math.round(r.w), h = Math.round(r.h);
+    // A leaf has a sash frame to cut whenever it isn't glazed straight into the marco --
+    // that includes sliding-fixed, which uses the SAME sash profile as its movable neighbors
+    // (see the "overlap" edge logic above: two sliding leaves interlock sash-to-sash, which
+    // only makes physical sense if the fixed one has a real sash too) even though it has no
+    // operable hardware. Don't use isOperableWing here -- that answers a different question.
     if (r.wing !== "fixed" && r.wing !== "inactive") {
       hojas.push({ label: `${label}: Arriba`, length: w, angle: "45°" }, { label: `${label}: Abajo`, length: w, angle: "45°" }, { label: `${label}: Izquierda`, length: h, angle: "45°" }, { label: `${label}: Derecha`, length: h, angle: "45°" });
     }
@@ -2604,7 +2644,7 @@ function renderFrameNode(node, widthMm, heightMm, selectedId, flexBasis, edges) 
     return `<div class="splitNode ${axisClass}" style="flex:${flexBasis}">${children}</div>`;
   }
   const hasSash = node.wing !== "fixed" && node.wing !== "inactive";
-  const isOperable = hasSash && node.wing !== "sliding-fixed";
+  const isOperable = isOperableWing(node.wing);
   const showOpeningLines = isOperable && !SLIDING_WINGS.includes(node.wing);
   const glyph = esc(motionGlyph(node.wing, node.spec));
   const hojaHit = hasSash
@@ -2839,7 +2879,7 @@ function renderCorteCategory(title, pieces, qty) {
   if (!pieces.length) return "";
   const allPieces = [];
   for (let i = 0; i < qty; i++) allPieces.push(...pieces);
-  const bars = packBars(allPieces, BAR_LENGTH_MM, KERF_MM);
+  const { bars, oversized } = packBars(allPieces, BAR_LENGTH_MM, KERF_MM);
   const totalWaste = bars.reduce((a, b) => a + b.waste, 0);
   const totalUsed = bars.reduce((a, b) => a + b.used, 0);
   const wastePct = totalUsed + totalWaste > 0 ? (totalWaste / (totalUsed + totalWaste)) * 100 : 0;
@@ -2851,8 +2891,12 @@ function renderCorteCategory(title, pieces, qty) {
         ${bar.waste > 0 ? `<div class="cutBarWaste" style="flex:${bar.waste} 0 0%">${Math.round(bar.waste)}</div>` : ""}
       </div>
     </div>`).join("");
+  // A piece longer than BAR_LENGTH_MM can't come from one commercial bar -- flag it instead of
+  // silently folding it into the packed list (where it used to show up as a negative "resto").
+  const oversizedHtml = oversized.length ? `<div class="notice">⚠ ${oversized.length} pieza(s) de "${esc(title)}" exceden la barra comercial de ${BAR_LENGTH_MM} mm y requieren unión/empalme o partir el vano con un travesaño: ${oversized.map((p) => `${esc(p.label)} (${p.length} mm)`).join(", ")}.</div>` : "";
   return `<div class="cutGroup">
-    <div class="cutGroupHead"><b>${esc(title)}</b><span>${bars.length} barra(s) de ${BAR_LENGTH_MM} mm · ${wastePct.toFixed(1)}% desperdicio</span></div>
+    <div class="cutGroupHead"><b>${esc(title)}</b><span>${bars.length} barra(s) de ${BAR_LENGTH_MM} mm · ${wastePct.toFixed(1)}% desperdicio${oversized.length ? ` · ${oversized.length} pieza(s) fuera de barra` : ""}</span></div>
+    ${oversizedHtml}
     ${barsHtml}
   </div>`;
 }
@@ -2879,11 +2923,14 @@ function renderVidrioDoc(calc, glass) {
     (groups[name] = groups[name] || []).push({ ...l, posIndex: i });
   });
   let rowNum = 0;
+  let anyUnmanufacturable = false;
   const sections = Object.entries(groups).map(([name, items]) => {
     const rows = items.map((l) => {
       rowNum++;
-      const w = Math.max(0, Math.round(l.wMm - 120)), h = Math.max(0, Math.round(l.hMm - 120));
-      return `<tr><td>${rowNum}</td><td style="text-align:center"><span class="checkboxCell"></span></td><td>${esc(state.designation)}.${String.fromCharCode(65 + l.posIndex)}</td><td>${w}</td><td>${h}</td><td>${state.qty}</td><td>${l.glassArea.toFixed(3)}</td><td>${(l.glassArea * state.qty).toFixed(3)}</td></tr>`;
+      const w = Math.round(l.glassWMm), h = Math.round(l.glassHMm);
+      if (l.glassUnmanufacturable) anyUnmanufacturable = true;
+      const flag = l.glassUnmanufacturable ? ` style="color:var(--warn-fg);font-weight:bold" title="Medida no fabricable: ${w}×${h} mm, mínimo real ${GLASS_MIN_MM} mm por lado"` : "";
+      return `<tr${flag}><td>${rowNum}</td><td style="text-align:center"><span class="checkboxCell"></span></td><td>${esc(state.designation)}.${String.fromCharCode(65 + l.posIndex)}</td><td>${w}${l.glassUnmanufacturable ? " ⚠" : ""}</td><td>${h}${l.glassUnmanufacturable ? " ⚠" : ""}</td><td>${state.qty}</td><td>${l.glassArea.toFixed(3)}</td><td>${(l.glassArea * state.qty).toFixed(3)}</td></tr>`;
     }).join("");
     const groupArea = items.reduce((a, l) => a + l.glassArea * state.qty, 0);
     return `<tr><td colspan="8" style="background:var(--paper);font-weight:bold">${esc(name)} — ${groupArea.toFixed(3)} m²</td></tr>${rows}`;
@@ -2893,6 +2940,7 @@ function renderVidrioDoc(calc, glass) {
       <div><div class="docBrandRow"><span class="brandMark">L</span><b>LUFT PVC</b></div><h1 class="docTitle">Pedido de vidrio</h1></div>
       <div class="docMeta"><div>Proyecto: <b>${esc(state.designation)} · ${esc(state.location)}</b></div><div>Fecha: <b>${todayStr()}</b></div></div>
     </div>
+    ${anyUnmanufacturable ? `<div class="notice">⚠ Una o más posiciones marcadas quedaron en ${GLASS_MIN_MM} mm o menos por lado tras restar el galce de ${GLASS_BITE_MM} mm — no son fabricables como vidrio; revisa la composición del vano (divisiones demasiado angostas/bajas) antes de enviar este pedido.</div>` : ""}
     <table class="docTable">
       <thead><tr><th>No.</th><th></th><th>Posición</th><th>W (mm)</th><th>H (mm)</th><th>Cant.</th><th>m²</th><th>m² total</th></tr></thead>
       <tbody>${sections}</tbody>
@@ -2946,10 +2994,13 @@ function renderApp() {
   const selectedDims = calc.leaves.find((l) => l.id === state.selectedId) || null;
   const summary = configSummary(calc);
   const hasRailOptions = sys.rails.some((x) => x > 0);
+  const maxBarSpan = BAR_LENGTH_MM - KERF_MM;
   const warnings = []
     .concat(state.width > sys.maxW || state.height > sys.maxH ? [`Medida supera el límite de referencia ${sys.maxW} × ${sys.maxH} mm.`] : [])
     .concat(glass.thickness > sys.glazing ? [`Vidrio de ${glass.thickness} mm supera el galce de referencia (${sys.glazing} mm).`] : [])
-    .concat(state.rail > 0 && !sys.rails.includes(state.rail) ? [`El sistema no contempla ${state.rail} riel(es).`] : []);
+    .concat(state.rail > 0 && !sys.rails.includes(state.rail) ? [`El sistema no contempla ${state.rail} riel(es).`] : [])
+    .concat(state.width > maxBarSpan || state.height > maxBarSpan ? [`Alguna pieza de marco mediría más de ${maxBarSpan} mm y no cabe en una barra comercial de ${BAR_LENGTH_MM} mm entera — se requiere unión/empalme o un travesaño que divida el vano.`] : [])
+    .concat(calc.leaves.some((l) => l.glassUnmanufacturable) ? [`Una o más hojas quedaron demasiado angostas o bajas para acristalar (menos de ${GLASS_MIN_MM} mm de vidrio por lado tras el galce) — revisa las divisiones antes de cotizar.`] : []);
 
   const sc = state.selfCheck || { ok: true, checks: [] };
   const scTitle = sc.checks.map((c) => `${c.pass ? "✓" : "✗"} ${c.name}`).join("\n");
@@ -2994,7 +3045,7 @@ function renderApp() {
         <div class="explorerSides">${["top", "bottom", "left", "right"].map((s) => `<button type="button" class="explorerSide ${state.focusScope === "assembly" && state.focusSide === s ? "active" : ""}" data-action="explorer-marco-side" data-side="${s}">Lado - ${SIDE_LABEL[s]}</button>`).join("")}</div>
         ${walkLeaves(state.tree).map((leaf, i) => {
           const leafActive = state.focusScope === "leaf" && leaf.id === state.selectedId;
-          const leafIsOperable = leaf.wing !== "fixed" && leaf.wing !== "inactive" && leaf.wing !== "sliding-fixed";
+          const leafIsOperable = isOperableWing(leaf.wing);
           return `
         <button type="button" class="explorerLeaf ${leafActive && !state.focusSide && state.focusPart !== "herraje" && state.focusPart !== "vidrio" ? "active" : ""}" data-action="explorer-select" data-id="${leaf.id}" data-part="marco">Hoja ${i + 1} · ${esc(wingName(leaf.wing))}</button>
         <div class="explorerSides">${["top", "bottom", "left", "right"].map((s) => `<button type="button" class="explorerSide ${leafActive && state.focusPart === "marco" && state.focusSide === s ? "active" : ""}" data-action="explorer-side" data-id="${leaf.id}" data-side="${s}">Lado - ${SIDE_LABEL[s]}</button>`).join("")}</div>
@@ -3017,8 +3068,9 @@ function renderApp() {
       </div>`;
   } else if (state.tab === "Consumo") {
     configBody = `
-      ${block("01", "Optimización de corte", "Patrones preliminares sobre barras comerciales de 6 m.")}
-      <div class="optimization"><strong>${calc.bars}</strong><span>barras estimadas</span><b>${calc.waste.toFixed(2)} m</b><span>remanente teórico</span></div>
+      ${block("01", "Optimización de corte", `Empaquetado real sobre barras comerciales de ${BAR_LENGTH_MM} mm (marco, travesaño, hoja, junquillo) — mismo cálculo del informe de Optimización de corte.`)}
+      <div class="optimization"><strong>${calc.bars}</strong><span>barras reales</span><b>${calc.waste.toFixed(2)} m</b><span>remanente real</span></div>
+      ${calc.oversizedPieces ? `<div class="notice">⚠ ${calc.oversizedPieces} pieza(s) exceden una barra de ${BAR_LENGTH_MM} mm — ver Informes → Optimización de corte.</div>` : ""}
       <label>Longitud de barra<select><option>6,000 mm</option><option>6,500 mm</option></select></label>
       <div class="cutPlan">${calc.leaves.slice(0, 6).map((l, i) => {
         const pieces = [Math.round(l.wMm), Math.round(l.hMm)];
