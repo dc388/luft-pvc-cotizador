@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import type { Brand, GlassSide, Marco, PaneSpec, Report, Side, Tab, Tool, ViewMode, ViewPreset3D } from "@/types/domain";
 import { catalog, EUR_MXN } from "@/data/catalog";
 import { glassCatalog } from "@/data/glass";
@@ -27,13 +27,24 @@ import { calcQuote } from "@/lib/calc";
 import { money } from "@/lib/money";
 import { runSelfCheck, type SelfCheckResult } from "@/lib/selfCheck";
 import { Block } from "@/components/Block";
+import { NumberInput } from "@/components/NumberInput";
 import { TopBar, ModuleNav } from "@/components/layout/Nav";
 import { Toolbox } from "@/components/editor/Toolbox";
-import { FrameCanvas } from "@/components/editor/FrameCanvas";
+import { FrameCanvas, type FrameCanvasHandle } from "@/components/editor/FrameCanvas";
+import { CanvasZoomControls } from "@/components/editor/CanvasZoomControls";
 import { SectionRender } from "@/components/editor/SectionRender";
 import { Scene3D } from "@/components/editor/Scene3D";
 import { ExplorerTree } from "@/components/editor/ExplorerTree";
 import type { PartKind, SideKey } from "@/components/editor/frameTypes";
+import {
+  PresetFrontIcon,
+  PresetIsoIcon,
+  PresetPlanIcon,
+  PresetProfileIcon,
+  View2DIcon,
+  View3DIcon,
+  ViewSectionIcon,
+} from "@/components/editor/icons";
 import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
 import { MarcoPanel } from "@/components/properties/MarcoPanel";
 import { Prop, Cost, Item } from "@/components/properties/Prop";
@@ -46,6 +57,13 @@ const TABS: Tab[] = ["Resumen", "Diseño", "Consumo", "Servicios", "Informes"];
 const REPORTS: Report[] = ["Cotización", "Optimización de corte", "Pedido de vidrio", "Producción", "Herrajes", "Costos"];
 const VIEW_MODES: ViewMode[] = ["2D", "3D", "Sección"];
 const PRESETS_3D: ViewPreset3D[] = ["Frente", "Planta", "Perfil", "Isométrica"];
+const VIEW_ICONS: Record<ViewMode, typeof View2DIcon> = { "2D": View2DIcon, "3D": View3DIcon, Sección: ViewSectionIcon };
+const PRESET_ICONS: Record<ViewPreset3D, typeof PresetFrontIcon> = {
+  Frente: PresetFrontIcon,
+  Planta: PresetPlanIcon,
+  Perfil: PresetProfileIcon,
+  Isométrica: PresetIsoIcon,
+};
 
 export default function Home() {
   const [brand, setBrand] = useState<Brand>("Aluplast");
@@ -84,6 +102,8 @@ export default function Home() {
   const [marco, setMarco] = useState<Marco>(() => defaultMarco());
   const [threeReady, setThreeReady] = useState(false);
   const [selfCheck, setSelfCheck] = useState<SelfCheckResult | null>(null);
+  const canvasApiRef = useRef<FrameCanvasHandle>(null);
+  const [canvasZoom, setCanvasZoom] = useState(1);
 
   const sys = catalog[brand][Math.min(systemIndex, catalog[brand].length - 1)];
   const glass = glassCatalog[glassIndex];
@@ -321,13 +341,13 @@ export default function Home() {
             <>
               <Block n="01" title="Proyecto y cliente" sub="Datos que aparecerán en la oferta." />
               <div className="inputGrid two">
-                <label>Código<input value={code} onChange={(e) => setCode(e.target.value)} /></label>
-                <label>Designación<input value={designation} onChange={(e) => setDesignation(e.target.value)} /></label>
+                <label>Código<input autoComplete="off" value={code} onChange={(e) => setCode(e.target.value)} /></label>
+                <label>Designación<input autoComplete="off" value={designation} onChange={(e) => setDesignation(e.target.value)} /></label>
               </div>
-              <label>Ubicación / descripción<input value={location} onChange={(e) => setLocation(e.target.value)} /></label>
+              <label>Ubicación / descripción<input autoComplete="off" value={location} onChange={(e) => setLocation(e.target.value)} /></label>
               <Block n="02" title="Datos para la cotización" sub="Aparecen en la Cotización del cliente imprimible." />
-              <label>Cliente<input placeholder="Sr./Sra./Arq. ..." value={client} onChange={(e) => setClient(e.target.value)} /></label>
-              <label>Dirección del proyecto<input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} /></label>
+              <label>Cliente<input autoComplete="off" placeholder="Sr./Sra./Arq. ..." value={client} onChange={(e) => setClient(e.target.value)} /></label>
+              <label>Dirección del proyecto<input autoComplete="off" value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} /></label>
               <label>Fecha de entrega<input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} /></label>
               <div className="summaryCard">
                 <span>Marca</span><b>{brand}</b>
@@ -377,9 +397,9 @@ export default function Home() {
               />
               <Block n="03" title="Geometría" sub="Cotas generales en milímetros." />
               <div className="inputGrid">
-                <label>Ancho<input type="number" value={width} onChange={(e) => setWidth(Math.max(1, Number(e.target.value)))} /></label>
-                <label>Alto<input type="number" value={height} onChange={(e) => setHeight(Math.max(1, Number(e.target.value)))} /></label>
-                <label>Cant.<input type="number" min="1" value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value)))} /></label>
+                <label>Ancho<NumberInput min={1} value={width} onChange={setWidth} /></label>
+                <label>Alto<NumberInput min={1} value={height} onChange={setHeight} /></label>
+                <label>Cant.<NumberInput min={1} value={qty} onChange={setQty} /></label>
               </div>
               <Block n="04" title="Materiales" sub="Color, aplicación y vidrio." />
               <label>Color / folio
@@ -430,7 +450,7 @@ export default function Home() {
               <p className="notice">La optimización definitiva depende de descuentos, ángulos, soldadura, refuerzos, sierra y reglas específicas del catálogo.</p>
               <Block n="02" title="Catálogo de perfiles y accesorios" sub="Datos reales Aluplast · lista EXWORK Veracruz, revisión ABR_22 (01/05/2022). 278 familias normalizadas." />
               <div className="profileFilters">
-                <label>Buscar<input type="text" value={profileSearch} onChange={(e) => setProfileSearch(e.target.value)} /></label>
+                <label>Buscar<input type="text" autoComplete="off" value={profileSearch} onChange={(e) => setProfileSearch(e.target.value)} /></label>
                 <label>Sistema
                   <select value={profileSystemFilter} onChange={(e) => setProfileSystemFilter(e.target.value)}>
                     {["Todos", ...profileSystems].map((s) => <option key={s}>{s}</option>)}
@@ -440,7 +460,7 @@ export default function Home() {
               <p className="profileCount">Mostrando {filteredFamilies.length} de {profileFamilies.length} familias.</p>
               <div className="profileCatalog">
                 {filteredFamilies.map((f) => (
-                  <div key={f.code}>
+                  <div key={`${f.code}-${f.name}`}>
                     <span className="profileSketch">▥</span>
                     <section><b>{f.code}</b><p>{f.name}</p><small>{f.system} · €{f.priceEUR.toFixed(2)} (~{money(f.priceEUR * EUR_MXN)})</small></section>
                   </div>
@@ -452,8 +472,8 @@ export default function Home() {
           {tab === "Servicios" && (
             <>
               <Block n="01" title="Costos adicionales" sub="Recargos y condiciones comerciales." />
-              <label>Instalación por pieza<input type="number" value={installation} onChange={(e) => setInstallation(Number(e.target.value))} /></label>
-              <label>Transporte por pieza<input type="number" value={transport} onChange={(e) => setTransport(Number(e.target.value))} /></label>
+              <label>Instalación por pieza<NumberInput min={0} value={installation} onChange={setInstallation} /></label>
+              <label>Transporte por pieza<NumberInput min={0} value={transport} onChange={setTransport} /></label>
               <label>Margen de utilidad <b>{margin}%</b><input type="range" min="10" max="60" value={margin} onChange={(e) => setMargin(Number(e.target.value))} /></label>
               <label>Descuento <b>{discount}%</b><input type="range" min="0" max="20" value={discount} onChange={(e) => setDiscount(Number(e.target.value))} /></label>
             </>
@@ -476,16 +496,26 @@ export default function Home() {
           <div className="visualHeader">
             <div><span className="statusDot" />VISTA {view.toUpperCase()}{view === "3D" ? ` · ${viewPreset}` : ""} · {configSummary}</div>
             <div className="viewSwitch">
-              {VIEW_MODES.map((v) => (
-                <button key={v} className={view === v ? "active" : ""} onClick={() => changeView(v)}>{v}</button>
-              ))}
+              {VIEW_MODES.map((v) => {
+                const Icon = VIEW_ICONS[v];
+                return (
+                  <button key={v} className={view === v ? "active" : ""} title={`Vista ${v}`} onClick={() => changeView(v)}>
+                    <Icon /> {v}
+                  </button>
+                );
+              })}
             </div>
           </div>
           {view === "3D" && (
             <div className="presetRow">
-              {PRESETS_3D.map((p) => (
-                <button key={p} className={viewPreset === p ? "active" : ""} onClick={() => changePreset(p)}>{p}</button>
-              ))}
+              {PRESETS_3D.map((p) => {
+                const Icon = PRESET_ICONS[p];
+                return (
+                  <button key={p} className={viewPreset === p ? "active" : ""} title={`Vista ${p}`} onClick={() => changePreset(p)}>
+                    <Icon /> {p}
+                  </button>
+                );
+              })}
             </div>
           )}
           <div className={`canvas view-${view.replace("ó", "o")}`}>
@@ -493,15 +523,10 @@ export default function Home() {
               <Toolbox activeTool={activeTool} onToolChange={setActiveTool} canMerge={canMerge} onMerge={handleMerge} onReset={handleResetTree} />
             )}
             <div className="canvasStage">
-              {view !== "3D" && (
-                <>
-                  <div className="dim top"><span>W={width.toLocaleString()} mm</span></div>
-                  <div className="dim side"><span>H={height.toLocaleString()} mm</span></div>
-                </>
-              )}
               {view === "Sección" && <SectionRender depth={sys.depth} rail={rail} glazing={glass.thickness} />}
               {view === "2D" && (
                 <FrameCanvas
+                  ref={canvasApiRef}
                   tree={tree}
                   width={width}
                   height={height}
@@ -511,9 +536,19 @@ export default function Home() {
                   focusPart={focusPart}
                   focusSide={focusSide}
                   showFocus
+                  activeTool={activeTool}
                   onPartClick={handlePartClick}
                   onAssemblyMarcoClick={handleAssemblyFocus}
                   onCentralLockClick={handleCentralLockClick}
+                  onZoomChange={setCanvasZoom}
+                />
+              )}
+              {view === "2D" && (
+                <CanvasZoomControls
+                  scale={canvasZoom}
+                  onZoomIn={() => canvasApiRef.current?.zoomIn()}
+                  onZoomOut={() => canvasApiRef.current?.zoomOut()}
+                  onFit={() => canvasApiRef.current?.fit()}
                 />
               )}
               <div className={`canvas3dWrap ${view === "3D" ? "" : "canvas3dWrapHidden"}`}>
@@ -639,7 +674,7 @@ export default function Home() {
                 <Item code="VIDRIO" name={glass.name} qty={`${calc.glassArea.toFixed(3)} m²`} />
                 <Item code="REF-AC" name="Refuerzo galvanizado" qty={`${(calc.frameM + calc.sashM).toFixed(2)} m`} />
                 <Item code="EPDM" name="Juntas y sellos" qty={`${(calc.frameM + calc.sashM).toFixed(2)} m`} />
-                <Item code="HERRAJE" name="Juego de herrajes" qty={`${calc.leaves.length} set`} />
+                <Item code="HERRAJE" name="Juego de herrajes" qty={`${calc.hardwareCount} set`} />
               </details>
               <p className="priceNote">Motor técnico v4 · Editor compositivo estilo RA Workshop + catálogo real Aluplast (EXWORK Veracruz, rev. ABR_22 2022). Valores en MXN. Los precios y límites deben validarse con la lista vigente y la ingeniería de cada proyecto.</p>
             </>

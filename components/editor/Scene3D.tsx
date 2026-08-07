@@ -52,6 +52,8 @@ type Props = {
 // scene is cheap (a few dozen boxes).
 export function Scene3D({ tree, width, height, sys, color, selectedId, focusScope, focusPart, focusSide, activeTool, viewPreset, presetToken, onSelect, onSplit, onAssignWing, onReady }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const compassRef = useRef<HTMLDivElement | null>(null);
+  const elevationRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -111,6 +113,14 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
       if (!canvas.isConnected) return;
       controls.update();
       renderer.render(scene, camera);
+      // Live orientation gizmo (compass + elevation bar), read straight off OrbitControls'
+      // public spherical-angle API -- cheap, and keeps the little "which way am I looking"
+      // indicator in sync with drag-rotate/preset changes without any extra state plumbing.
+      if (compassRef.current) compassRef.current.style.transform = `rotate(${-controls.getAzimuthalAngle()}rad)`;
+      if (elevationRef.current) {
+        const pct = Math.max(0, Math.min(100, (1 - controls.getPolarAngle() / Math.PI) * 100));
+        elevationRef.current.style.height = `${pct}%`;
+      }
     };
     raf = requestAnimationFrame(animate);
 
@@ -303,7 +313,17 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
 
   return (
     <>
-      <div className="scene3dSlot" ref={containerRef} />
+      <div className="scene3dSlot" ref={containerRef}>
+        <div className="axisGizmo" title="Orientación de la cámara">
+          <div className="axisCompass" ref={compassRef}>
+            <span className="axisCompassN">N</span>
+            <span className="axisCompassNeedle" />
+          </div>
+          <div className="axisElevation">
+            <div className="axisElevationFill" ref={elevationRef} />
+          </div>
+        </div>
+      </div>
       <div className="scene3dHint">Arrastra para rotar · rueda para acercar · clic derecho para desplazar</div>
     </>
   );

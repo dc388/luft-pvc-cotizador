@@ -47,6 +47,18 @@ export const SLIDING_WINGS: WingType[] = ["sliding", "lift-slide", "folding-slid
 
 export const SIDE_LABEL: Record<keyof Sides, string> = { top: "Arriba", bottom: "Abajo", left: "Izquierda", right: "Derecha" };
 
+// A "fixed"/"inactive" leaf glazes straight into the frame/mullion -- no hoja (sash) profile of
+// its own, matching the shapes drawn by FrameNodeView and cut by buildCutList in lib/calc.ts.
+export function hasSashWing(wing: WingType): boolean {
+  return wing !== "fixed" && wing !== "inactive";
+}
+
+// A wing with hardware/handle of its own -- excludes "fixed"/"inactive" (no sash at all) and
+// "sliding-fixed" (has a sash but no rollers/handle, see MOVABLE_SLIDING_WINGS above).
+export function isOperableWing(wing: WingType): boolean {
+  return hasSashWing(wing) && wing !== "sliding-fixed";
+}
+
 export function defaultSpecFor(wing: WingType): Partial<PaneSpec> {
   const fixed = wing === "fixed" || wing === "inactive" || wing === "sliding-fixed";
   const movableSliding = MOVABLE_SLIDING_WINGS.includes(wing);
@@ -94,10 +106,10 @@ export function defaultMarco(): Marco {
   };
 }
 
-export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>): LeafNode {
+export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>, id: string = crypto.randomUUID()): LeafNode {
   return {
     kind: "leaf",
-    id: crypto.randomUUID(),
+    id,
     wing,
     spec: {
       glass: "Heredar vidrio general",
@@ -113,13 +125,20 @@ export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>): 
 
 // Default starting shape for a new item: a 2-panel sliding window, the most
 // common opening — the same idea as the app's old "slide2" preset default.
+//
+// Uses fixed ids instead of crypto.randomUUID() so this tree is identical
+// between server and client renders (no React hydration mismatch). Every
+// mutation made after mount (split, add, reset, etc.) still gets a random id.
 export function createDefaultTree(): FrameNode {
   return {
     kind: "split",
-    id: crypto.randomUUID(),
+    id: "root",
     axis: "col",
     ratios: [0.5, 0.5],
-    children: [createLeaf("sliding"), createLeaf("sliding", { direction: "Izquierda" })],
+    children: [
+      createLeaf("sliding", undefined, "leaf-a"),
+      createLeaf("sliding", { direction: "Izquierda" }, "leaf-b"),
+    ],
   };
 }
 

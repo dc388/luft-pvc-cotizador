@@ -4,6 +4,7 @@ import type { GlassSide, LeafNode, PaneSpec, Side } from "@/types/domain";
 import { glassCatalog } from "@/data/glass";
 import { wingName, MOVABLE_SLIDING_WINGS, SIDE_LABEL } from "@/lib/tree";
 import type { PartKind, SideKey } from "@/components/editor/frameTypes";
+import { NumberInput } from "@/components/NumberInput";
 
 const OPENING_OPTIONS = Array.from(
   new Set([
@@ -80,19 +81,19 @@ export function PropertiesPanel({ leaf, dims, focusPart, focusSide, canMerge, on
           <div className="componentGrid">
             <label>
               Ángulo 1
-              <input type="number" value={glassSideSpec.angulo1} onChange={(e) => onChangeGlassSide(focusSide, { angulo1: Number(e.target.value) })} />
+              <NumberInput value={glassSideSpec.angulo1} onChange={(n) => onChangeGlassSide(focusSide, { angulo1: n })} />
             </label>
             <label>
               Ángulo 2
-              <input type="number" value={glassSideSpec.angulo2} onChange={(e) => onChangeGlassSide(focusSide, { angulo2: Number(e.target.value) })} />
+              <NumberInput value={glassSideSpec.angulo2} onChange={(n) => onChangeGlassSide(focusSide, { angulo2: n })} />
             </label>
             <label>
               Radio
-              <input type="number" value={glassSideSpec.radio} onChange={(e) => onChangeGlassSide(focusSide, { radio: Number(e.target.value) })} />
+              <NumberInput value={glassSideSpec.radio} onChange={(n) => onChangeGlassSide(focusSide, { radio: n })} />
             </label>
             <label>
               Altura del arco
-              <input type="number" value={glassSideSpec.arco} onChange={(e) => onChangeGlassSide(focusSide, { arco: Number(e.target.value) })} />
+              <NumberInput value={glassSideSpec.arco} onChange={(n) => onChangeGlassSide(focusSide, { arco: n })} />
             </label>
           </div>
           <label>
@@ -181,7 +182,7 @@ export function PropertiesPanel({ leaf, dims, focusPart, focusSide, canMerge, on
         {hasSash && (
           <label className={cls("herraje")}>
             Posición de manilla (mm)
-            <input type="number" value={spec.handlePosition} onChange={(e) => onChange("handlePosition", Number(e.target.value))} />
+            <NumberInput value={spec.handlePosition} onChange={(n) => onChange("handlePosition", n)} />
           </label>
         )}
         <label className="wide">

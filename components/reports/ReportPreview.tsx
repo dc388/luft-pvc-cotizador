@@ -31,7 +31,7 @@ export function ReportPreview({ report, code, designation, location, brand, syst
       {report === "Herrajes" ? (
         <>
           <h3>Accesorios y herrajes</h3>
-          <ReportRow a="Juego de herrajes" b={`${calc.leaves.length * qty} set`} c={configSummary} />
+          <ReportRow a="Juego de herrajes" b={`${calc.hardwareCount * qty} set`} c={configSummary} />
           <ReportRow a="Juntas EPDM" b={`${((calc.frameM + calc.sashM) * qty).toFixed(2)} m`} c="Perimetral" />
           <ReportRow a="Calzos / topes" b={`${calc.leaves.length * 4 * qty} pza`} c="Según vidrio" />
           {calc.addons > 0 && <ReportRow a="Persiana Mallorquina" b={money(calc.addons * qty)} c="Accesorio exterior" />}
