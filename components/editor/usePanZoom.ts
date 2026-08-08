@@ -64,6 +64,36 @@ export function usePanZoom(enabled: boolean, onScaleChange?: (scale: number) => 
   const zoomOut = useCallback(() => zoomAt(1 / 1.25), [zoomAt]);
   const reset = useCallback(() => setState({ scale: 1, x: 0, y: 0 }), []);
 
+  // Real "zoom to fit"/"zoom extents" (AutoCAD/Fusion 360/SketchUp all have one): compute the
+  // scale that makes the drawing's actual rendered box (.modelStage, sized off the real width/
+  // height aspect ratio and clamped by the CSS in globals.css) fill the viewport, instead of
+  // just snapping back to 100%. Measuring the *current* rendered size and dividing out the
+  // current scale (rather than resetting to 1 first and re-measuring) means this works in one
+  // shot from any zoom level. Falls back to a plain reset if the content box can't be measured
+  // (e.g. called before the canvas has painted).
+  const fitToView = useCallback(() => {
+    const container = containerRef.current;
+    const content = container?.querySelector<HTMLElement>(".modelStage");
+    if (!container || !content) {
+      setState({ scale: 1, x: 0, y: 0 });
+      return;
+    }
+    const containerRect = container.getBoundingClientRect();
+    const contentRect = content.getBoundingClientRect();
+    const currentScale = stateRef.current.scale || 1;
+    const naturalW = contentRect.width / currentScale;
+    const naturalH = contentRect.height / currentScale;
+    if (!naturalW || !naturalH || !containerRect.width || !containerRect.height) {
+      setState({ scale: 1, x: 0, y: 0 });
+      return;
+    }
+    // A little breathing room around the edges reads as an intentional fit, not content jammed
+    // edge-to-edge against the viewport border.
+    const margin = 0.86;
+    const fitScale = clamp(Math.min(containerRect.width / naturalW, containerRect.height / naturalH) * margin);
+    setState({ scale: fitScale, x: 0, y: 0 });
+  }, []);
+
   // Native (non-passive) wheel listener so preventDefault reliably stops page/trackpad scroll —
   // React's onWheel prop is passive by default and can't guarantee that.
   useEffect(() => {
@@ -126,6 +156,7 @@ export function usePanZoom(enabled: boolean, onScaleChange?: (scale: number) => 
     zoomIn,
     zoomOut,
     reset,
+    fitToView,
     onPointerDown,
     onPointerMove,
     onPointerUp: endPan,

@@ -112,7 +112,14 @@ export default function Home() {
   const changeBrand = (b: Brand) => { setBrand(b); setSystemIndex(0); setColorIndex(0); setRail(catalog[b][0].rails[0]); };
   const changeSystem = (i: number) => { setSystemIndex(i); setRail(catalog[brand][i].rails[0]); };
   const changeTab = (t: Tab) => { setTab(t); if (t !== "Diseño") setActiveTool({ mode: "select" }); };
-  const changeView = (v: ViewMode) => { setView(v); if (v === "3D") setPresetToken((n) => n + 1); };
+  // Sección has no clickable geometry (SectionRender is a static cutaway, not a FrameCanvas/
+  // Scene3D hit-test surface), so an armed split/wing tool would silently do nothing there —
+  // drop back to select mode on the way in, same as changeTab already does when leaving Diseño.
+  const changeView = (v: ViewMode) => {
+    setView(v);
+    if (v === "3D") setPresetToken((n) => n + 1);
+    if (v === "Sección") setActiveTool({ mode: "select" });
+  };
   const changePreset = (p: ViewPreset3D) => { setViewPreset(p); setPresetToken((n) => n + 1); };
 
   const profileSystems = useMemo(() => Array.from(new Set(profileFamilies.map((f) => f.system))).sort(), []);
@@ -148,6 +155,20 @@ export default function Home() {
     () => Array.from(new Set(calc.leaves.map((l) => wingDefs.find((w) => w.id === l.wing)?.name ?? l.wing))).join(" + "),
     [calc.leaves]
   );
+
+  // Escape cancels an armed split/assign-wing tool and drops back to select mode — the same
+  // "Esc backs out of the current command" affordance every CAD tool (AutoCAD, Fusion 360,
+  // SketchUp) offers. Only listens while the Diseño tab (and thus the toolbox) is on screen, and
+  // only acts when a non-select tool is actually armed, so it never fights Escape's normal
+  // behavior elsewhere (closing a <select>, blurring a focused input, etc).
+  useEffect(() => {
+    if (tab !== "Diseño") return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && activeTool.mode !== "select") setActiveTool({ mode: "select" });
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [tab, activeTool]);
 
   // ---------- Self-check: re-run whenever anything relevant to it changes, and periodically ----------
   useEffect(() => {
@@ -519,7 +540,10 @@ export default function Home() {
             </div>
           )}
           <div className={`canvas view-${view.replace("ó", "o")}`}>
-            {tab === "Diseño" && (
+            {/* Sección is a static cutaway (SectionRender), not a FrameCanvas/Scene3D hit-test
+                surface -- the split/wing tools have nothing to click there, so hide the palette
+                rather than leave an armable toolbox that silently does nothing. */}
+            {tab === "Diseño" && view !== "Sección" && (
               <Toolbox activeTool={activeTool} onToolChange={setActiveTool} canMerge={canMerge} onMerge={handleMerge} onReset={handleResetTree} />
             )}
             <div className="canvasStage">
@@ -549,6 +573,7 @@ export default function Home() {
                   onZoomIn={() => canvasApiRef.current?.zoomIn()}
                   onZoomOut={() => canvasApiRef.current?.zoomOut()}
                   onFit={() => canvasApiRef.current?.fit()}
+                  onResetZoom={() => canvasApiRef.current?.resetZoom()}
                 />
               )}
               <div className={`canvas3dWrap ${view === "3D" ? "" : "canvas3dWrapHidden"}`}>
@@ -569,9 +594,10 @@ export default function Home() {
                   onSplit={handle3DSplit}
                   onAssignWing={handle3DAssignWing}
                   onReady={() => setThreeReady(true)}
+                  onPresetSelect={changePreset}
                 />
               </div>
-              <div className="editHint">{toolHint}</div>
+              {view !== "Sección" && <div className="editHint">{toolHint}</div>}
               <div className="specChip">
                 <b>{brand} · {sys.name}</b>
                 <span>{sys.depth} mm · {sys.chambers} · {rail ? `${rail} riel${rail > 1 ? "es" : ""}` : "practicable"}</span>

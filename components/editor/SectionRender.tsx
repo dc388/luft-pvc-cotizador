@@ -1,9 +1,14 @@
 export function SectionRender({ depth, rail, glazing }: { depth: number; rail: number; glazing: number }) {
   return (
     <div className="sectionRender">
-      <div className="profileSection">
-        <span className="chamber c1" /><span className="chamber c2" /><span className="chamber c3" />
-        <i className="glassSection" style={{ width: `${Math.max(8, glazing / 2)}px` }} />
+      <div>
+        <div className="profileSection">
+          <span className="chamber c1" /><span className="chamber c2" /><span className="chamber c3" />
+          <i className="glassSection" style={{ width: `${Math.max(8, glazing / 2)}px` }} />
+        </div>
+        {/* CAD-style dimension chip (same pill language as DimensionOverlay's .dimValue on the
+            2D canvas) calling out the profile depth directly under the cutaway it measures. */}
+        <span className="sectionDepthDim">{depth} mm</span>
       </div>
       <div className="sectionInfo">
         <b>Sección de sistema</b>

@@ -9,7 +9,7 @@ import { DimensionOverlay } from "./DimensionOverlay";
 import { usePanZoom } from "./usePanZoom";
 import type { PartKind, SideKey } from "./frameTypes";
 
-export type FrameCanvasHandle = { zoomIn: () => void; zoomOut: () => void; fit: () => void };
+export type FrameCanvasHandle = { zoomIn: () => void; zoomOut: () => void; fit: () => void; resetZoom: () => void };
 
 type Props = {
   tree: FrameNode;
@@ -59,7 +59,11 @@ export const FrameCanvas = forwardRef<FrameCanvasHandle, Props>(function FrameCa
   const light = color.name === "Blanco";
   const panZoom = usePanZoom(interactive, onZoomChange);
 
-  useImperativeHandle(ref, () => ({ zoomIn: panZoom.zoomIn, zoomOut: panZoom.zoomOut, fit: panZoom.reset }), [panZoom]);
+  useImperativeHandle(
+    ref,
+    () => ({ zoomIn: panZoom.zoomIn, zoomOut: panZoom.zoomOut, fit: panZoom.fitToView, resetZoom: panZoom.reset }),
+    [panZoom]
+  );
 
   const diagram = (
     <div className="modelStage" style={{ "--ar": `${width}/${height}` } as CSSProperties}>

@@ -90,12 +90,20 @@ a{color:inherit}
 .scene3dSlot{width:100%;height:100%;position:relative;min-height:1px}
 .scene3dSlot canvas{display:block;border-radius:10px;cursor:grab}
 .scene3dHint{position:absolute;bottom:14px;right:14px;font-size:10px;letter-spacing:.02em;color:var(--muted);background:var(--surface);border:1px solid var(--line);padding:6px 11px;border-radius:20px;pointer-events:none;box-shadow:0 4px 12px var(--shadow)}
+/* Wrapper stays pointer-events:none (inherited by every descendant) so idle padding around the
+   compass/bar still lets a drag-to-orbit gesture reach the canvas beneath; each clickable piece
+   below opts back in with pointer-events:auto. */
 .axisGizmo{position:absolute;top:14px;left:14px;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:7px 10px;box-shadow:0 4px 12px var(--shadow);pointer-events:none}
 .axisCompass{position:relative;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--paper)}
-.axisCompassN{position:absolute;top:1px;left:50%;transform:translateX(-50%);font-size:6.5px;font-weight:800;color:var(--muted);letter-spacing:.02em}
-.axisCompassNeedle{position:absolute;left:50%;top:50%;width:2px;height:9px;margin-left:-1px;margin-top:-9px;background:var(--accent);border-radius:1px;transform-origin:bottom center}
-.axisElevation{position:relative;width:4px;height:26px;border-radius:3px;background:var(--paper);border:1px solid var(--line);overflow:hidden}
-.axisElevationFill{position:absolute;bottom:0;left:0;width:100%;background:var(--accent);border-radius:0 0 3px 3px;transition:height .1s linear}
+.axisCompassRing{position:absolute;inset:0;z-index:1;border:0;border-radius:50%;background:transparent;padding:0;cursor:pointer;pointer-events:auto;transition:background-color .15s}
+.axisCompassRing:hover{background:color-mix(in srgb, var(--accent) 16%, transparent)}
+.axisCompassN,.axisCompassE{position:absolute;z-index:2;border:0;background:transparent;padding:2px;margin:0;font-size:6.5px;font-weight:800;color:var(--muted);letter-spacing:.02em;line-height:1;cursor:pointer;pointer-events:auto;transition:color .15s}
+.axisCompassN:hover,.axisCompassE:hover{color:var(--accent)}
+.axisCompassN{top:0;left:50%;transform:translateX(-50%)}
+.axisCompassE{top:50%;right:-1px;transform:translateY(-50%)}
+.axisCompassNeedle{position:absolute;left:50%;top:50%;width:2px;height:9px;margin-left:-1px;margin-top:-9px;background:var(--accent);border-radius:1px;transform-origin:bottom center;pointer-events:none;z-index:1}
+.axisElevation{position:relative;width:4px;height:26px;border-radius:3px;background:var(--paper);border:1px solid var(--line);overflow:hidden;padding:0;cursor:pointer;pointer-events:auto}
+.axisElevationFill{position:absolute;bottom:0;left:0;width:100%;background:var(--accent);border-radius:0 0 3px 3px;transition:height .1s linear;pointer-events:none}
 .canvas{position:relative;flex:1;min-height:500px;display:flex;align-items:stretch;gap:16px;padding:16px;background-color:var(--paper);background-image:linear-gradient(color-mix(in srgb, var(--ink) 6%, transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb, var(--ink) 6%, transparent) 1px,transparent 1px);background-size:28px 28px}
 .canvasStage{position:relative;flex:1;min-width:0;display:grid;place-items:center;padding:54px;overflow:hidden}
 /* position:absolute + inset:0 (rather than width/height:100%) is deliberate: .canvasViewport
@@ -105,7 +113,14 @@ a{color:inherit}
    takes it fully out of the ancestor's sizing computation -- its box is fixed the moment
    .canvasStage is laid out, so whatever lives inside (including the deliberately oversized
    zoom/grid layer) can never influence anything upstream. */
-.canvasViewport{position:absolute;inset:0;overflow:hidden;cursor:grab;touch-action:none;display:grid;place-items:center}
+/* place-items:center only centers an item *within its own track*; a track that's forced wide by
+   an oversized child (.zoomLayer, 3200px square) has no leftover room for that to do anything,
+   so the overflow just hangs off the container's start edge instead of spreading evenly. That
+   made the whole 2D diagram land off in the bottom-right of .canvasViewport's clipped box --
+   effectively invisible -- on any viewport materially smaller than 3200px, i.e. every real one.
+   place-content:center (justify-content+align-content) is the property that actually centers an
+   oversized *track set* within the container, so it's the one that needs to be added here. */
+.canvasViewport{position:absolute;inset:0;overflow:hidden;cursor:grab;touch-action:none;display:grid;place-items:center;place-content:center}
 .canvasViewport.isPanning{cursor:grabbing}
 .canvasViewport .hit,.canvasViewport .hitAssemblyMarco,.canvasViewport .cierreCentral{cursor:pointer}
 .canvasViewport.tool-split .hit{cursor:crosshair}
@@ -187,17 +202,25 @@ a{color:inherit}
 .metricRow strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 
 .toolbox{position:relative;flex:0 0 auto;align-self:flex-start;margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 24px var(--shadow);max-height:calc(100% - 32px);overflow:auto}
-.explorerTree{display:flex;flex-direction:column;gap:2px;margin-top:6px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.explorerLeaf{text-align:left;padding:7px 10px;font-size:9px;font-weight:bold;background:var(--paper);border:0;border-bottom:1px solid var(--line);color:var(--ink);cursor:pointer}
+/* Brought up to the same hover/transition language as .toolboxGrid/.toolboxAction and the
+   canvas hit zones (color-mix accent tints, smooth .15s fades) instead of the flat, static
+   rows this list shipped with pre-round-1 -- it sits directly beside the polished canvas, so
+   it needs to read as part of the same design system, not a leftover dense data table. */
+.explorerTree{display:flex;flex-direction:column;gap:2px;margin-top:6px;border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:0 6px 16px var(--shadow)}
+.explorerLeaf{text-align:left;padding:8px 10px;font-size:9.5px;font-weight:bold;background:var(--paper);border:0;border-bottom:1px solid var(--line);color:var(--ink);cursor:pointer;transition:background-color .15s,color .15s}
+.explorerLeaf:hover{background:color-mix(in srgb, var(--accent) 10%, var(--paper))}
 .explorerLeaf.active{background:color-mix(in srgb, var(--accent) 16%, var(--paper));color:var(--accent)}
-.explorerMarco{text-align:left;padding:8px 10px;font-size:9.5px;font-weight:800;letter-spacing:.04em;background:color-mix(in srgb, var(--accent) 8%, var(--paper));border:0;border-bottom:1px solid var(--line);color:var(--ink);cursor:pointer}
+.explorerMarco{text-align:left;padding:9px 10px;font-size:10px;font-weight:800;letter-spacing:.04em;background:color-mix(in srgb, var(--accent) 8%, var(--paper));border:0;border-bottom:1px solid var(--line);color:var(--ink);cursor:pointer;transition:background-color .15s,color .15s}
+.explorerMarco:hover{background:color-mix(in srgb, var(--accent) 16%, var(--paper))}
 .explorerMarco.active{background:color-mix(in srgb, var(--accent) 22%, var(--paper));color:var(--accent)}
-.explorerGancho{text-align:left;padding:6px 10px 6px 18px;font-size:8.5px;background:var(--surface);border:0;border-bottom:1px solid var(--line);color:var(--muted);cursor:pointer}
+.explorerGancho{text-align:left;padding:6px 10px 6px 18px;font-size:9px;background:var(--surface);border:0;border-bottom:1px solid var(--line);color:var(--muted);cursor:pointer;transition:background-color .15s,color .15s}
+.explorerGancho:hover{background:color-mix(in srgb, var(--accent) 10%, var(--surface));color:var(--accent)}
 .explorerGancho.active{background:color-mix(in srgb, var(--accent) 16%, var(--surface));color:var(--accent)}
-.explorerVidrioHeader{padding:6px 10px 4px 18px;font-size:7.5px;letter-spacing:.08em;font-weight:bold;color:var(--muted);background:var(--surface)}
+.explorerVidrioHeader{padding:6px 10px 4px 18px;font-size:8px;letter-spacing:.08em;font-weight:bold;color:var(--muted);background:var(--surface)}
 .explorerSides{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
-.explorerSide{padding:6px 4px;font-size:7.5px;letter-spacing:.02em;background:var(--surface);border:0;border-right:1px solid var(--line);color:var(--muted);cursor:pointer}
+.explorerSide{padding:6px 4px;font-size:8px;letter-spacing:.02em;background:var(--surface);border:0;border-right:1px solid var(--line);color:var(--muted);cursor:pointer;transition:background-color .15s,color .15s}
 .explorerSide:last-child{border-right:0}
+.explorerSide:hover{background:color-mix(in srgb, var(--accent) 12%, var(--surface));color:var(--accent)}
 .explorerSide.active{background:var(--accent);color:#fff}
 .sideEditor{border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:8px;display:flex;flex-direction:column;gap:8px}
 .sideEditor b{font-size:9px;letter-spacing:.06em;color:var(--accent)}
@@ -214,12 +237,17 @@ a{color:inherit}
 .toolboxAction.active{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 12%, var(--paper));color:var(--accent)}
 .toolboxAction:disabled{opacity:.4;cursor:not-allowed}
 
-.sectionRender{width:70%;display:grid;grid-template-columns:220px 1fr;gap:25px;align-items:center}
-.profileSection{height:180px;border:18px solid #1d2924;background:#d9e0db;position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:18px}
-.chamber{border:5px solid #52645c;background:#f3f5f1}
+/* Brought up to the same "real technical drawing" bar as the polished 2D/3D views: a card with
+   the same border/shadow language as .window and .axisGizmo, plus a CAD-style dimension chip
+   under the profile echoing DimensionOverlay's .dimValue pill, instead of sitting as bare grid
+   content directly on the canvas backdrop. */
+.sectionRender{width:min(72%,560px);display:grid;grid-template-columns:220px 1fr;gap:28px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 30px;box-shadow:0 24px 40px var(--shadow)}
+.profileSection{height:180px;border:18px solid #1d2924;background:#d9e0db;position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:18px;border-radius:3px;box-shadow:0 10px 22px var(--shadow)}
+.chamber{border:5px solid #52645c;background:#f3f5f1;border-radius:1px}
 .glassSection{position:absolute;top:-45px;bottom:-45px;left:50%;background:#a8d4de99;border:2px solid #518b96;transform:translateX(-50%)}
+.sectionDepthDim{display:inline-flex;align-self:start;margin-top:12px;background:var(--paper);border:1px solid var(--line);color:var(--ink);font-weight:700;font-size:10.5px;padding:3px 10px;border-radius:20px;font-variant-numeric:tabular-nums}
 .sectionInfo{display:flex;flex-direction:column;gap:9px}
-.sectionInfo b{font-size:14px}
+.sectionInfo b{font-family:Georgia,serif;font-size:17px;letter-spacing:-.01em}
 .sectionInfo span{font-size:10px;color:var(--muted)}
 
 .quoteHead{height:72px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
