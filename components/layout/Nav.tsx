@@ -8,11 +8,16 @@ type TopBarProps = {
   location: string;
   onPrint: () => void;
   selfCheck: SelfCheckResult | null;
+  /** ISO timestamp of the last successful autosave to localStorage, or null before the first one. */
+  savedAt: string | null;
 };
 
-export function TopBar({ code, designation, location, onPrint, selfCheck }: TopBarProps) {
+export function TopBar({ code, designation, location, onPrint, selfCheck, savedAt }: TopBarProps) {
   const sc = selfCheck ?? { ok: true, checks: [] };
   const scTitle = sc.checks.map((c) => `${c.pass ? "✓" : "✗"} ${c.name}`).join("\n");
+  const savedLabel = savedAt
+    ? `Guardado ${new Date(savedAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`
+    : "Sin guardar";
   return (
     <header className="topbar">
       <a className="brand" href="#top">
@@ -24,6 +29,7 @@ export function TopBar({ code, designation, location, onPrint, selfCheck }: TopB
         <strong>Oferta {code} · {designation} {location}</strong>
       </div>
       <div className="headerActions">
+        <span className={`selfCheckBadge ${savedAt ? "ok" : "warn"}`} title="Autoguardado en este navegador">{savedLabel}</span>
         <span className={`selfCheckBadge ${sc.ok ? "ok" : "warn"}`} title={scTitle}>{sc.ok ? "✓ Sistema OK" : "⚠ Revisar"}</span>
         <button className="primary" onClick={onPrint}>Generar informe</button>
       </div>

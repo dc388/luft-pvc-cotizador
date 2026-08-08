@@ -113,13 +113,20 @@ export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>): 
 
 // Default starting shape for a new item: a 2-panel sliding window, the most
 // common opening — the same idea as the app's old "slide2" preset default.
+// Fixed ids (not crypto.randomUUID()): this tree is built inside a useState
+// initializer that runs once during SSR and again during client hydration —
+// random ids would differ between the two passes and React would flag a
+// hydration mismatch on every load.
 export function createDefaultTree(): FrameNode {
   return {
     kind: "split",
-    id: crypto.randomUUID(),
+    id: "default-root",
     axis: "col",
     ratios: [0.5, 0.5],
-    children: [createLeaf("sliding"), createLeaf("sliding", { direction: "Izquierda" })],
+    children: [
+      { ...createLeaf("sliding"), id: "default-leaf-a" },
+      { ...createLeaf("sliding", { direction: "Izquierda" }), id: "default-leaf-b" },
+    ],
   };
 }
 
@@ -226,6 +233,85 @@ export function removeSplit(tree: FrameNode, splitId: string): FrameNode {
 
 export type Rect = { id: string; wing: WingType; spec: PaneSpec; x: number; y: number; w: number; h: number };
 
+// Shared with components/editor/frameTypes.ts (re-exported from there for the editor's
+// hit-testing UI) -- "overlap" marks a shared boundary between two sliding leaves that
+// meet mid-run, `true` marks a boundary against the real outer marco, `false` an internal
+// structural mullion/travesaño between non-sliding neighbors.
+export type EdgeValue = boolean | "overlap";
+export type Edges = { top: EdgeValue; right: EdgeValue; bottom: EdgeValue; left: EdgeValue };
+const OUTER_EDGES: Edges = { top: true, right: true, bottom: true, left: true };
+
+export type LeafFrame = Rect & {
+  edges: Edges;
+  // Real fabrication rect: for sliding leaves, inset by `seatMm` on every side that seats
+  // into the outer marco, and extended by half of `overlapMm` on every side that overlaps a
+  // sliding sibling at a shared track boundary -- see System.frameSeatMm/centerOverlapMm.
+  // Equal to x/y/w/h for any non-sliding leaf (fixed, casement, etc.), unchanged from today.
+  fabX: number;
+  fabY: number;
+  fabW: number;
+  fabH: number;
+};
+
+// Resolves the tree into absolute mm rectangles like flattenToRects, but also carries each
+// leaf's real fabrication size once sliding leaves' marco-seat and center-traslape are
+// accounted for -- used by the cut list, the quote's sash measurements, and the editor's
+// drawing (which renders fabX/fabY/fabW/fabH so overlapping sliding leaves visually overlap).
+export function flattenToLeafFrames(
+  tree: FrameNode,
+  width: number,
+  height: number,
+  seatMm: number,
+  overlapMm: number,
+  edges: Edges = OUTER_EDGES,
+  x = 0,
+  y = 0
+): LeafFrame[] {
+  if (tree.kind === "leaf") {
+    const sliding = isSlidingLeaf(tree);
+    const leftD = !sliding ? 0 : edges.left === true ? seatMm : edges.left === "overlap" ? -overlapMm / 2 : 0;
+    const rightD = !sliding ? 0 : edges.right === true ? -seatMm : edges.right === "overlap" ? overlapMm / 2 : 0;
+    const topD = !sliding ? 0 : edges.top === true ? seatMm : edges.top === "overlap" ? -overlapMm / 2 : 0;
+    const bottomD = !sliding ? 0 : edges.bottom === true ? -seatMm : edges.bottom === "overlap" ? overlapMm / 2 : 0;
+    const fabX = x + leftD, fabRight = x + width + rightD;
+    const fabY = y + topD, fabBottom = y + height + bottomD;
+    return [{ id: tree.id, wing: tree.wing, spec: tree.spec, x, y, w: width, h: height, edges, fabX, fabY, fabW: fabRight - fabX, fabH: fabBottom - fabY }];
+  }
+  const n = tree.children.length;
+  const frames: LeafFrame[] = [];
+  let offset = 0;
+  tree.children.forEach((child, i) => {
+    // Same "sliding leaves meeting mid-run share an 'overlap' edge, not a structural
+    // travesaño" rule as FrameNodeView's rendering (this is now its single source of truth).
+    const slideNeighbor = (j: number) => j >= 0 && j < n && isSlidingLeaf(child) && isSlidingLeaf(tree.children[j]);
+    const childEdges: Edges =
+      tree.axis === "col"
+        ? {
+            top: edges.top,
+            bottom: edges.bottom,
+            left: i === 0 ? edges.left : slideNeighbor(i - 1) ? "overlap" : false,
+            right: i === n - 1 ? edges.right : slideNeighbor(i + 1) ? "overlap" : false,
+          }
+        : {
+            top: i === 0 ? edges.top : slideNeighbor(i - 1) ? "overlap" : false,
+            bottom: i === n - 1 ? edges.bottom : slideNeighbor(i + 1) ? "overlap" : false,
+            left: edges.left,
+            right: edges.right,
+          };
+    const ratio = tree.ratios[i];
+    if (tree.axis === "col") {
+      const w = width * ratio;
+      frames.push(...flattenToLeafFrames(child, w, height, seatMm, overlapMm, childEdges, x + offset, y));
+      offset += w;
+    } else {
+      const h = height * ratio;
+      frames.push(...flattenToLeafFrames(child, width, h, seatMm, overlapMm, childEdges, x, y + offset));
+      offset += h;
+    }
+  });
+  return frames;
+}
+
 // Resolves the tree's ratios into absolute mm rectangles for a given overall
 // width/height — used by the calc engine and by report tables.
 export function flattenToRects(tree: FrameNode, width: number, height: number, x = 0, y = 0): Rect[] {
@@ -249,6 +335,33 @@ export function flattenToRects(tree: FrameNode, width: number, height: number, x
 
 export function isSlidingLeaf(node: FrameNode): boolean {
   return node.kind === "leaf" && SLIDING_WINGS.includes(node.wing);
+}
+
+// The marco and each leaf carry a per-side "reinforcement" flag (see defaultSides()) that used
+// to be pure UI with no effect anywhere -- this turns those flags into real cut pieces, one per
+// flagged side, all sharing the single reinforcement profile code set on the marco (there's no
+// separate per-leaf reinforcement code field; a window uses one reinforcement profile throughout).
+// Reinforcement inserts are straight-cut (90°), never mitered, regardless of the frame/sash miter.
+// Ported from static/cotizador.html's buildReinforcementCutList.
+export function buildReinforcementCutList(
+  tree: FrameNode,
+  width: number,
+  height: number,
+  marco: Marco
+): { label: string; length: number; angle: string }[] {
+  const pieces: { label: string; length: number; angle: string }[] = [];
+  const SIDE_LEN_MARCO: Record<keyof Sides, number> = { top: width, bottom: width, left: height, right: height };
+  (["top", "bottom", "left", "right"] as const).forEach((s) => {
+    if (marco.sides[s].reinforcement) pieces.push({ label: `Marco: ${SIDE_LABEL[s]}`, length: Math.round(SIDE_LEN_MARCO[s]), angle: "90°" });
+  });
+  flattenToRects(tree, width, height).forEach((r, i) => {
+    const label = `Hoja ${String.fromCharCode(65 + i)}`;
+    const lens: Record<keyof Sides, number> = { top: r.w, bottom: r.w, left: r.h, right: r.h };
+    (["top", "bottom", "left", "right"] as const).forEach((s) => {
+      if (r.spec.sides[s]?.reinforcement) pieces.push({ label: `${label}: ${SIDE_LABEL[s]}`, length: Math.round(lens[s]), angle: "90°" });
+    });
+  });
+  return pieces;
 }
 
 export function wingName(wing: WingType): string {

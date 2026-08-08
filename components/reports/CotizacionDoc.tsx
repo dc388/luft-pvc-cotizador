@@ -41,12 +41,18 @@ type Props = {
   clientAddress: string;
   deliveryDate: string;
   configSummary: string;
+  /** Falls back to the historical hardcoded copy when a component predates these editable fields. */
+  termsHeader?: string;
+  paymentTerms?: string;
 };
+
+const DEFAULT_TERMS_HEADER = "Estimado/a, según sus indicaciones le presentamos la oferta de los productos solicitados. A continuación, el desglose de cada elemento:";
+const DEFAULT_PAYMENT_TERMS = "A) 70% al momento de aprobación y firma del presente Contrato/Presupuesto.\nB) 30% al aviso de embarque de cancelería o vidrio.";
 
 // Direct port of renderCotizacionDoc from static/cotizador.html — the printable client quote,
 // including the item diagram (which must never reflect the live editor's current selection,
 // see WindowDiagram) and the commercial terms page.
-export function CotizacionDoc({ calc, sys, glass, color, brand, tree, width, height, qty, code, designation, location, client, clientAddress, deliveryDate, configSummary }: Props) {
+export function CotizacionDoc({ calc, sys, glass, color, brand, tree, width, height, qty, code, designation, location, client, clientAddress, deliveryDate, configSummary, termsHeader, paymentTerms }: Props) {
   const specRows: [string, string][] = [
     ["Dimensiones", `${width.toLocaleString()} mm × ${height.toLocaleString()} mm`],
     ["Perfil del sistema", `${brand} - ${sys.name} / ${color.name}`],
@@ -75,7 +81,7 @@ export function CotizacionDoc({ calc, sys, glass, color, brand, tree, width, hei
             <div>Entrega: <b>{fmtDate(deliveryDate)}</b></div>
           </div>
         </div>
-        <p className="docIntro">Estimado/a, según sus indicaciones le presentamos la oferta de los productos solicitados. A continuación, el desglose de cada elemento:</p>
+        <p className="docIntro">{termsHeader || DEFAULT_TERMS_HEADER}</p>
         <div className="docItem">
           <div className="docItemHead">{code} — Componente {designation}</div>
           <div className="docItemBody">
@@ -90,7 +96,7 @@ export function CotizacionDoc({ calc, sys, glass, color, brand, tree, width, hei
               </tbody>
             </table>
             <div className="docDiagramBox">
-              <WindowDiagram tree={tree} width={width} height={height} color={color} />
+              <WindowDiagram tree={tree} width={width} height={height} color={color} system={sys} />
             </div>
           </div>
         </div>
@@ -116,7 +122,7 @@ export function CotizacionDoc({ calc, sys, glass, color, brand, tree, width, hei
         <div className="docTotalRow"><span>IVA (16%)</span><b>{money(iva)}</b></div>
         <div className="docTotalRow grand"><span>Presupuesto total</span><b>{money(calc.total + iva)}</b></div>
         <div className="docStatGrid">
-          <div><span>COMPONENTES</span><b>1 pza.</b></div>
+          <div><span>COMPONENTES</span><b>{qty} pza.</b></div>
           <div><span>SUPERFICIE TOTAL</span><b>{(calc.area * qty).toFixed(3)} m²</b></div>
         </div>
       </div>
@@ -126,9 +132,12 @@ export function CotizacionDoc({ calc, sys, glass, color, brand, tree, width, hei
           <p>(La vista de la cancelería es vista por dentro)</p>
           <p><b>Forma de pago:</b></p>
           <p>
-            A) 70% al momento de aprobación y firma del presente Contrato/Presupuesto.
-            <br />
-            B) 40% al aviso de embarque de cancelería o vidrio.
+            {(paymentTerms || DEFAULT_PAYMENT_TERMS).split("\n").map((line, i, arr) => (
+              <span key={i}>
+                {line}
+                {i < arr.length - 1 && <br />}
+              </span>
+            ))}
           </p>
           <p>En caso de aceptación del proyecto, favor de efectuar los pagos mediante depósito a:</p>
           <div className="docBank">

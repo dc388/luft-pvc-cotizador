@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import type { Brand, GlassSide, Marco, PaneSpec, Report, Side, Tab, Tool, ViewMode, ViewPreset3D } from "@/types/domain";
 import { catalog, EUR_MXN } from "@/data/catalog";
 import { glassCatalog } from "@/data/glass";
@@ -23,9 +23,21 @@ import {
   updateSide,
   updateSpec,
 } from "@/lib/tree";
-import { calcQuote } from "@/lib/calc";
+import { BAR_LENGTH_MM, KERF_MM, buildCutList, calcQuote, packBars, MIN_OPENING_MM } from "@/lib/calc";
 import { money } from "@/lib/money";
+import { downloadFile, exportReportHtml, toCsv } from "@/lib/exportDoc";
 import { runSelfCheck, type SelfCheckResult } from "@/lib/selfCheck";
+import {
+  bootstrap,
+  createComponent,
+  deleteComponentApi,
+  fetchComponent,
+  refetchProject,
+  renameProjectApi,
+  saveComponent,
+  setActiveComponentApi,
+} from "@/lib/persistence";
+import type { ComponentRecord, ComponentSummary } from "@/types/project";
 import { Block } from "@/components/Block";
 import { TopBar, ModuleNav } from "@/components/layout/Nav";
 import { Toolbox } from "@/components/editor/Toolbox";
@@ -33,6 +45,7 @@ import { FrameCanvas } from "@/components/editor/FrameCanvas";
 import { SectionRender } from "@/components/editor/SectionRender";
 import { Scene3D } from "@/components/editor/Scene3D";
 import { ExplorerTree } from "@/components/editor/ExplorerTree";
+import { EditableDim } from "@/components/editor/EditableDim";
 import type { PartKind, SideKey } from "@/components/editor/frameTypes";
 import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
 import { MarcoPanel } from "@/components/properties/MarcoPanel";
@@ -41,9 +54,15 @@ import { ReportPreview } from "@/components/reports/ReportPreview";
 import { CotizacionDoc } from "@/components/reports/CotizacionDoc";
 import { CorteDoc } from "@/components/reports/CorteDoc";
 import { VidrioDoc } from "@/components/reports/VidrioDoc";
+import { ProjectCotizacionDoc } from "@/components/reports/ProjectCotizacionDoc";
+import { ProjectCorteDoc } from "@/components/reports/ProjectCorteDoc";
+import { ProjectVidrioDoc } from "@/components/reports/ProjectVidrioDoc";
 
-const TABS: Tab[] = ["Resumen", "Diseño", "Consumo", "Servicios", "Informes"];
+const TABS: Tab[] = ["Proyecto", "Resumen", "Diseño", "Consumo", "Servicios", "Informes"];
 const REPORTS: Report[] = ["Cotización", "Optimización de corte", "Pedido de vidrio", "Producción", "Herrajes", "Costos"];
+// Reports that can aggregate every component in the project instead of just the active one --
+// same three the static prototype grouped (Producción/Herrajes/Costos stay per-component only).
+const PROJECT_SCOPED_REPORTS: Report[] = ["Cotización", "Optimización de corte", "Pedido de vidrio"];
 const VIEW_MODES: ViewMode[] = ["2D", "3D", "Sección"];
 const PRESETS_3D: ViewPreset3D[] = ["Frente", "Planta", "Perfil", "Isométrica"];
 
@@ -72,6 +91,8 @@ export default function Home() {
   const [client, setClient] = useState("");
   const [clientAddress, setClientAddress] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
+  const [termsHeader, setTermsHeader] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("");
   const [profileSearch, setProfileSearch] = useState("");
   const [profileSystemFilter, setProfileSystemFilter] = useState("Todos");
 
@@ -82,8 +103,332 @@ export default function Home() {
   const [focusSide, setFocusSide] = useState<SideKey | null>(null);
   const [focusScope, setFocusScope] = useState<"leaf" | "assembly">("leaf");
   const [marco, setMarco] = useState<Marco>(() => defaultMarco());
+  // Gates the undo/redo history effect (below) and autosave until the bootstrap effect has had
+  // its chance to load the real component -- without this, the very first render's default
+  // state would seed/pollute history and autosave before the real data arrives.
+  const [hydrated, setHydrated] = useState(false);
+
+  // ---------- Undo/redo: snapshots the active component's full design (tree, marco, dimensions,
+  // and every catalog choice) whenever one of them changes via a real edit. Selection/tool/tab/
+  // view are deliberately excluded -- undoing a split shouldn't also jump you to a different tab.
+  // loadComponentIntoState resets the stacks, so switching components never mixes histories. ----------
+  type DesignSnapshot = {
+    tree: typeof tree; marco: Marco; width: number; height: number; qty: number;
+    brand: Brand; systemIndex: number; colorIndex: number; glassIndex: number; rail: number; face: string;
+  };
+  const MAX_HISTORY = 100;
+  const [past, setPast] = useState<DesignSnapshot[]>([]);
+  const [future, setFuture] = useState<DesignSnapshot[]>([]);
+  const skipHistoryRef = useRef(false);
+  const prevSnapshotRef = useRef<DesignSnapshot | null>(null);
+
+  useEffect(() => {
+    const snap: DesignSnapshot = { tree, marco, width, height, qty, brand, systemIndex, colorIndex, glassIndex, rail, face };
+    if (!hydrated) {
+      prevSnapshotRef.current = snap;
+      return;
+    }
+    if (skipHistoryRef.current) {
+      skipHistoryRef.current = false;
+      prevSnapshotRef.current = snap;
+      return;
+    }
+    const prev = prevSnapshotRef.current;
+    if (prev) {
+      const changed =
+        prev.tree !== snap.tree || prev.marco !== snap.marco || prev.width !== snap.width || prev.height !== snap.height ||
+        prev.qty !== snap.qty || prev.brand !== snap.brand || prev.systemIndex !== snap.systemIndex ||
+        prev.colorIndex !== snap.colorIndex || prev.glassIndex !== snap.glassIndex || prev.rail !== snap.rail || prev.face !== snap.face;
+      if (changed) {
+        setPast((p) => [...p.slice(-(MAX_HISTORY - 1)), prev]);
+        setFuture([]);
+      }
+    }
+    prevSnapshotRef.current = snap;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tree, marco, width, height, qty, brand, systemIndex, colorIndex, glassIndex, rail, face, hydrated]);
+
+  const applyDesignSnapshot = (s: DesignSnapshot) => {
+    skipHistoryRef.current = true;
+    setTree(s.tree);
+    setMarco(s.marco);
+    setWidth(s.width);
+    setHeight(s.height);
+    setQty(s.qty);
+    setBrand(s.brand);
+    setSystemIndex(s.systemIndex);
+    setColorIndex(s.colorIndex);
+    setGlassIndex(s.glassIndex);
+    setRail(s.rail);
+    setFace(s.face);
+    // The previously selected leaf id may not exist in the restored tree -- fall back safely.
+    setSelectedId((id) => (findNode(s.tree, id) ? id : firstLeafId(s.tree)));
+    setFocusPart(null);
+    setFocusSide(null);
+    setFocusScope("leaf");
+    setActiveTool({ mode: "select" });
+  };
+
+  const handleUndo = () => {
+    if (!past.length) return;
+    const current: DesignSnapshot = { tree, marco, width, height, qty, brand, systemIndex, colorIndex, glassIndex, rail, face };
+    const prevSnap = past[past.length - 1];
+    setPast((p) => p.slice(0, -1));
+    setFuture((f) => [current, ...f]);
+    applyDesignSnapshot(prevSnap);
+  };
+
+  const handleRedo = () => {
+    if (!future.length) return;
+    const current: DesignSnapshot = { tree, marco, width, height, qty, brand, systemIndex, colorIndex, glassIndex, rail, face };
+    const nextSnap = future[0];
+    setFuture((f) => f.slice(1));
+    setPast((p) => [...p, current]);
+    applyDesignSnapshot(nextSnap);
+  };
+
+  // Clears the current sub-part focus (marco side / vidrio side / active split-or-assign tool)
+  // without dropping which leaf is "current" -- matches Escape/click-empty-area canceling the
+  // in-progress selection, not erasing the properties panel entirely (see clearFocus callers).
+  const clearFocus = () => {
+    setActiveTool({ mode: "select" });
+    setFocusPart(null);
+    setFocusSide(null);
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isEditable = !!target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+      if (e.key === "Escape" && !isEditable) {
+        clearFocus();
+        return;
+      }
+      if (isEditable) return;
+      const key = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && key === "z") {
+        e.preventDefault();
+        handleUndo();
+      } else if ((e.ctrlKey || e.metaKey) && (key === "y" || (e.shiftKey && key === "z"))) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [past, future, tree, marco, width, height, qty, brand, systemIndex, colorIndex, glassIndex, rail, face]);
+
   const [threeReady, setThreeReady] = useState(false);
   const [selfCheck, setSelfCheck] = useState<SelfCheckResult | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [persistMode, setPersistMode] = useState<"db" | "offline">("offline");
+
+  // ---------- Proyecto → Componente: the active component's own fields (width, tree, marco,
+  // etc. above) are still flat state exactly as before a single-window app had them -- adding
+  // this layer is additive, same as the Proyecto/Vano layer built once in static/cotizador.html:
+  // a project with one component behaves identically to the old single-design app. ----------
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [componentId, setComponentId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState("Proyecto sin nombre");
+  const [components, setComponents] = useState<ComponentSummary[]>([]);
+
+  // ---------- "Proyecto completo" report scope: Cotización/Optimización de corte/Pedido de
+  // vidrio can either describe the active component alone (default) or aggregate every
+  // component in the project (buildProjectCutList nests cut pieces across components that
+  // share brand+system+color). The full records (tree/marco included) are fetched on demand --
+  // the outliner's ComponentSummary list deliberately omits that payload. ----------
+  const [reportScope, setReportScope] = useState<"vano" | "proyecto">("vano");
+  const [projectComponents, setProjectComponents] = useState<ComponentRecord[] | null>(null);
+  const [projectComponentsLoading, setProjectComponentsLoading] = useState(false);
+  const scopeApplies = PROJECT_SCOPED_REPORTS.includes(report);
+
+  useEffect(() => {
+    if (!projectId || reportScope !== "proyecto" || !scopeApplies || components.length <= 1) {
+      setProjectComponents(null);
+      return;
+    }
+    let cancelled = false;
+    setProjectComponentsLoading(true);
+    Promise.all(components.map((c) => fetchComponent(projectId, c.id)))
+      .then((records) => {
+        if (!cancelled) setProjectComponents(records);
+      })
+      .catch(() => {
+        if (!cancelled) setProjectComponents(null);
+      })
+      .finally(() => {
+        if (!cancelled) setProjectComponentsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, reportScope, scopeApplies, components]);
+
+  const refreshComponentList = async (pid: string) => {
+    try {
+      const project = await refetchProject(pid);
+      setComponents(project.components);
+      setProjectName(project.name);
+    } catch {
+      // offline / DB unreachable -- the outliner just won't reflect other components until
+      // connectivity is back; the active component itself still autosaves via saveComponent's
+      // own offline fallback.
+    }
+  };
+
+  const loadComponentIntoState = (rec: {
+    id: string; code: string; designation: string; location: string; qty: number;
+    widthMm: number; heightMm: number; brand: "Aluplast" | "Deceuninck"; systemIndex: number; colorIndex: number;
+    data: { rail: number; glassIndex: number; face: string; margin: number; installation: number; transport: number; discount: number; client: string; clientAddress: string; deliveryDate: string; selectedId: string; tree: typeof tree; marco: Marco; termsHeader?: string; paymentTerms?: string };
+  }) => {
+    // A newly loaded component starts with a clean undo/redo history -- the previous
+    // component's edits aren't meaningful "past" states for this one's tree/marco.
+    skipHistoryRef.current = true;
+    prevSnapshotRef.current = null;
+    setPast([]);
+    setFuture([]);
+    setComponentId(rec.id);
+    setCode(rec.code);
+    setDesignation(rec.designation);
+    setLocation(rec.location);
+    setQty(rec.qty);
+    setWidth(rec.widthMm);
+    setHeight(rec.heightMm);
+    setBrand(rec.brand);
+    setSystemIndex(rec.systemIndex);
+    setColorIndex(rec.colorIndex);
+    setRail(rec.data.rail);
+    setGlassIndex(rec.data.glassIndex);
+    setFace(rec.data.face);
+    setMargin(rec.data.margin);
+    setInstallation(rec.data.installation);
+    setTransport(rec.data.transport);
+    setDiscount(rec.data.discount);
+    setClient(rec.data.client);
+    setClientAddress(rec.data.clientAddress);
+    setDeliveryDate(rec.data.deliveryDate);
+    setTermsHeader(rec.data.termsHeader ?? "");
+    setPaymentTerms(rec.data.paymentTerms ?? "");
+    setTree(rec.data.tree);
+    setMarco(rec.data.marco);
+    setSelectedId(rec.data.selectedId || firstLeafId(rec.data.tree));
+    setActiveTool({ mode: "select" });
+    setFocusPart(null);
+    setFocusSide(null);
+    setFocusScope("leaf");
+  };
+
+  // ---------- Load (or create) a project + its active component from the database, once, on
+  // mount. Deliberately not run during SSR/first paint -- runs client-only, after hydration,
+  // same reasoning the old localStorage restore had: reading persisted state inside a useState
+  // initializer would give the server and the client two different values and trigger a
+  // hydration mismatch. Falls back to the last offline-saved component if the DB/API isn't
+  // reachable (see lib/persistence.ts's bootstrap()). ----------
+  useEffect(() => {
+    (async () => {
+      const { project, component, mode } = await bootstrap();
+      setPersistMode(mode);
+      if (project) {
+        setProjectId(project.id);
+        setProjectName(project.name);
+        setComponents(project.components);
+      }
+      loadComponentIntoState(component);
+      setSavedAt(component.updatedAt);
+      setHydrated(true);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---------- Autosave: debounced so dragging a divider or typing in a text field doesn't hit
+  // the API on every keystroke. Gated on `hydrated` so the bootstrap effect above always gets
+  // first say over what the loaded component actually contains. ----------
+  useEffect(() => {
+    if (!hydrated || !componentId) return;
+    const pid = projectId ?? "offline";
+    const cid = componentId;
+    const id = setTimeout(() => {
+      saveComponent(pid, cid, {
+        code, designation, location, qty, widthMm: width, heightMm: height,
+        brand, systemIndex, colorIndex,
+        data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, deliveryDate, termsHeader, paymentTerms, tree, marco, selectedId },
+      }).then(({ savedAt: savedIso, mode }) => {
+        setPersistMode(mode);
+        if (savedIso) setSavedAt(savedIso);
+      });
+    }, 400);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    hydrated, projectId, componentId, brand, systemIndex, rail, width, height, qty, glassIndex, colorIndex, face,
+    margin, installation, transport, discount, code, designation, location,
+    client, clientAddress, deliveryDate, termsHeader, paymentTerms, tree, marco, selectedId,
+  ]);
+
+  // ---------- Proyecto tab handlers: switch/add/duplicate/delete a component, rename the
+  // project. Switching flushes the outgoing component's pending edits immediately (instead of
+  // waiting on the 400ms autosave debounce) so nothing typed right before switching is lost. ----------
+  const flushActiveComponent = async () => {
+    if (!componentId) return;
+    await saveComponent(projectId ?? "offline", componentId, {
+      code, designation, location, qty, widthMm: width, heightMm: height, brand, systemIndex, colorIndex,
+      data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, deliveryDate, termsHeader, paymentTerms, tree, marco, selectedId },
+    });
+  };
+
+  const handleSwitchComponent = async (id: string) => {
+    if (id === componentId || !projectId) return;
+    await flushActiveComponent();
+    const rec = await fetchComponent(projectId, id);
+    loadComponentIntoState(rec);
+    setSavedAt(rec.updatedAt);
+    await setActiveComponentApi(projectId, id).catch(() => {});
+  };
+
+  const handleAddComponent = async () => {
+    if (!projectId) return;
+    await flushActiveComponent();
+    const rec = await createComponent(projectId);
+    loadComponentIntoState(rec);
+    setSavedAt(rec.updatedAt);
+    await refreshComponentList(projectId);
+  };
+
+  const handleDuplicateComponent = async (id: string) => {
+    if (!projectId) return;
+    await flushActiveComponent();
+    const rec = await createComponent(projectId, { duplicateFromId: id });
+    loadComponentIntoState(rec);
+    setSavedAt(rec.updatedAt);
+    await refreshComponentList(projectId);
+  };
+
+  const handleDeleteComponent = async (id: string) => {
+    if (!projectId || components.length <= 1) return;
+    if (!window.confirm("¿Eliminar este componente del proyecto? Esta acción no se puede deshacer.")) return;
+    await deleteComponentApi(projectId, id);
+    if (id === componentId) {
+      const next = components.find((c) => c.id !== id);
+      if (next) {
+        const rec = await fetchComponent(projectId, next.id);
+        loadComponentIntoState(rec);
+        setSavedAt(rec.updatedAt);
+        await setActiveComponentApi(projectId, next.id).catch(() => {});
+      }
+    }
+    await refreshComponentList(projectId);
+  };
+
+  const handleRenameProject = async (name: string) => {
+    setProjectName(name);
+    if (!projectId) return;
+    try {
+      await renameProjectApi(projectId, name);
+    } catch {
+      // offline -- name only lives in local state until connectivity is back
+    }
+  };
 
   const sys = catalog[brand][Math.min(systemIndex, catalog[brand].length - 1)];
   const glass = glassCatalog[glassIndex];
@@ -106,8 +451,8 @@ export default function Home() {
   }, [profileSearch, profileSystemFilter]);
 
   const calc = useMemo(
-    () => calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount }),
-    [width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount]
+    () => calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco }),
+    [width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco]
   );
 
   const selectedLeaf = useMemo(() => {
@@ -132,12 +477,18 @@ export default function Home() {
   // ---------- Self-check: re-run whenever anything relevant to it changes, and periodically ----------
   useEffect(() => {
     const run = () =>
-      setSelfCheck(runSelfCheck({ tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, marco, threeReady }));
+      setSelfCheck(
+        runSelfCheck({
+          tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, marco, threeReady,
+          componentIds: components.map((c) => c.id),
+          activeComponentId: componentId,
+        })
+      );
     run();
     const id = setInterval(run, 25000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, marco, threeReady]);
+  }, [tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, marco, threeReady, components, componentId]);
 
   // ---------- Tree-mutation click helpers (split/assign-wing tools only apply via a leaf's own
   // pane rect; select-tool clicks just move focus, see handlePartClick below) ----------
@@ -291,9 +642,56 @@ export default function Home() {
     setTimeout(() => window.print(), 0);
   };
 
+  // Exports whatever report is currently on screen (single-component or "Proyecto completo",
+  // window.print()'s PDF path doesn't care which) as a standalone .html file -- see
+  // lib/exportDoc.ts for why this is DOM-based instead of re-rendering the report server-side.
+  const handleExportHtml = () => {
+    const scoped = reportScope === "proyecto" && scopeApplies;
+    const base = `${report.replace(/\s+/g, "_")}${scoped ? "_Proyecto" : ""}_${designation}`;
+    exportReportHtml(`${report}${scoped ? " - Proyecto" : ""} - ${designation}`, `${base}.html`);
+  };
+
+  // CSV covers the two reports that are naturally one-row-per-piece tables (see lib/exportDoc.ts
+  // for why DOCX/XLS aren't included). Only meaningful for the active component -- a project-wide
+  // CSV would need to flatten buildProjectCutList's cross-component groups, not done here.
+  const handleExportCsv = () => {
+    if (report === "Pedido de vidrio") {
+      const rows: (string | number)[][] = [["No.", "Posición", "W (mm)", "H (mm)", "Cant.", "m2", "m2 total", "Vidrio"]];
+      calc.leaves.forEach((l, i) => {
+        const name = l.spec.glass !== "Heredar vidrio general" ? l.spec.glass : glass.name;
+        const w = Math.max(0, Math.round(l.wMm - 120));
+        const h = Math.max(0, Math.round(l.hMm - 120));
+        rows.push([i + 1, `${designation}.${String.fromCharCode(65 + i)}`, w, h, qty, l.glassArea.toFixed(3), (l.glassArea * qty).toFixed(3), name]);
+      });
+      downloadFile(`Pedido_de_vidrio_${designation}.csv`, toCsv(rows), "text/csv");
+      return;
+    }
+    if (report === "Optimización de corte") {
+      const cut = buildCutList(tree, width, height, sys);
+      const rows: (string | number)[][] = [["Categoria", "Barra", "Pieza", "Longitud (mm)", "Angulo", "Etiqueta"]];
+      const categories: [string, typeof cut.marco][] = [
+        ["Marco", cut.marco],
+        ["Travesaño", cut.travesanos],
+        ["Hoja", cut.hojas],
+        ["Junquillo", cut.junquillos],
+      ];
+      categories.forEach(([label, pieces]) => {
+        const allPieces = [];
+        for (let i = 0; i < qty; i++) allPieces.push(...pieces);
+        const bars = packBars(allPieces, BAR_LENGTH_MM, KERF_MM);
+        bars.forEach((bar, bi) => {
+          bar.pieces.forEach((p, pi) => rows.push([label, bi + 1, pi + 1, p.length, p.angle, p.label]));
+        });
+      });
+      downloadFile(`Optimizacion_de_corte_${designation}.csv`, toCsv(rows), "text/csv");
+      return;
+    }
+  };
+
   const hasRailOptions = sys.rails.some((x) => x > 0);
 
   const warnings = [
+    ...(width < MIN_OPENING_MM || height < MIN_OPENING_MM ? [`Medida menor al mínimo fabricable de ${MIN_OPENING_MM} × ${MIN_OPENING_MM} mm — se ajustará al salir del campo.`] : []),
     ...(width > sys.maxW || height > sys.maxH ? [`Medida supera el límite de referencia ${sys.maxW} × ${sys.maxH} mm.`] : []),
     ...(glass.thickness > sys.glazing ? [`Vidrio de ${glass.thickness} mm supera el galce de referencia (${sys.glazing} mm).`] : []),
     ...(rail > 0 && !sys.rails.includes(rail) ? [`El sistema no contempla ${rail} riel(es).`] : []),
@@ -308,7 +706,7 @@ export default function Home() {
 
   return (
     <main>
-      <TopBar code={code} designation={designation} location={location} onPrint={handlePrint} selfCheck={selfCheck} />
+      <TopBar code={code} designation={designation} location={location} onPrint={handlePrint} selfCheck={selfCheck} savedAt={savedAt} />
       <ModuleNav tabs={TABS} active={tab} onChange={changeTab} />
 
       <section className="workspace" id="top">
@@ -316,6 +714,35 @@ export default function Home() {
           <div className="eyebrow">MOTOR DE CONFIGURACIÓN · MX</div>
           <h1>{tab}</h1>
           <p className="lead">Sistema técnico de diseño, consumo y cotización para cancelería de PVC.</p>
+
+          {tab === "Proyecto" && (
+            <>
+              <Block n="01" title="Proyecto" sub="Un proyecto agrupa varias ventanas/puertas (componentes) que se cotizan y fabrican juntas." />
+              <label>Nombre del proyecto
+                <input value={projectName} onChange={(e) => handleRenameProject(e.target.value)} />
+              </label>
+              {persistMode === "offline" && (
+                <p className="sourceNote">⚠ Sin conexión con la base de datos — guardando solo en este navegador. Los componentes de otros dispositivos no aparecerán hasta reconectar.</p>
+              )}
+              <Block n="02" title="Componentes" sub="Cada uno es una ventana o puerta independiente dentro del proyecto." />
+              <div className="componentOutliner">
+                {components.map((c) => (
+                  <div key={c.id} className={`componentRow ${c.id === componentId ? "active" : ""}`}>
+                    <button className="componentMain" onClick={() => handleSwitchComponent(c.id)}>
+                      <b>{c.code} · {c.designation}</b>
+                      <span>{c.location || "Sin ubicación"} · {c.widthMm}×{c.heightMm} mm · {c.brand} · cant. {c.qty}</span>
+                    </button>
+                    <div className="componentActions">
+                      <button title="Duplicar" onClick={() => handleDuplicateComponent(c.id)}>⧉</button>
+                      <button title="Eliminar" disabled={components.length <= 1} onClick={() => handleDeleteComponent(c.id)}>✕</button>
+                    </div>
+                  </div>
+                ))}
+                {components.length === 0 && <p className="notice">Este componente aún no se ha guardado en un proyecto (modo sin conexión).</p>}
+              </div>
+              <button className="fullButton" onClick={handleAddComponent} disabled={!projectId}>+ Agregar componente</button>
+            </>
+          )}
 
           {tab === "Resumen" && (
             <>
@@ -329,6 +756,23 @@ export default function Home() {
               <label>Cliente<input placeholder="Sr./Sra./Arq. ..." value={client} onChange={(e) => setClient(e.target.value)} /></label>
               <label>Dirección del proyecto<input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} /></label>
               <label>Fecha de entrega<input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} /></label>
+              <Block n="03" title="Condiciones comerciales" sub="Texto libre de la página de condiciones en la Cotización del cliente. Vacío = texto por defecto." />
+              <label>Encabezado de la oferta
+                <textarea
+                  rows={2}
+                  placeholder="Estimado/a, según sus indicaciones le presentamos la oferta de los productos solicitados. A continuación, el desglose de cada elemento:"
+                  value={termsHeader}
+                  onChange={(e) => setTermsHeader(e.target.value)}
+                />
+              </label>
+              <label>Forma de pago
+                <textarea
+                  rows={3}
+                  placeholder={"A) 70% al momento de aprobación y firma del presente Contrato/Presupuesto.\nB) 30% al aviso de embarque de cancelería o vidrio."}
+                  value={paymentTerms}
+                  onChange={(e) => setPaymentTerms(e.target.value)}
+                />
+              </label>
               <div className="summaryCard">
                 <span>Marca</span><b>{brand}</b>
                 <span>Sistema</span><b>{sys.name}</b>
@@ -377,8 +821,12 @@ export default function Home() {
               />
               <Block n="03" title="Geometría" sub="Cotas generales en milímetros." />
               <div className="inputGrid">
-                <label>Ancho<input type="number" value={width} onChange={(e) => setWidth(Math.max(1, Number(e.target.value)))} /></label>
-                <label>Alto<input type="number" value={height} onChange={(e) => setHeight(Math.max(1, Number(e.target.value)))} /></label>
+                {/* Clamp to MIN_OPENING_MM on blur, not on every keystroke -- clamping mid-typing
+                    snaps "1" to "300" before the next digit lands, so typing "1200" digit-by-digit
+                    never reaches it. The warnings list above still flags an in-progress out-of-range
+                    value immediately; only the hard floor waits for blur. */}
+                <label>Ancho<input type="number" value={width} onChange={(e) => setWidth(Math.max(0, Number(e.target.value) || 0))} onBlur={() => setWidth((v) => Math.max(MIN_OPENING_MM, v))} /></label>
+                <label>Alto<input type="number" value={height} onChange={(e) => setHeight(Math.max(0, Number(e.target.value) || 0))} onBlur={() => setHeight((v) => Math.max(MIN_OPENING_MM, v))} /></label>
                 <label>Cant.<input type="number" min="1" value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value)))} /></label>
               </div>
               <Block n="04" title="Materiales" sub="Color, aplicación y vidrio." />
@@ -462,12 +910,26 @@ export default function Home() {
           {tab === "Informes" && (
             <>
               <Block n="01" title="Centro de informes" sub="Selecciona el documento y genera PDF." />
+              {scopeApplies && components.length > 1 && (
+                <div className="segmented">
+                  <button className={reportScope === "vano" ? "selected" : ""} onClick={() => setReportScope("vano")}>Componente actual</button>
+                  <button className={reportScope === "proyecto" ? "selected" : ""} onClick={() => setReportScope("proyecto")}>Proyecto completo ({components.length})</button>
+                </div>
+              )}
               <div className="reportList">
                 {REPORTS.map((r) => (
                   <button className={report === r ? "selected" : ""} key={r} onClick={() => setReport(r)}>{r}<span>Ver →</span></button>
                 ))}
               </div>
-              <button className="fullButton" onClick={() => window.print()}>Exportar {report} a PDF <span>↗</span></button>
+              <button className="fullButton" onClick={() => window.print()}>
+                Exportar {report}{reportScope === "proyecto" && scopeApplies ? " (Proyecto)" : ""} a PDF <span>↗</span>
+              </button>
+              <div className="inputGrid two">
+                <button className="fullButton" onClick={handleExportHtml}>Exportar a HTML</button>
+                {(report === "Optimización de corte" || report === "Pedido de vidrio") && !(reportScope === "proyecto" && scopeApplies) && (
+                  <button className="fullButton" onClick={handleExportCsv}>Exportar a CSV</button>
+                )}
+              </div>
             </>
           )}
         </aside>
@@ -490,13 +952,16 @@ export default function Home() {
           )}
           <div className={`canvas view-${view.replace("ó", "o")}`}>
             {tab === "Diseño" && (
-              <Toolbox activeTool={activeTool} onToolChange={setActiveTool} canMerge={canMerge} onMerge={handleMerge} onReset={handleResetTree} />
+              <Toolbox
+                activeTool={activeTool} onToolChange={setActiveTool} canMerge={canMerge} onMerge={handleMerge} onReset={handleResetTree}
+                canUndo={past.length > 0} canRedo={future.length > 0} onUndo={handleUndo} onRedo={handleRedo}
+              />
             )}
-            <div className="canvasStage">
+            <div className="canvasStage" onClick={(e) => { if (e.target === e.currentTarget) clearFocus(); }}>
               {view !== "3D" && (
                 <>
-                  <div className="dim top"><span>W={width.toLocaleString()} mm</span></div>
-                  <div className="dim side"><span>H={height.toLocaleString()} mm</span></div>
+                  <div className="dim top"><EditableDim label="W" valueMm={width} min={MIN_OPENING_MM} onCommit={setWidth} /></div>
+                  <div className="dim side"><EditableDim label="H" valueMm={height} min={MIN_OPENING_MM} onCommit={setHeight} /></div>
                 </>
               )}
               {view === "Sección" && <SectionRender depth={sys.depth} rail={rail} glazing={glass.thickness} />}
@@ -507,6 +972,7 @@ export default function Home() {
                   height={height}
                   selectedId={selectedId}
                   color={color}
+                  system={sys}
                   focusScope={focusScope}
                   focusPart={focusPart}
                   focusSide={focusSide}
@@ -577,14 +1043,24 @@ export default function Home() {
           )}
 
           {tab === "Informes" ? (
-            report === "Cotización" ? (
+            reportScope === "proyecto" && scopeApplies ? (
+              !projectComponents ? (
+                <p className="notice">{projectComponentsLoading ? "Cargando componentes del proyecto…" : "No se pudieron cargar los componentes del proyecto."}</p>
+              ) : report === "Cotización" ? (
+                <ProjectCotizacionDoc components={projectComponents} projectName={projectName} client={client} clientAddress={clientAddress} deliveryDate={deliveryDate} />
+              ) : report === "Optimización de corte" ? (
+                <ProjectCorteDoc components={projectComponents} projectName={projectName} />
+              ) : (
+                <ProjectVidrioDoc components={projectComponents} projectName={projectName} />
+              )
+            ) : report === "Cotización" ? (
               <CotizacionDoc
                 calc={calc} sys={sys} glass={glass} color={color} brand={brand} tree={tree} width={width} height={height} qty={qty}
                 code={code} designation={designation} location={location} client={client} clientAddress={clientAddress} deliveryDate={deliveryDate}
-                configSummary={configSummary}
+                configSummary={configSummary} termsHeader={termsHeader} paymentTerms={paymentTerms}
               />
             ) : report === "Optimización de corte" ? (
-              <CorteDoc tree={tree} width={width} height={height} qty={qty} designation={designation} location={location} />
+              <CorteDoc tree={tree} width={width} height={height} qty={qty} designation={designation} location={location} system={sys} />
             ) : report === "Pedido de vidrio" ? (
               <VidrioDoc calc={calc} glass={glass} qty={qty} designation={designation} location={location} />
             ) : (

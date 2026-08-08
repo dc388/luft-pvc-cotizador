@@ -132,9 +132,13 @@ a{color:inherit}
 .paneDim{position:absolute;z-index:4;bottom:5px;right:5px;background:#ffffffd9;color:#274d3e;padding:3px 5px;border-radius:4px;font-size:7px;font-weight:normal;font-style:normal;pointer-events:none}
 .dim{position:absolute;color:var(--muted);font-size:10px;letter-spacing:.07em}
 .dim.top{top:40px;left:19%;right:19%;border-top:1px solid var(--line);text-align:center}
-.dim.top span{background:var(--paper);padding:0 8px;position:relative;top:-7px}
+.dim.top .dimLabel{background:var(--paper);padding:0 8px;position:relative;top:-7px}
 .dim.side{left:42px;top:20%;bottom:20%;border-left:1px solid var(--line);display:flex;align-items:center}
-.dim.side span{background:var(--paper);padding:6px;transform:rotate(-90deg);margin-left:-24px}
+.dim.side .dimLabel{background:var(--paper);padding:6px;transform:rotate(-90deg);margin-left:-24px}
+button.dimLabel{border:0;font:inherit;letter-spacing:inherit;color:inherit;cursor:pointer;border-radius:4px}
+button.dimLabel:hover{color:var(--accent);outline:1px dashed color-mix(in srgb, var(--accent) 50%, transparent)}
+input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;letter-spacing:inherit;width:6.5em;text-align:center;border-radius:4px}
+.dim.side input.dimLabel{transform:rotate(-90deg)}
 .editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--accent);border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));padding:7px 11px;border-radius:20px;font-size:8px;letter-spacing:.06em;text-align:center;max-width:70%;z-index:7;box-shadow:0 4px 14px var(--shadow)}
 .specChip{position:absolute;left:24px;bottom:22px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 13px;display:flex;flex-direction:column;font-size:10px;gap:3px;box-shadow:0 6px 18px var(--shadow)}
 .specChip span{color:var(--muted)}
@@ -155,6 +159,11 @@ a{color:inherit}
 .explorerSide{padding:6px 4px;font-size:7.5px;letter-spacing:.02em;background:var(--surface);border:0;border-right:1px solid var(--line);color:var(--muted);cursor:pointer}
 .explorerSide:last-child{border-right:0}
 .explorerSide.active{background:var(--accent);color:#fff}
+.explorerSplitGroup{display:contents}
+.explorerSplitHeader{display:flex;align-items:center;gap:6px;text-align:left;padding-top:6px;padding-bottom:6px;padding-right:10px;font-size:8px;letter-spacing:.03em;text-transform:uppercase;background:var(--paper);border:0;border-bottom:1px solid var(--line);color:var(--muted);cursor:pointer}
+.explorerSplitHeader:hover{color:var(--ink)}
+.explorerChevron{display:inline-block;font-size:8px;transition:transform .12s;color:var(--muted)}
+.explorerChevron.open{transform:rotate(90deg)}
 .sideEditor{border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:8px;display:flex;flex-direction:column;gap:8px}
 .sideEditor b{font-size:9px;letter-spacing:.06em;color:var(--accent)}
 .sideEditor label{display:flex;flex-direction:column;gap:4px;font-size:9px;color:var(--muted)}
@@ -245,6 +254,18 @@ a{color:inherit}
 .profileCatalog b{font-size:9px;color:var(--accent)}
 .profileCatalog p{font-size:9px;margin:3px 0}
 .profileCatalog small{font-size:8px;color:var(--muted)}
+
+.componentOutliner{display:grid;gap:6px;margin:10px 0}
+.componentRow{display:grid;grid-template-columns:1fr auto;align-items:stretch;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--surface)}
+.componentRow.active{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 10%, var(--surface))}
+.componentMain{display:grid;gap:3px;text-align:left;padding:9px 10px}
+.componentMain b{font-size:10px;color:var(--ink)}
+.componentMain span{font-size:8.5px;color:var(--muted)}
+.componentActions{display:flex;flex-direction:column;border-left:1px solid var(--line)}
+.componentActions button{flex:1;padding:0 10px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--line)}
+.componentActions button:last-child{border-bottom:none}
+.componentActions button:hover:not(:disabled){color:var(--accent)}
+.componentActions button:disabled{opacity:.35}
 
 .reportList{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}
 .reportList button{display:flex;justify-content:space-between;border:1px solid var(--line);background:var(--surface);padding:11px;border-radius:7px;font-size:9px;color:var(--ink)}

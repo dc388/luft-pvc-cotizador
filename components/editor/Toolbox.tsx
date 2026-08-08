@@ -9,12 +9,16 @@ type Props = {
   canMerge: boolean;
   onMerge: () => void;
   onReset: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
 };
 
 // Floating tool palette over the design canvas, modeled on RA Workshop's
 // Splitters/Wings categories: pick a tool, then click a pane in FrameCanvas
 // to apply it (see handleLeafClick in app/page.tsx).
-export function Toolbox({ activeTool, onToolChange, canMerge, onMerge, onReset }: Props) {
+export function Toolbox({ activeTool, onToolChange, canMerge, onMerge, onReset, canUndo, canRedo, onUndo, onRedo }: Props) {
   const isSplit = (axis: "row" | "col") => activeTool.mode === "split" && activeTool.axis === axis;
   const isWing = (w: WingType) => activeTool.mode === "assign-wing" && activeTool.wing === w;
 
@@ -39,6 +43,12 @@ export function Toolbox({ activeTool, onToolChange, canMerge, onMerge, onReset }
         <button type="button" className="toolboxAction" disabled={activeTool.mode === "select"} onClick={() => onToolChange({ mode: "select" })}>Modo selección</button>
         <button type="button" className="toolboxAction" disabled={!canMerge} onClick={onMerge}>Combinar hojas</button>
         <button type="button" className="toolboxAction" onClick={onReset}>Reiniciar diseño</button>
+      </div>
+      <div className="toolboxGroup">
+        <div className="toolboxGrid">
+          <button type="button" className="toolboxAction" title="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={onUndo}>↶</button>
+          <button type="button" className="toolboxAction" title="Rehacer (Ctrl+Shift+Z)" disabled={!canRedo} onClick={onRedo}>↷</button>
+        </div>
       </div>
     </aside>
   );

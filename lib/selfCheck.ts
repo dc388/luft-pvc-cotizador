@@ -22,6 +22,9 @@ type Params = {
   marco: Marco;
   /** true once the 3D viewer has successfully mounted its WebGL renderer at least once. */
   threeReady: boolean;
+  /** ids of every component in the active project's outliner, and which one is loaded. */
+  componentIds: string[];
+  activeComponentId: string | null;
 };
 
 // Direct port of runSelfCheck from static/cotizador.html — a lightweight running health
@@ -43,6 +46,7 @@ export function runSelfCheck(p: Params): SelfCheckResult {
     const c = calcQuote({
       width: p.width, height: p.height, qty: p.qty, tree: p.tree, sys: p.sys, glass: p.glass, color: p.color,
       rail: p.rail, installation: p.installation, transport: p.transport, margin: p.margin, discount: p.discount,
+      marco: p.marco,
     });
     calcOk = Number.isFinite(c.total) && c.total >= 0 && Number.isFinite(c.area) && c.leaves.length === ids.length;
   } catch {
@@ -53,6 +57,13 @@ export function runSelfCheck(p: Params): SelfCheckResult {
   checks.push({ name: "Motor 3D cargado", pass: p.threeReady });
   const marcoOk = !!p.marco && !!p.marco.sides && (["top", "bottom", "left", "right"] as const).every((s) => !!p.marco.sides[s]);
   checks.push({ name: "Marco de conjunto íntegro", pass: marcoOk });
+  // Empty componentIds means no DB-backed project is loaded (offline fallback, see
+  // lib/persistence.ts's bootstrap()) -- a valid, supported state, not a corruption to flag.
+  const projectOk =
+    p.componentIds.length === 0 ||
+    (new Set(p.componentIds).size === p.componentIds.length &&
+      (p.activeComponentId === null || p.componentIds.includes(p.activeComponentId)));
+  checks.push({ name: "Proyecto y componentes íntegros", pass: projectOk });
 
   return { ok: checks.every((c) => c.pass), checks, ranAt: new Date().toString() };
 }

@@ -1,0 +1,19 @@
+{
+  // Local-only file so `wrangler d1 migrations apply DB --local` has a config to read against
+  // the same binding vite.config.ts wires up for `npm run dev` (it passes its own inline
+  // `config` to the Cloudflare vite plugin, so this file isn't consulted there -- it only
+  // exists for the D1 migrations CLI, which requires a wrangler config file to run at all).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "luft-pvc-cotizador",
+  "compatibility_date": "2026-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./worker/index.ts",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "site-creator-d1",
+      "database_id": "00000000-0000-4000-8000-000000000000",
+      "migrations_dir": "./drizzle"
+    }
+  ]
+}

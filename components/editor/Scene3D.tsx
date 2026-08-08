@@ -9,7 +9,15 @@ import type { PartKind, SideKey } from "./frameTypes";
 const MM = 0.001; // scene units are meters; geometry is built directly from mm state
 const FRAME_RING_MM = 55;
 
-type ClickTag = { id: string; part: PartKind; side?: SideKey; rect: { x: number; y: number; w: number; h: number } };
+// overallW/overallH are the whole-window mm dimensions in effect at the moment this mesh was
+// built (see the `walk()` rebuild effect below) -- NOT necessarily the current `width`/`height`
+// props. handleClick's raycast hit-point is a 3D coordinate baked from THAT same build, so
+// converting it back to mm must divide/offset by the dimensions from that build, not by
+// whatever width/height happens to be current when the click lands. Reading current width/height
+// here previously mixed a stale hit-point with fresh overall dimensions whenever a user changed
+// Ancho/Alto and clicked to split before the next scene rebuild committed, producing a fraction
+// computed in mismatched units (a real instance of "unidades mezcladas" from the bug checklist).
+type ClickTag = { id: string; part: PartKind; side?: SideKey; rect: { x: number; y: number; w: number; h: number }; overallW: number; overallH: number };
 
 function colorToHex3D(color: ColorItem): string {
   if (color.hex) return color.hex;
@@ -61,6 +69,14 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
   const clickableRef = useRef<THREE.Object3D[]>([]);
   const stateRef = useRef({ tree, width, height, activeTool, onSelect, onSplit, onAssignWing });
   stateRef.current = { tree, width, height, activeTool, onSelect, onSplit, onAssignWing };
+  // Scene3D mounts once on page load, while the 2D view is active and .canvas3dWrap has
+  // display:none -- so the very first resize() below measures a 0-size .scene3dSlot (a
+  // display:none ancestor gives it no layout box at all) and pins the canvas at 1x1 forever via
+  // the inline width/height it sets. ResizeObserver never fires again for that transition in
+  // practice, so nothing corrects it later on its own. Exposed here so the preset-apply effect
+  // (which already re-runs every time the user switches INTO the 3D view, see presetToken) can
+  // force a real re-measure at that point, when .scene3dSlot finally has an actual box.
+  const resizeRef = useRef<() => void>(() => {});
 
   // One-time init: scene/camera/renderer/controls/lights, mounted forever for the lifetime of
   // this component instance.
@@ -129,6 +145,7 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
       camera.updateProjectionMatrix();
     };
     resize();
+    resizeRef.current = resize;
     window.addEventListener("resize", resize);
     const ro = new ResizeObserver(resize);
     if (container) ro.observe(container);
@@ -145,7 +162,7 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
       const hit = hits[0];
       const tag = hit.object.userData as ClickTag;
       if (!tag || !tag.id) return;
-      const { activeTool: tool, width: w, height: h, onSelect: select, onSplit: split, onAssignWing: assign } = stateRef.current;
+      const { activeTool: tool, onSelect: select, onSplit: split, onAssignWing: assign } = stateRef.current;
 
       if (tool.mode === "select") {
         select(tag.id, tag.part, tag.side ?? null);
@@ -153,8 +170,8 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
       }
       if (tool.mode === "split") {
         const fraction = tool.axis === "col"
-          ? (hit.point.x / MM + w / 2 - tag.rect.x) / tag.rect.w
-          : (h / 2 - hit.point.y / MM - tag.rect.y) / tag.rect.h;
+          ? (hit.point.x / MM + tag.overallW / 2 - tag.rect.x) / tag.rect.w
+          : (tag.overallH / 2 - hit.point.y / MM - tag.rect.y) / tag.rect.h;
         split(tag.id, tool.axis, fraction);
         return;
       }
@@ -252,27 +269,30 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
       const cx = (x + ww / 2 - w / 2) * MM, cy = (h / 2 - (y + hh / 2)) * MM;
       const leafW = ww * MM, leafH = hh * MM;
       const rectTag = { x, y, w: ww, h: hh };
+      // Spread into every tag below so handleClick's fraction math always divides by the
+      // width/height this exact mesh was built from -- see the ClickTag comment above.
+      const tagBase = { rect: rectTag, overallW: w, overallH: h };
       const hasSash = node.wing !== "fixed" && node.wing !== "inactive";
 
-      addBox(cx, cy + leafH / 2 - FW / 2, 0, leafW, FW, D, frameMat, { id: node.id, part: "marco", side: "top", rect: rectTag });
-      addBox(cx, cy - leafH / 2 + FW / 2, 0, leafW, FW, D, frameMat, { id: node.id, part: "marco", side: "bottom", rect: rectTag });
-      addBox(cx - leafW / 2 + FW / 2, cy, 0, FW, leafH, D, frameMat, { id: node.id, part: "marco", side: "left", rect: rectTag });
-      addBox(cx + leafW / 2 - FW / 2, cy, 0, FW, leafH, D, frameMat, { id: node.id, part: "marco", side: "right", rect: rectTag });
+      addBox(cx, cy + leafH / 2 - FW / 2, 0, leafW, FW, D, frameMat, { id: node.id, part: "marco", side: "top", ...tagBase });
+      addBox(cx, cy - leafH / 2 + FW / 2, 0, leafW, FW, D, frameMat, { id: node.id, part: "marco", side: "bottom", ...tagBase });
+      addBox(cx - leafW / 2 + FW / 2, cy, 0, FW, leafH, D, frameMat, { id: node.id, part: "marco", side: "left", ...tagBase });
+      addBox(cx + leafW / 2 - FW / 2, cy, 0, FW, leafH, D, frameMat, { id: node.id, part: "marco", side: "right", ...tagBase });
 
       if (hasSash) {
         const sw = Math.max(0.01, leafW - FW * 2), sh = Math.max(0.01, leafH - FW * 2);
         const SR = 34 * MM;
-        addBox(cx, cy + sh / 2 - SR / 2, 0, sw, SR, D * 0.82, sashMat, { id: node.id, part: "hoja", rect: rectTag });
-        addBox(cx, cy - sh / 2 + SR / 2, 0, sw, SR, D * 0.82, sashMat, { id: node.id, part: "hoja", rect: rectTag });
-        addBox(cx - sw / 2 + SR / 2, cy, 0, SR, sh, D * 0.82, sashMat, { id: node.id, part: "hoja", rect: rectTag });
-        addBox(cx + sw / 2 - SR / 2, cy, 0, SR, sh, D * 0.82, sashMat, { id: node.id, part: "hoja", rect: rectTag });
+        addBox(cx, cy + sh / 2 - SR / 2, 0, sw, SR, D * 0.82, sashMat, { id: node.id, part: "hoja", ...tagBase });
+        addBox(cx, cy - sh / 2 + SR / 2, 0, sw, SR, D * 0.82, sashMat, { id: node.id, part: "hoja", ...tagBase });
+        addBox(cx - sw / 2 + SR / 2, cy, 0, SR, sh, D * 0.82, sashMat, { id: node.id, part: "hoja", ...tagBase });
+        addBox(cx + sw / 2 - SR / 2, cy, 0, SR, sh, D * 0.82, sashMat, { id: node.id, part: "hoja", ...tagBase });
         const gw = Math.max(0.01, sw - SR * 2), gh = Math.max(0.01, sh - SR * 2);
-        addBox(cx, cy, 0, gw, gh, 6 * MM, glassMat, { id: node.id, part: "vidrio", rect: rectTag }, glassSelMat());
+        addBox(cx, cy, 0, gw, gh, 6 * MM, glassMat, { id: node.id, part: "vidrio", ...tagBase }, glassSelMat());
         const handleX = node.spec.direction === "Izquierda" ? cx - sw / 2 + SR + 18 * MM : cx + sw / 2 - SR - 18 * MM;
-        addBox(handleX, cy, D * 0.5, 10 * MM, 70 * MM, 14 * MM, handleMat, { id: node.id, part: "herraje", rect: rectTag });
+        addBox(handleX, cy, D * 0.5, 10 * MM, 70 * MM, 14 * MM, handleMat, { id: node.id, part: "herraje", ...tagBase });
       } else {
         const gw = Math.max(0.01, leafW - FW * 2), gh = Math.max(0.01, leafH - FW * 2);
-        addBox(cx, cy, 0, gw, gh, 6 * MM, glassMat, { id: node.id, part: "vidrio", rect: rectTag }, glassSelMat());
+        addBox(cx, cy, 0, gw, gh, 6 * MM, glassMat, { id: node.id, part: "vidrio", ...tagBase }, glassSelMat());
       }
     }
     walk(tree, 0, 0, w, h);
@@ -285,6 +305,11 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
   useEffect(() => {
     const camera = cameraRef.current, controls = controlsRef.current;
     if (!camera || !controls) return;
+    // Re-measure now that .canvas3dWrap's display:none has just been lifted (this effect's
+    // presetToken dependency bumps every time the user switches into the 3D view) -- see the
+    // resizeRef comment above for why the canvas can't just rely on ResizeObserver for this.
+    resizeRef.current();
+    requestAnimationFrame(() => resizeRef.current());
     const w = width * MM, h = height * MM;
     const dist = Math.max(w, h) * 1.6 + 0.6;
     const targets: Record<ViewPreset3D, [number, number, number]> = {
