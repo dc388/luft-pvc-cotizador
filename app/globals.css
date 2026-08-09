@@ -176,6 +176,12 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .toolboxAction{width:100%;border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:7px 8px;font-size:9px;text-align:left;color:var(--ink)}
 .toolboxAction:disabled{opacity:.4;cursor:not-allowed}
 
+.typologyGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.typologyButton{display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:8px 4px;cursor:pointer;color:var(--ink)}
+.typologyButton:hover{border-color:var(--accent)}
+.typologyIcon{font-size:16px;letter-spacing:-.05em;color:var(--accent)}
+.typologyName{font-size:7.5px;letter-spacing:.02em;text-align:center;line-height:1.25}
+
 .sectionRender{width:70%;display:grid;grid-template-columns:220px 1fr;gap:25px;align-items:center}
 .profileSection{height:180px;border:18px solid #1d2924;background:#d9e0db;position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:18px}
 .chamber{border:5px solid #52645c;background:#f3f5f1}
@@ -191,6 +197,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .badge.warning{background:var(--warn-bg)!important;color:var(--warn-fg)!important}
 .warnings{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;margin:10px 0;padding:8px}
 .warnings p{margin:3px;font-size:9px;color:var(--warn-fg)}
+.fieldWarning{display:block;margin-top:3px;font-size:8.5px;color:var(--warn-fg)}
 
 .componentEditor{border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:10px 0 14px}
 .componentTitle{background:var(--accent);color:#fff;padding:12px;display:grid;grid-template-columns:1fr auto;gap:3px;transition:background .2s}
@@ -336,6 +343,95 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 
 .sources{background:var(--surface);color:var(--muted);padding:18px 30px;font-size:9px;text-align:center;border-top:1px solid var(--line)}
 .sources a{color:var(--accent)}
+
+/* ---------- Cotizador público (app/cotizar) ----------
+   Mobile-first y deliberadamente aparte del workspace técnico de arriba: botones grandes,
+   poco texto y una decisión por pantalla. No reutiliza .workspace/.configPanel porque esa
+   retícula de 3 columnas es justo lo contrario de lo que necesita un cliente en el teléfono. */
+.cotShell{min-height:100dvh;display:flex;flex-direction:column;background:var(--paper)}
+.cotTop{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--surface);border-bottom:1px solid var(--line)}
+.cotBrand{display:flex;align-items:center;gap:9px;font-size:15px;letter-spacing:.08em}
+.cotBrand b{color:var(--accent)}
+.cotBrandMark{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:900;font-size:14px}
+.cotStepCount{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.cotProgress{height:3px;background:var(--line)}
+.cotProgress span{display:block;height:100%;background:var(--accent);transition:width .25s}
+.cotMain{flex:1;display:flex;justify-content:center;padding:22px 18px 110px}
+.cotScreen{width:100%;max-width:560px;display:flex;flex-direction:column;gap:12px}
+.cotScreen h1{font-family:Georgia,serif;font-size:27px;line-height:1.15;margin:4px 0 0;letter-spacing:-.02em}
+.cotHint{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 4px}
+
+.cotCards{display:flex;flex-direction:column;gap:10px}
+.cotCard{display:flex;flex-direction:column;gap:4px;text-align:left;padding:16px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink)}
+.cotCard b{font-size:16px}
+.cotCard small{font-size:12.5px;color:var(--muted);line-height:1.45}
+.cotCard.sel{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, var(--surface))}
+.cotCardStyle{display:grid;grid-template-columns:88px 1fr;grid-template-rows:auto auto;column-gap:14px;align-items:center}
+.cotCardStyle .cotPreview{grid-row:1/3}
+.cotCardStyle b{align-self:end}
+.cotCardStyle small{align-self:start}
+
+.cotField{display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--muted);font-weight:bold}
+.cotField input{height:52px;font-size:17px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);padding:0 14px;color:var(--ink)}
+.cotStepper{display:flex;align-items:center;gap:14px}
+.cotStepper button{width:52px;height:52px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);font-size:22px;color:var(--ink)}
+.cotStepper b{font-size:19px;color:var(--ink);min-width:2ch;text-align:center;font-variant-numeric:tabular-nums}
+
+.cotSwatches{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.cotSwatch{display:flex;align-items:center;gap:11px;padding:13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font-size:13.5px;text-align:left}
+.cotSwatch span{width:34px;height:34px;border-radius:8px;border:1px solid #00000022;flex:0 0 auto}
+.cotSwatch.sel{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, var(--surface))}
+
+.cotToggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);text-align:left}
+.cotToggle span{display:flex;flex-direction:column;gap:3px}
+.cotToggle b{font-size:15px}
+.cotToggle small{font-size:12.5px;color:var(--muted);line-height:1.4}
+.cotToggle i{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-style:normal;font-size:15px;flex:0 0 auto}
+.cotToggle.sel{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, var(--surface))}
+.cotToggle.sel i{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.cotPreview{width:100%;background:var(--paper);border-radius:10px;padding:7px;display:flex}
+.cotPreviewFrame{flex:1;display:flex;gap:3px;padding:6px;border-radius:6px;border:1px solid transparent}
+.cotPreviewPane{flex:1;border:3px solid;border-radius:3px;padding:2px;min-width:0}
+.cotPreviewGlass{display:block;width:100%;height:100%;border-radius:2px;background:linear-gradient(145deg,#9cbec4,#e9f2f0 55%,#91b8c2)}
+
+.cotDoc{display:flex;flex-direction:column;gap:14px;padding:18px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.cotSummary{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.cotSummary li{font-size:14px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.cotSummary li:last-child{border-bottom:0}
+.cotPriceBox{background:var(--accent);color:#fff;border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:5px}
+.cotPriceBox span{font-size:11px;letter-spacing:.1em;color:#ffffffcc}
+.cotPriceBox strong{font-family:Georgia,serif;font-size:33px;font-variant-numeric:tabular-nums}
+.cotPriceBox small{font-size:11.5px;color:#ffffffcc}
+.cotFolio{font-size:12px;letter-spacing:.14em;color:var(--accent);font-weight:bold;margin:0}
+.cotFinalTotal{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--muted);margin:0}
+.cotFinalTotal b{font-size:23px;color:var(--ink);font-variant-numeric:tabular-nums}
+.cotFinePrint{font-size:11.5px;color:var(--muted);line-height:1.5;margin:0}
+.cotFinalActions{display:flex;flex-direction:column;gap:10px}
+.cotWarn{font-size:13px;line-height:1.5;color:var(--warn-fg);background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:10px;padding:12px;margin:0}
+/* Aviso informativo, no error: la línea elegida se cotiza con tarifas estimadas y el precio
+   queda sujeto a confirmación (ver ESTIMATE_NOTE en QuoteWizard). */
+.cotNote{font-size:12.5px;line-height:1.5;color:var(--warn-fg);background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:10px;padding:11px 12px;margin:0}
+.cotBadge{display:inline-block;margin-left:8px;padding:3px 8px;border-radius:20px;background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-fg);font-size:10px;font-weight:bold;font-style:normal;letter-spacing:.02em;vertical-align:middle}
+
+.cotFoot{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
+.cotFootPrice{flex:1;text-align:center;font-size:14px;font-weight:bold;font-variant-numeric:tabular-nums}
+.cotPrimary{flex:1;min-height:54px;border-radius:11px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;font-size:16px;font-weight:bold;padding:0 20px}
+.cotPrimary:disabled{opacity:.45}
+.cotSecondary{min-height:54px;border-radius:11px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-size:15px;padding:0 20px;display:grid;place-items:center;text-decoration:none}
+.cotFinalActions .cotSecondary,.cotFinalActions .cotPrimary{width:100%;flex:none}
+
+@media(min-width:620px){
+  .cotSwatches{grid-template-columns:repeat(3,1fr)}
+  .cotFoot{justify-content:center}
+  .cotFoot .cotPrimary{flex:0 0 auto;min-width:220px}
+}
+
+@media print{
+  .cotTop,.cotProgress,.cotFoot,.cotFinalActions,.cotHint,.cotScreen h1{display:none!important}
+  .cotShell,.cotMain{display:block;padding:0;background:#fff}
+  .cotDoc{border:0;padding:0}
+}
 
 @media(max-width:1150px){
   .workspace{grid-template-columns:330px 1fr}

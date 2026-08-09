@@ -8,6 +8,13 @@
       "when": 1786202040070,
       "tag": "0000_cool_cassandra_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1786246473500,
+      "tag": "0001_useful_newton_destine",
+      "breakpoints": true
     }
   ]
 }

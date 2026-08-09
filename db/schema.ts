@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // A Proyecto holds N Componentes (individual windows/doors) so a single quote can cover a
 // whole building instead of one opening — ported from the Proyecto/Vano layer built once in
@@ -36,3 +36,24 @@ export const components = sqliteTable("components", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+// One row per accepted request against a rate-limited public endpoint. Unlike every other
+// table here this is throwaway telemetry, not user data: lib/rateLimit.ts counts the rows in
+// a bucket inside a time window and sweeps anything older than the longest window on write.
+// `createdAt` is epoch milliseconds (integer) rather than the ISO text the other tables use,
+// because every read on it is a numeric window comparison, never a display value.
+export const rateLimitHits = sqliteTable(
+  "rate_limit_hits",
+  {
+    id: text("id").primaryKey(),
+    /** `${scope}:${client ip}` -- what the limit is counted per. See lib/rateLimit.ts. */
+    bucket: text("bucket").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [
+    // Serves the per-bucket window count (bucket = ? AND created_at >= ?).
+    index("rate_limit_hits_bucket_created_idx").on(table.bucket, table.createdAt),
+    // Serves the global sweep of expired rows (created_at < ?), which has no bucket to filter on.
+    index("rate_limit_hits_created_idx").on(table.createdAt),
+  ]
+);
