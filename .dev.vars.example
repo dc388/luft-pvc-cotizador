@@ -1,0 +1,23 @@
+# Datos de empresa para el documento de cotización (lib/companySettings.ts).
+#
+# Copia este archivo como `.dev.vars` (ignorado por git) y llénalo con los valores reales para
+# desarrollo local. NUNCA pongas los valores reales en este archivo de ejemplo ni en el código:
+# la CLABE estuvo escrita en components/reports/CotizacionDoc.tsx y por eso quedó en todo el
+# historial de git.
+#
+# En producción se cargan como secretos del Worker, uno por uno:
+#   wrangler secret put COMPANY_CLABE
+#   wrangler secret put COMPANY_BANK_ACCOUNT
+#   ...
+#
+# Si un valor falta, la cotización lo muestra como "— por configurar —" en vez de inventarlo.
+
+COMPANY_LEGAL_NAME=
+COMPANY_BANK_NAME=
+COMPANY_BANK_ACCOUNT=
+COMPANY_CLABE=
+COMPANY_COMERCIAL=
+COMPANY_WARRANTY=
+
+# Porcentaje de anticipo (0-100). Si se omite, se usa 70.
+COMPANY_DEPOSIT_PERCENTAGE=70
