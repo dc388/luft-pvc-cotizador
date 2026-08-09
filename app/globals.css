@@ -347,90 +347,272 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 /* ---------- Cotizador público (app/cotizar) ----------
    Mobile-first y deliberadamente aparte del workspace técnico de arriba: botones grandes,
    poco texto y una decisión por pantalla. No reutiliza .workspace/.configPanel porque esa
-   retícula de 3 columnas es justo lo contrario de lo que necesita un cliente en el teléfono. */
-.cotShell{min-height:100dvh;display:flex;flex-direction:column;background:var(--paper)}
-.cotTop{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--surface);border-bottom:1px solid var(--line)}
-.cotBrand{display:flex;align-items:center;gap:9px;font-size:15px;letter-spacing:.08em}
-.cotBrand b{color:var(--accent)}
-.cotBrandMark{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:900;font-size:14px}
-.cotStepCount{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
-.cotProgress{height:3px;background:var(--line)}
-.cotProgress span{display:block;height:100%;background:var(--accent);transition:width .25s}
-.cotMain{flex:1;display:flex;justify-content:center;padding:22px 18px 110px}
-.cotScreen{width:100%;max-width:560px;display:flex;flex-direction:column;gap:12px}
-.cotScreen h1{font-family:Georgia,serif;font-size:27px;line-height:1.15;margin:4px 0 0;letter-spacing:-.02em}
-.cotHint{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 4px}
+   retícula de 3 columnas es justo lo contrario de lo que necesita un cliente en el teléfono.
 
-.cotCards{display:flex;flex-direction:column;gap:10px}
-.cotCard{display:flex;flex-direction:column;gap:4px;text-align:left;padding:16px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink)}
-.cotCard b{font-size:16px}
-.cotCard small{font-size:12.5px;color:var(--muted);line-height:1.45}
-.cotCard.sel{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, var(--surface))}
-.cotCardStyle{display:grid;grid-template-columns:88px 1fr;grid-template-rows:auto auto;column-gap:14px;align-items:center}
+   Estética "liquid glass" (iOS 26) en pastel: superficies translúcidas que dejan ver el fondo
+   difuminado, un filo especular claro arriba de cada pieza y sombras anchas y suaves en vez de
+   bordes duros. Todos los tokens viven en .cotShell -- no en :root -- para que la app interna,
+   que comparte esta hoja, no cambie ni un pixel.
+
+   El desenfoque real (backdrop-filter) se reserva para el cromo fijo (barra, pie, precio) y se
+   usa más ligero en las tarjetas: cada capa difuminada cuesta composición en móvil, y una lista
+   de 10 tarjetas con blur pesado es justo donde se nota. Ver el @supports del final para el
+   respaldo en navegadores sin backdrop-filter. */
+.cotShell{
+  --cg-tint:rgba(255,255,255,.52);
+  --cg-tint-strong:rgba(255,255,255,.7);
+  --cg-tint-soft:rgba(255,255,255,.38);
+  --cg-edge:rgba(255,255,255,.85);
+  --cg-line:rgba(122,110,170,.18);
+  --cg-shadow:rgba(88,74,140,.16);
+  --cg-ink:#2f2b41;
+  --cg-muted:#6d6889;
+  --cg-accent:#8b7cf0;
+  --cg-accent-deep:#6f5ee0;
+  --cg-blush:#f6a8cb;
+  --cg-mint:#7fdcc6;
+  --cg-sky:#9cc9fb;
+  --cg-amber-bg:rgba(255,224,186,.62);
+  --cg-amber-line:rgba(226,158,74,.38);
+  --cg-amber-fg:#8a5a1c;
+  min-height:100dvh;display:flex;flex-direction:column;color:var(--cg-ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif;
+  /* Malla pastel fija: es lo que el vidrio refracta. Sin un fondo con color detrás, el
+     backdrop-filter no tiene nada que difuminar y las piezas se ven planas. */
+  background:
+    radial-gradient(1150px 720px at 6% -10%, #ffd7ec 0%, transparent 58%),
+    radial-gradient(950px 640px at 98% 2%, #cfe3ff 0%, transparent 56%),
+    radial-gradient(900px 720px at 46% 112%, #c9f4e6 0%, transparent 60%),
+    linear-gradient(168deg,#f8f5ff 0%,#eff6ff 48%,#fff5fa 100%);
+  background-attachment:fixed;
+}
+.cotTop{
+  position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;background:var(--cg-tint);border-bottom:1px solid var(--cg-line);
+  backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);
+  box-shadow:inset 0 1px 0 var(--cg-edge);
+}
+.cotBrand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;letter-spacing:.06em}
+.cotBrand b{background:linear-gradient(120deg,var(--cg-accent-deep),var(--cg-blush));-webkit-background-clip:text;background-clip:text;color:transparent}
+.cotBrandMark{width:32px;height:32px;border-radius:50%;background:linear-gradient(145deg,var(--cg-accent),var(--cg-blush));color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 6px 14px -6px var(--cg-accent)}
+.cotStepCount{font-size:11.5px;font-weight:600;color:var(--cg-muted);font-variant-numeric:tabular-nums}
+.cotProgress{position:sticky;top:61px;z-index:5;height:4px;background:rgba(255,255,255,.4)}
+.cotProgress span{display:block;height:100%;border-radius:0 999px 999px 0;background:linear-gradient(90deg,var(--cg-sky),var(--cg-accent) 55%,var(--cg-blush));transition:width .35s cubic-bezier(.4,0,.2,1)}
+.cotMain{flex:1;display:flex;justify-content:center;padding:26px 18px 132px}
+.cotScreen{width:100%;max-width:560px;display:flex;flex-direction:column;gap:13px}
+.cotScreen h1{font-size:30px;font-weight:700;line-height:1.12;margin:2px 0 0;letter-spacing:-.028em}
+.cotHint{font-size:13.5px;color:var(--cg-muted);line-height:1.5;margin:0 0 4px}
+
+.cotCards{display:flex;flex-direction:column;gap:11px}
+.cotCard{
+  display:flex;flex-direction:column;gap:5px;text-align:left;padding:17px 18px;color:var(--cg-ink);
+  border:1px solid var(--cg-line);border-radius:22px;background:var(--cg-tint);
+  backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:inset 0 1px 0 var(--cg-edge),0 10px 26px -14px var(--cg-shadow);
+  transition:transform .22s cubic-bezier(.4,0,.2,1),box-shadow .22s,background .22s,border-color .22s;
+}
+.cotCard:active{transform:scale(.985)}
+.cotCard b{font-size:16.5px;font-weight:650}
+.cotCard small{font-size:12.5px;color:var(--cg-muted);line-height:1.45}
+.cotCard.sel{
+  border-color:color-mix(in srgb, var(--cg-accent) 45%, transparent);
+  background:linear-gradient(150deg,rgba(255,255,255,.78),color-mix(in srgb, var(--cg-accent) 15%, rgba(255,255,255,.6)));
+  box-shadow:inset 0 1px 0 var(--cg-edge),0 0 0 3px color-mix(in srgb, var(--cg-accent) 16%, transparent),0 14px 30px -14px var(--cg-accent);
+}
+.cotCardStyle{display:grid;grid-template-columns:92px 1fr;grid-template-rows:auto auto;column-gap:15px;align-items:center}
 .cotCardStyle .cotPreview{grid-row:1/3}
 .cotCardStyle b{align-self:end}
 .cotCardStyle small{align-self:start}
 
-.cotField{display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--muted);font-weight:bold}
-.cotField input{height:52px;font-size:17px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);padding:0 14px;color:var(--ink)}
+.cotField{display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--cg-muted);font-weight:600;letter-spacing:.01em}
+.cotField input{
+  height:54px;font-size:17px;font-weight:500;border-radius:17px;padding:0 16px;color:var(--cg-ink);
+  border:1px solid var(--cg-line);background:var(--cg-tint-strong);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:inset 0 1px 0 var(--cg-edge);transition:box-shadow .2s,border-color .2s;
+}
+.cotField input:focus{outline:none;border-color:color-mix(in srgb, var(--cg-accent) 55%, transparent);box-shadow:inset 0 1px 0 var(--cg-edge),0 0 0 4px color-mix(in srgb, var(--cg-accent) 18%, transparent)}
 .cotStepper{display:flex;align-items:center;gap:14px}
-.cotStepper button{width:52px;height:52px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);font-size:22px;color:var(--ink)}
-.cotStepper b{font-size:19px;color:var(--ink);min-width:2ch;text-align:center;font-variant-numeric:tabular-nums}
+.cotStepper button{
+  width:54px;height:54px;border-radius:50%;font-size:23px;color:var(--cg-accent-deep);
+  border:1px solid var(--cg-line);background:var(--cg-tint-strong);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:inset 0 1px 0 var(--cg-edge),0 8px 18px -12px var(--cg-shadow);transition:transform .18s
+}
+.cotStepper button:active{transform:scale(.92)}
+.cotStepper b{font-size:20px;font-weight:650;color:var(--cg-ink);min-width:2ch;text-align:center;font-variant-numeric:tabular-nums}
 
-.cotSwatches{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.cotSwatch{display:flex;align-items:center;gap:11px;padding:13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font-size:13.5px;text-align:left}
-.cotSwatch span{width:34px;height:34px;border-radius:8px;border:1px solid #00000022;flex:0 0 auto}
-.cotSwatch.sel{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, var(--surface))}
+.cotSwatches{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
+.cotSwatch{
+  display:flex;align-items:center;gap:12px;padding:13px 14px;font-size:13.5px;font-weight:550;text-align:left;color:var(--cg-ink);
+  border:1px solid var(--cg-line);border-radius:20px;background:var(--cg-tint);
+  backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:inset 0 1px 0 var(--cg-edge),0 8px 20px -14px var(--cg-shadow);transition:transform .2s,box-shadow .2s,border-color .2s,background .2s
+}
+.cotSwatch:active{transform:scale(.97)}
+.cotSwatch span{width:34px;height:34px;border-radius:12px;flex:0 0 auto;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 0 0 1px rgba(0,0,0,.1),0 4px 10px -5px rgba(0,0,0,.35)}
+.cotSwatch.sel{
+  border-color:color-mix(in srgb, var(--cg-accent) 48%, transparent);
+  background:linear-gradient(150deg,rgba(255,255,255,.8),color-mix(in srgb, var(--cg-accent) 16%, rgba(255,255,255,.6)));
+  box-shadow:inset 0 1px 0 var(--cg-edge),0 0 0 3px color-mix(in srgb, var(--cg-accent) 16%, transparent)
+}
 
-.cotToggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);text-align:left}
+.cotToggle{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 18px;text-align:left;color:var(--cg-ink);
+  border:1px solid var(--cg-line);border-radius:22px;background:var(--cg-tint);
+  backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:inset 0 1px 0 var(--cg-edge),0 10px 26px -14px var(--cg-shadow);transition:background .22s,border-color .22s,box-shadow .22s
+}
 .cotToggle span{display:flex;flex-direction:column;gap:3px}
-.cotToggle b{font-size:15px}
-.cotToggle small{font-size:12.5px;color:var(--muted);line-height:1.4}
-.cotToggle i{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-style:normal;font-size:15px;flex:0 0 auto}
-.cotToggle.sel{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, var(--surface))}
-.cotToggle.sel i{background:var(--accent);border-color:var(--accent);color:#fff}
+.cotToggle b{font-size:15.5px;font-weight:620}
+.cotToggle small{font-size:12.5px;color:var(--cg-muted);line-height:1.4}
+.cotToggle i{width:32px;height:32px;border-radius:50%;border:1px solid var(--cg-line);background:rgba(255,255,255,.5);display:grid;place-items:center;font-style:normal;font-size:15px;font-weight:700;flex:0 0 auto;transition:background .22s,color .22s,box-shadow .22s}
+.cotToggle.sel{
+  border-color:color-mix(in srgb, var(--cg-mint) 55%, transparent);
+  background:linear-gradient(150deg,rgba(255,255,255,.8),color-mix(in srgb, var(--cg-mint) 22%, rgba(255,255,255,.6)))
+}
+.cotToggle.sel i{background:linear-gradient(145deg,var(--cg-mint),#5fc9ae);border-color:transparent;color:#0d4638;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 6px 14px -7px #3fae93}
 
-.cotPreview{width:100%;background:var(--paper);border-radius:10px;padding:7px;display:flex}
-.cotPreviewFrame{flex:1;display:flex;gap:3px;padding:6px;border-radius:6px;border:1px solid transparent}
-.cotPreviewPane{flex:1;border:3px solid;border-radius:3px;padding:2px;min-width:0}
-.cotPreviewGlass{display:block;width:100%;height:100%;border-radius:2px;background:linear-gradient(145deg,#9cbec4,#e9f2f0 55%,#91b8c2)}
+.cotPreview{width:100%;border-radius:16px;padding:8px;display:flex;background:rgba(255,255,255,.42);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 0 0 1px var(--cg-line)}
+.cotPreviewFrame{flex:1;display:flex;gap:3px;padding:6px;border-radius:11px;border:1px solid transparent}
+.cotPreviewPane{flex:1;border:3px solid;border-radius:6px;padding:2px;min-width:0}
+.cotPreviewGlass{display:block;width:100%;height:100%;border-radius:4px;background:linear-gradient(145deg,#bfe0f5,#eaf6fb 52%,#cfeae4)}
 
-.cotDoc{display:flex;flex-direction:column;gap:14px;padding:18px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
-.cotSummary{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
-.cotSummary li{font-size:14px;padding-bottom:7px;border-bottom:1px solid var(--line)}
-.cotSummary li:last-child{border-bottom:0}
-.cotPriceBox{background:var(--accent);color:#fff;border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:5px}
-.cotPriceBox span{font-size:11px;letter-spacing:.1em;color:#ffffffcc}
-.cotPriceBox strong{font-family:Georgia,serif;font-size:33px;font-variant-numeric:tabular-nums}
-.cotPriceBox small{font-size:11.5px;color:#ffffffcc}
-.cotFolio{font-size:12px;letter-spacing:.14em;color:var(--accent);font-weight:bold;margin:0}
-.cotFinalTotal{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--muted);margin:0}
-.cotFinalTotal b{font-size:23px;color:var(--ink);font-variant-numeric:tabular-nums}
-.cotFinePrint{font-size:11.5px;color:var(--muted);line-height:1.5;margin:0}
-.cotFinalActions{display:flex;flex-direction:column;gap:10px}
-.cotWarn{font-size:13px;line-height:1.5;color:var(--warn-fg);background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:10px;padding:12px;margin:0}
+.cotDoc{
+  display:flex;flex-direction:column;gap:15px;padding:20px;border-radius:26px;
+  border:1px solid var(--cg-line);background:var(--cg-tint-strong);
+  backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%);
+  box-shadow:inset 0 1px 0 var(--cg-edge),0 16px 40px -20px var(--cg-shadow)
+}
+.cotSummary{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.cotSummary li{font-size:14px;padding-bottom:8px;border-bottom:1px solid var(--cg-line)}
+.cotSummary li:last-child{border-bottom:0;padding-bottom:0}
+/* La pieza protagonista: cristal pastel teñido, no un bloque de color plano. Texto en tinta
+   oscura (no blanco) porque sobre pastel claro el blanco no alcanza contraste legible. */
+.cotPriceBox{
+  position:relative;overflow:hidden;border-radius:26px;padding:20px;display:flex;flex-direction:column;gap:6px;color:var(--cg-ink);
+  border:1px solid rgba(255,255,255,.6);
+  background:linear-gradient(140deg,rgba(197,214,255,.92),rgba(214,199,255,.9) 45%,rgba(255,209,232,.9));
+  backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 18px 42px -22px var(--cg-accent)
+}
+/* Reflejo especular diagonal: el brillo que hace que el panel se lea como vidrio y no como
+   un simple degradado. */
+.cotPriceBox::after{content:"";position:absolute;inset:-40% -10% auto -10%;height:150%;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.5) 50%,transparent 62%);pointer-events:none}
+/* 75%/74% de tinta, no menos: por debajo de eso este texto chico sobre el pastel cae bajo el
+   4.5:1 que pide WCAG AA (a 62% daba 3.56:1). El total grande sobra de contraste a 9.6:1. */
+.cotPriceBox span{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:color-mix(in srgb, var(--cg-ink) 75%, transparent)}
+.cotPriceBox strong{font-size:36px;font-weight:750;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.cotPriceBox small{font-size:11.5px;font-weight:550;color:color-mix(in srgb, var(--cg-ink) 74%, transparent)}
+.cotFolio{font-size:12px;letter-spacing:.14em;font-weight:700;margin:0;color:var(--cg-accent-deep)}
+.cotFinalTotal{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--cg-muted);margin:0}
+.cotFinalTotal b{font-size:24px;font-weight:700;color:var(--cg-ink);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.cotFinePrint{font-size:11.5px;color:var(--cg-muted);line-height:1.5;margin:0}
+.cotFinalActions{display:flex;flex-direction:column;gap:11px}
+.cotWarn{font-size:13px;line-height:1.5;color:var(--cg-amber-fg);background:var(--cg-amber-bg);border:1px solid var(--cg-amber-line);border-radius:18px;padding:13px 14px;margin:0;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
 /* Aviso informativo, no error: la línea elegida se cotiza con tarifas estimadas y el precio
    queda sujeto a confirmación (ver ESTIMATE_NOTE en QuoteWizard). */
-.cotNote{font-size:12.5px;line-height:1.5;color:var(--warn-fg);background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:10px;padding:11px 12px;margin:0}
-.cotBadge{display:inline-block;margin-left:8px;padding:3px 8px;border-radius:20px;background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-fg);font-size:10px;font-weight:bold;font-style:normal;letter-spacing:.02em;vertical-align:middle}
+.cotNote{font-size:12.5px;line-height:1.5;color:var(--cg-amber-fg);background:var(--cg-amber-bg);border:1px solid var(--cg-amber-line);border-radius:18px;padding:12px 14px;margin:0;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+.cotBadge{display:inline-block;margin-left:8px;padding:3px 9px;border-radius:999px;background:var(--cg-amber-bg);border:1px solid var(--cg-amber-line);color:var(--cg-amber-fg);font-size:10px;font-weight:700;font-style:normal;letter-spacing:.02em;vertical-align:middle;box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
 
-.cotFoot{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
-.cotFootPrice{flex:1;text-align:center;font-size:14px;font-weight:bold;font-variant-numeric:tabular-nums}
-.cotPrimary{flex:1;min-height:54px;border-radius:11px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;font-size:16px;font-weight:bold;padding:0 20px}
-.cotPrimary:disabled{opacity:.45}
-.cotSecondary{min-height:54px;border-radius:11px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-size:15px;padding:0 20px;display:grid;place-items:center;text-decoration:none}
+/* Pie flotante tipo cápsula, separado de los bordes: en iOS 26 la barra de acción no se pega
+   al borde de la pantalla, flota sobre el contenido dejándolo ver por detrás. */
+.cotFoot{
+  position:fixed;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:6;
+  display:flex;align-items:center;gap:10px;padding:12px;border-radius:30px;
+  border:1px solid var(--cg-line);background:var(--cg-tint-strong);
+  backdrop-filter:blur(26px) saturate(190%);-webkit-backdrop-filter:blur(26px) saturate(190%);
+  box-shadow:inset 0 1px 0 var(--cg-edge),0 16px 38px -18px var(--cg-shadow)
+}
+.cotFootPrice{flex:1;text-align:center;font-size:14.5px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.cotPrimary{
+  flex:1;min-height:52px;border-radius:999px;padding:0 22px;font-size:16px;font-weight:650;color:#fff;border:1px solid transparent;
+  background:linear-gradient(140deg,var(--cg-accent),var(--cg-accent-deep));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 12px 26px -12px var(--cg-accent-deep);
+  transition:transform .18s cubic-bezier(.4,0,.2,1),box-shadow .2s,opacity .2s
+}
+.cotPrimary:active:not(:disabled){transform:scale(.96)}
+.cotPrimary:disabled{opacity:.42;box-shadow:none}
+.cotSecondary{
+  min-height:52px;border-radius:999px;padding:0 22px;font-size:15px;font-weight:600;color:var(--cg-ink);text-decoration:none;display:grid;place-items:center;
+  border:1px solid var(--cg-line);background:rgba(255,255,255,.55);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:inset 0 1px 0 var(--cg-edge);transition:transform .18s
+}
+.cotSecondary:active{transform:scale(.96)}
 .cotFinalActions .cotSecondary,.cotFinalActions .cotPrimary{width:100%;flex:none}
 
 @media(min-width:620px){
   .cotSwatches{grid-template-columns:repeat(3,1fr)}
-  .cotFoot{justify-content:center}
+  .cotFoot{left:50%;right:auto;transform:translateX(-50%);width:min(596px,calc(100% - 28px));justify-content:center}
   .cotFoot .cotPrimary{flex:0 0 auto;min-width:220px}
 }
 
+/* Modo oscuro: la misma malla pastel bajada a tonos profundos. El vidrio deja de ser blanco
+   translúcido y pasa a ser un tinte índigo, o sobre un fondo oscuro se vería como niebla. */
+@media (prefers-color-scheme: dark){
+  .cotShell{
+    --cg-tint:rgba(60,56,90,.5);
+    --cg-tint-strong:rgba(64,60,96,.68);
+    --cg-edge:rgba(255,255,255,.13);
+    --cg-line:rgba(255,255,255,.13);
+    --cg-shadow:rgba(0,0,0,.55);
+    --cg-ink:#ecebf7;
+    --cg-muted:#a9a4c6;
+    --cg-accent:#a394ff;
+    --cg-accent-deep:#8172ee;
+    --cg-amber-bg:rgba(94,68,30,.55);
+    --cg-amber-line:rgba(226,158,74,.34);
+    --cg-amber-fg:#f4cf98;
+    background:
+      radial-gradient(1150px 720px at 6% -10%, #3d2b50 0%, transparent 58%),
+      radial-gradient(950px 640px at 98% 2%, #223851 0%, transparent 56%),
+      radial-gradient(900px 720px at 46% 112%, #1d4442 0%, transparent 60%),
+      linear-gradient(168deg,#181527 0%,#141a2b 48%,#1e1527 100%);
+  }
+  .cotProgress{background:rgba(255,255,255,.1)}
+  .cotPreview{background:rgba(255,255,255,.06)}
+  .cotToggle i{background:rgba(255,255,255,.09)}
+  .cotSecondary{background:rgba(255,255,255,.09)}
+  .cotSwatch span{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 0 0 1px rgba(255,255,255,.18),0 4px 10px -5px #000}
+  .cotPriceBox{
+    border-color:rgba(255,255,255,.16);
+    background:linear-gradient(140deg,rgba(94,109,180,.62),rgba(120,96,182,.58) 45%,rgba(170,100,142,.55));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 18px 42px -22px #000
+  }
+  .cotPriceBox::after{background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.13) 50%,transparent 62%)}
+  .cotPreviewGlass{background:linear-gradient(145deg,#6d8ea8,#93b6c4 52%,#6f9a94)}
+}
+
+/* Sin backdrop-filter (Firefox con la bandera apagada, WebViews viejos) el tinte translúcido
+   se leería como texto sobre la malla de fondo. Se opacan las superficies para conservar el
+   contraste, aunque se pierda el efecto. */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .cotShell{--cg-tint:rgba(255,255,255,.92);--cg-tint-strong:rgba(255,255,255,.97)}
+  @media (prefers-color-scheme: dark){
+    .cotShell{--cg-tint:rgba(38,36,58,.94);--cg-tint-strong:rgba(40,38,62,.97)}
+  }
+}
+
+@media (prefers-reduced-transparency: reduce){
+  .cotShell{--cg-tint:rgba(255,255,255,.95);--cg-tint-strong:rgba(255,255,255,.98)}
+  .cotTop,.cotFoot,.cotCard,.cotSwatch,.cotToggle,.cotDoc,.cotPriceBox,.cotField input,.cotStepper button,.cotSecondary,.cotWarn,.cotNote{backdrop-filter:none;-webkit-backdrop-filter:none}
+  .cotPriceBox::after{display:none}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .cotCard,.cotSwatch,.cotToggle,.cotPrimary,.cotSecondary,.cotStepper button,.cotProgress span{transition:none}
+  .cotCard:active,.cotSwatch:active,.cotPrimary:active:not(:disabled),.cotSecondary:active,.cotStepper button:active{transform:none}
+}
+
+/* Al imprimir no hay fondo que refractar: se aplana todo a tinta sobre papel blanco, o el
+   navegador gasta tóner en degradados y sombras que en papel solo ensucian. */
 @media print{
   .cotTop,.cotProgress,.cotFoot,.cotFinalActions,.cotHint,.cotScreen h1{display:none!important}
-  .cotShell,.cotMain{display:block;padding:0;background:#fff}
-  .cotDoc{border:0;padding:0}
+  .cotShell,.cotMain{display:block;padding:0;background:#fff;color:#000}
+  .cotDoc,.cotPriceBox,.cotNote,.cotWarn{border:0;padding:0;background:#fff;color:#000;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .cotPriceBox::after{display:none}
+  .cotBadge{background:#fff;border:1px solid #999;color:#000;box-shadow:none}
 }
 
 @media(max-width:1150px){
