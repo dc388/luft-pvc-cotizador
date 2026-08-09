@@ -45,7 +45,12 @@ export default defineConfig(async () => {
   return {
     server: {
       host: "0.0.0.0",
-      allowedHosts: ["terminal.local"],
+      // ".trycloudflare.com" habilita los túneles rápidos de Cloudflare
+      // (`cloudflared tunnel --url http://localhost:5174`) para enseñarle el cotizador a
+      // alguien fuera de esta red sin desplegar. Solo afecta al servidor de desarrollo: es la
+      // protección anti DNS-rebinding de Vite, que no existe en producción. El subdominio del
+      // túnel es aleatorio en cada arranque, de ahí el comodín en vez de un host fijo.
+      allowedHosts: ["terminal.local", ".trycloudflare.com"],
       ...(isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
         : {}),
