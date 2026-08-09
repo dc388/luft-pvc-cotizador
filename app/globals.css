@@ -542,10 +542,80 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .cotSecondary:active{transform:scale(.96)}
 .cotFinalActions .cotSecondary,.cotFinalActions .cotPrimary{width:100%;flex:none}
 
+/* ---------- Proceso post-cotización (components/cotizar/glass + ProcessSection) ----------
+   Reutiliza los tokens --cg-* de .cotShell; ningún color se declara aquí de nuevo. */
+.glassCard{
+  border:1px solid var(--cg-line);border-radius:24px;background:var(--cg-tint);padding:18px;
+  backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:inset 0 1px 0 var(--cg-edge),0 12px 30px -16px var(--cg-shadow)
+}
+.glassCardTinted{
+  border-color:rgba(255,255,255,.6);
+  background:linear-gradient(140deg,rgba(197,214,255,.85),rgba(214,199,255,.82) 50%,rgba(255,209,232,.82));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 14px 32px -18px var(--cg-accent)
+}
+.glassBadge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:700;border:1px solid var(--cg-line);background:rgba(255,255,255,.55);box-shadow:inset 0 1px 0 var(--cg-edge)}
+.glassBadge-accent{border-color:color-mix(in srgb, var(--cg-accent) 40%, transparent);color:var(--cg-accent-deep)}
+.glassBadge-warn{background:var(--cg-amber-bg);border-color:var(--cg-amber-line);color:var(--cg-amber-fg)}
+.glassNumber{
+  flex:0 0 auto;width:52px;height:52px;border-radius:18px;display:grid;place-items:center;
+  font-size:25px;font-weight:750;letter-spacing:-.02em;color:var(--cg-accent-deep);
+  border:1px solid rgba(255,255,255,.7);
+  background:linear-gradient(150deg,rgba(255,255,255,.9),color-mix(in srgb, var(--cg-sky) 55%, rgba(255,255,255,.7)));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 10px 22px -12px var(--cg-accent)
+}
+.glassChip{
+  display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border-radius:999px;font-size:12px;font-weight:550;line-height:1.3;color:var(--cg-ink);
+  border:1px solid var(--cg-line);background:rgba(255,255,255,.5);box-shadow:inset 0 1px 0 var(--cg-edge)
+}
+.glassChip i{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;flex:0 0 auto;color:var(--cg-accent-deep);background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px var(--cg-line)}
+.procChipIcon{width:13px;height:13px}
+.procTickIcon{width:13px;height:13px}
+
+/* Entrada al viewport (ver Reveal). El estado base es VISIBLE y solo `.isHidden` lo oculta:
+   si el JS no corre o el observer no dispara, el contenido se lee igual. */
+.glassReveal{transition:opacity .5s cubic-bezier(.4,0,.2,1),transform .5s cubic-bezier(.4,0,.2,1),filter .5s}
+.glassReveal.isHidden{opacity:0;transform:translateY(12px);filter:blur(6px)}
+
+.procSection{display:flex;flex-direction:column;gap:14px}
+.procStep{display:flex;flex-direction:column;gap:14px}
+.procHead{display:grid;grid-template-columns:52px 1fr;gap:14px;align-items:start}
+.procHeadText h3{margin:0 0 6px;font-size:19px;font-weight:680;letter-spacing:-.02em;line-height:1.2}
+.procHeadText p{margin:0;font-size:13.5px;line-height:1.5;color:var(--cg-muted)}
+.procArtBox{grid-column:1/3;display:grid;place-items:center;padding:14px;border-radius:18px;background:rgba(255,255,255,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 0 0 1px var(--cg-line)}
+.procArt{width:100%;max-width:210px;height:auto;color:var(--cg-accent-deep)}
+.procChips{display:flex;flex-wrap:wrap;gap:8px}
+.procNote{font-size:12px}
+.procDeposit{display:flex;flex-direction:column;gap:9px;padding:16px}
+.procDepositRow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:13px;color:color-mix(in srgb, var(--cg-ink) 78%, transparent)}
+.procDepositRow b{font-size:15px;font-weight:700;color:var(--cg-ink);font-variant-numeric:tabular-nums}
+.procDepositRowMain{padding:9px 0;border-block:1px solid rgba(255,255,255,.6)}
+.procDepositRowMain b{font-size:19px;letter-spacing:-.02em}
+.procTimelineCard h3{margin:0 0 4px;font-size:18px;font-weight:680;letter-spacing:-.02em}
+
+.glassTimeline{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column}
+.glassTimelineItem{display:grid;grid-template-columns:28px 1fr;gap:12px;padding-bottom:16px;position:relative}
+.glassTimelineItem:last-child{padding-bottom:0}
+/* La línea que une las etapas nace del propio marcador, así se mantiene alineada aunque la
+   etiqueta ocupe dos renglones. */
+.glassTimelineItem:not(:last-child)::before{content:"";position:absolute;left:13.5px;top:28px;bottom:2px;width:1.5px;background:var(--cg-line)}
+.glassTimelineItem.is-done:not(:last-child)::before{background:color-mix(in srgb, var(--cg-mint) 60%, transparent)}
+.glassTimelineMark{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--cg-line);background:rgba(255,255,255,.55);box-shadow:inset 0 1px 0 var(--cg-edge);color:var(--cg-muted);z-index:1}
+.glassTimelineDot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.55}
+.glassTimelineItem.is-done .glassTimelineMark{background:linear-gradient(145deg,var(--cg-mint),#5fc9ae);border-color:transparent;color:#0d4638}
+.glassTimelineItem.is-current .glassTimelineMark{background:linear-gradient(145deg,var(--cg-accent),var(--cg-accent-deep));border-color:transparent;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 0 4px color-mix(in srgb, var(--cg-accent) 16%, transparent)}
+.glassTimelineItem.is-current .glassTimelineDot{opacity:1}
+.glassTimelineLabel{display:flex;flex-direction:column;gap:2px;font-size:14px;font-weight:550;padding-top:3px}
+.glassTimelineLabel small{font-size:11px;font-weight:500;color:var(--cg-muted)}
+.glassTimelineItem.is-pending .glassTimelineLabel{color:var(--cg-muted);font-weight:500}
+
 @media(min-width:620px){
   .cotSwatches{grid-template-columns:repeat(3,1fr)}
   .cotFoot{left:50%;right:auto;transform:translateX(-50%);width:min(596px,calc(100% - 28px));justify-content:center}
   .cotFoot .cotPrimary{flex:0 0 auto;min-width:220px}
+  /* En pantalla ancha la ilustración se va al costado en vez de ocupar su propia fila. */
+  .procHead{grid-template-columns:52px 1fr 190px;align-items:center}
+  .procArtBox{grid-column:auto;padding:10px}
 }
 
 /* Modo oscuro: la misma malla pastel bajada a tonos profundos. El vidrio deja de ser blanco
@@ -582,6 +652,21 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
   }
   .cotPriceBox::after{background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.13) 50%,transparent 62%)}
   .cotPreviewGlass{background:linear-gradient(145deg,#6d8ea8,#93b6c4 52%,#6f9a94)}
+  .glassBadge,.glassChip,.glassTimelineMark{background:rgba(255,255,255,.09)}
+  .glassChip i{background:rgba(255,255,255,.12);color:var(--cg-accent)}
+  .procArtBox{background:rgba(255,255,255,.05)}
+  .procArt{color:var(--cg-accent)}
+  .glassNumber{
+    border-color:rgba(255,255,255,.16);color:#fff;
+    background:linear-gradient(150deg,rgba(120,140,220,.5),rgba(140,120,220,.45));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 10px 22px -12px #000
+  }
+  .glassCardTinted{
+    border-color:rgba(255,255,255,.16);
+    background:linear-gradient(140deg,rgba(94,109,180,.5),rgba(120,96,182,.46) 50%,rgba(170,100,142,.44));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 14px 32px -18px #000
+  }
+  .procDepositRowMain{border-color:rgba(255,255,255,.14)}
 }
 
 /* Sin backdrop-filter (Firefox con la bandera apagada, WebViews viejos) el tinte translúcido
@@ -596,13 +681,16 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 
 @media (prefers-reduced-transparency: reduce){
   .cotShell{--cg-tint:rgba(255,255,255,.95);--cg-tint-strong:rgba(255,255,255,.98)}
-  .cotTop,.cotFoot,.cotCard,.cotSwatch,.cotToggle,.cotDoc,.cotPriceBox,.cotField input,.cotStepper button,.cotSecondary,.cotWarn,.cotNote{backdrop-filter:none;-webkit-backdrop-filter:none}
+  .cotTop,.cotFoot,.cotCard,.cotSwatch,.cotToggle,.cotDoc,.cotPriceBox,.cotField input,.cotStepper button,.cotSecondary,.cotWarn,.cotNote,.glassCard{backdrop-filter:none;-webkit-backdrop-filter:none}
   .cotPriceBox::after{display:none}
 }
 
+/* Reveal ya se desactiva en JS al detectar esta preferencia (el contenido nace visible); esta
+   regla es el respaldo por si el CSS carga antes de que el componente hidrate. */
 @media (prefers-reduced-motion: reduce){
   .cotCard,.cotSwatch,.cotToggle,.cotPrimary,.cotSecondary,.cotStepper button,.cotProgress span{transition:none}
   .cotCard:active,.cotSwatch:active,.cotPrimary:active:not(:disabled),.cotSecondary:active,.cotStepper button:active{transform:none}
+  .glassReveal,.glassReveal.isHidden{opacity:1;transform:none;filter:none;transition:none}
 }
 
 /* Al imprimir no hay fondo que refractar: se aplana todo a tinta sobre papel blanco, o el
@@ -610,9 +698,11 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 @media print{
   .cotTop,.cotProgress,.cotFoot,.cotFinalActions,.cotHint,.cotScreen h1{display:none!important}
   .cotShell,.cotMain{display:block;padding:0;background:#fff;color:#000}
-  .cotDoc,.cotPriceBox,.cotNote,.cotWarn{border:0;padding:0;background:#fff;color:#000;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .cotDoc,.cotPriceBox,.cotNote,.cotWarn,.glassCard{border:0;padding:0;background:#fff;color:#000;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
   .cotPriceBox::after{display:none}
-  .cotBadge{background:#fff;border:1px solid #999;color:#000;box-shadow:none}
+  .cotBadge,.glassBadge,.glassChip{background:#fff;border:1px solid #999;color:#000;box-shadow:none}
+  .glassReveal,.glassReveal.isHidden{opacity:1;transform:none;filter:none}
+  .procArtBox{box-shadow:none;background:#fff}
 }
 
 @media(max-width:1150px){

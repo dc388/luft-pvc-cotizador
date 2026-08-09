@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { money } from "@/lib/money";
 import type { PublicCatalog } from "@/lib/publicCatalog";
+import { ProcessSection } from "./ProcessSection";
+import { GlassTimeline } from "./glass/GlassTimeline";
 import { WindowPreview } from "./WindowPreview";
 
 // Número de atención humana: se usa solo cuando el cliente ya decidió avanzar (firma y
@@ -14,10 +16,18 @@ const WHATSAPP_NUMBER = "529932211158";
 // presenta ese número como precio en firme.
 const ESTIMATE_NOTE = "Precio aproximado: esta línea la confirma tu asesor antes de firmar.";
 
-type Price = { unit: number; total: number; hasQuoteOnRequestItems: boolean; estimated: boolean };
+type Price = {
+  unit: number;
+  total: number;
+  hasQuoteOnRequestItems: boolean;
+  estimated: boolean;
+  depositPercentage: number;
+  deposit: number;
+  remaining: number;
+};
 type Extras = { instalacion: boolean; persianaExterior: boolean; mosquitero: boolean };
 
-const STEPS = ["Producto", "Línea", "Estilo", "Medidas", "Color", "Vidrio", "Extras", "Precio", "Resumen", "Contacto", "Listo"];
+const STEPS = ["Producto", "Línea", "Estilo", "Medidas", "Color", "Vidrio", "Extras", "Precio", "Resumen", "Proceso", "Contacto", "Listo"];
 
 // Índices con nombre en vez de números sueltos: el flujo ya cambió de largo una vez (al
 // insertar "Línea") y con literales sueltos cada inserción obliga a reenumerar a mano todas
@@ -32,8 +42,9 @@ const S = {
   EXTRAS: 6,
   PRICE: 7,
   SUMMARY: 8,
-  CONTACT: 9,
-  DONE: 10,
+  PROCESS: 9,
+  CONTACT: 10,
+  DONE: 11,
 } as const;
 
 export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
@@ -356,6 +367,18 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
           </Screen>
         )}
 
+        {step === S.PROCESS && (
+          <Screen title="¿Qué sigue después de tu cotización?" hint="Así funciona, de principio a fin.">
+            <ProcessSection
+              deposit={
+                price
+                  ? { total: price.total, depositPercentage: price.depositPercentage, deposit: price.deposit, remaining: price.remaining }
+                  : null
+              }
+            />
+          </Screen>
+        )}
+
         {step === S.CONTACT && (
           <Screen title="¿A dónde te enviamos tu cotización?" hint="Un asesor la revisa contigo.">
             <label className="cotField">
@@ -397,6 +420,13 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
               <p className="cotFinePrint">
                 Precio estimado con las medidas que capturaste. Un asesor confirma medidas en sitio antes de fabricar.
               </p>
+            </div>
+            {/* Recordatorio de en qué punto queda el cliente al terminar. currentIndex=1
+                ("Revisión") porque acaba de crear la cotización y el siguiente paso real es
+                que un asesor la revise. */}
+            <div className="cotDoc procTimelineCard">
+              <h3>¿Qué sigue?</h3>
+              <GlassTimeline currentIndex={1} />
             </div>
             <div className="cotFinalActions">
               <button className="cotPrimary" onClick={() => window.print()}>

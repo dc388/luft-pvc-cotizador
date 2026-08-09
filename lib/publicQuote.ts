@@ -2,6 +2,7 @@ import { catalog } from "@/data/catalog";
 import { colors } from "@/data/colors";
 import { glassCatalog } from "@/data/glass";
 import { calcQuote, MIN_OPENING_MM } from "@/lib/calc";
+import { getCompanySettings, splitDeposit } from "@/lib/companySettings";
 import { defaultComponentData } from "@/lib/componentDefaults";
 import { colorIndexFor, findStyle, glassIndexFor, isEstimatedSystem, MAX_QTY } from "@/lib/publicCatalog";
 import { defaultMarco, walkLeaves } from "@/lib/tree";
@@ -41,6 +42,13 @@ export type PublicPrice = {
    * Deceuninck -- ver isEstimatedSystem). La UI DEBE presentarlo como precio aproximado
    * sujeto a confirmación, nunca como precio en firme. */
   estimated: boolean;
+  /** Desglose del anticipo, calculado en servidor a partir del porcentaje configurado
+   * (lib/companySettings.ts). El navegador nunca decide cuánto debe depositar un cliente.
+   * Es informativo: los datos bancarios NO se envían al cotizador público -- solo se
+   * entregan cuando un asesor confirma la cotización tras la medición. */
+  depositPercentage: number;
+  deposit: number;
+  remaining: number;
 };
 
 export class PublicQuoteError extends Error {}
@@ -154,13 +162,18 @@ export function priceConfig(config: PublicQuoteConfig): PublicPrice {
 
   // Solo se devuelve el precio comercial. `direct`, `utility`, `profileCost`, la lista de
   // corte y demás internos de QuoteCalc nunca salen de este archivo.
+  const total = Math.round(calc.total);
+  const { depositPercentage, deposit, remaining } = splitDeposit(total, getCompanySettings().depositPercentage);
   return {
     unit: Math.round(calc.sale),
-    total: Math.round(calc.total),
+    total,
     // El mosquitero no tiene tarifa en el motor y la regla del proyecto es no inventar una,
     // así que se registra en la cotización pero no se suma al total.
     hasQuoteOnRequestItems: config.extras.mosquitero,
     estimated: isEstimatedSystem(style.brand, style.systemIndex),
+    depositPercentage,
+    deposit,
+    remaining,
   };
 }
 
