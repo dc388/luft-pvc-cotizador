@@ -1,4 +1,5 @@
 import { createDefaultTree, defaultMarco, firstLeafId } from "@/lib/tree";
+import { BAR_LENGTH_MM } from "@/lib/calc";
 import type { ComponentData } from "@/types/project";
 
 // Shared by every place that seeds a brand-new component (first component of a new
@@ -21,5 +22,6 @@ export function defaultComponentData(): ComponentData {
     marco: defaultMarco(),
     termsHeader: "Estimado/a, según sus indicaciones le presentamos la oferta de los productos solicitados. A continuación, el desglose de cada elemento:",
     paymentTerms: "A) 70% al momento de aprobación y firma del presente Contrato/Presupuesto.\nB) 30% al aviso de embarque de cancelería o vidrio.",
+    barLengthMm: BAR_LENGTH_MM,
   };
 }

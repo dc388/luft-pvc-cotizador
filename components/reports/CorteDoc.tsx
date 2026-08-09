@@ -6,11 +6,11 @@ function todayStr() {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
-export function CorteCategory({ title, pieces, qty }: { title: string; pieces: CutPiece[]; qty: number }) {
+export function CorteCategory({ title, pieces, qty, barLengthMm = BAR_LENGTH_MM }: { title: string; pieces: CutPiece[]; qty: number; barLengthMm?: number }) {
   if (!pieces.length) return null;
   const allPieces: CutPiece[] = [];
   for (let i = 0; i < qty; i++) allPieces.push(...pieces);
-  const bars = packBars(allPieces, BAR_LENGTH_MM, KERF_MM);
+  const bars = packBars(allPieces, barLengthMm, KERF_MM);
   const totalWaste = bars.reduce((a, b) => a + b.waste, 0);
   const totalUsed = bars.reduce((a, b) => a + b.used, 0);
   const wastePct = totalUsed + totalWaste > 0 ? (totalWaste / (totalUsed + totalWaste)) * 100 : 0;
@@ -18,12 +18,12 @@ export function CorteCategory({ title, pieces, qty }: { title: string; pieces: C
     <div className="cutGroup">
       <div className="cutGroupHead">
         <b>{title}</b>
-        <span>{bars.length} barra(s) de {BAR_LENGTH_MM} mm · {wastePct.toFixed(1)}% desperdicio</span>
+        <span>{bars.length} barra(s) de {barLengthMm} mm · {wastePct.toFixed(1)}% desperdicio</span>
       </div>
       {bars.map((bar, bi) => (
         <div className="cutBarRow" key={bi}>
           <div className="cutBarLabel">
-            <span>Barra {bi + 1} · {BAR_LENGTH_MM} mm</span>
+            <span>Barra {bi + 1} · {barLengthMm} mm</span>
             <span>Resto: {Math.round(bar.waste)} mm</span>
           </div>
           <div className="cutBar">
@@ -40,12 +40,12 @@ export function CorteCategory({ title, pieces, qty }: { title: string; pieces: C
   );
 }
 
-type Props = { tree: FrameNode; width: number; height: number; qty: number; designation: string; location: string; system: System };
+type Props = { tree: FrameNode; width: number; height: number; qty: number; designation: string; location: string; system: System; barLengthMm?: number };
 
 // Direct port of renderCorteDoc from static/cotizador.html: the real cut-list optimizer
 // document, grouped by piece category (Marco/Travesaño/Hoja/Junquillo), each bin-packed
-// independently onto BAR_LENGTH_MM commercial bars via packBars (first-fit-decreasing).
-export function CorteDoc({ tree, width, height, qty, designation, location, system }: Props) {
+// independently onto the selected commercial bar length via packBars (first-fit-decreasing).
+export function CorteDoc({ tree, width, height, qty, designation, location, system, barLengthMm = BAR_LENGTH_MM }: Props) {
   const cut = buildCutList(tree, width, height, system);
   return (
     <div className="reportDoc">
@@ -64,12 +64,12 @@ export function CorteDoc({ tree, width, height, qty, designation, location, syst
             <div>Tolerancia: <b>{KERF_MM} mm</b></div>
           </div>
         </div>
-        <CorteCategory title="Marco" pieces={cut.marco} qty={qty} />
-        <CorteCategory title="Travesaño" pieces={cut.travesanos} qty={qty} />
-        <CorteCategory title="Hoja" pieces={cut.hojas} qty={qty} />
-        <CorteCategory title="Junquillo" pieces={cut.junquillos} qty={qty} />
+        <CorteCategory title="Marco" pieces={cut.marco} qty={qty} barLengthMm={barLengthMm} />
+        <CorteCategory title="Travesaño" pieces={cut.travesanos} qty={qty} barLengthMm={barLengthMm} />
+        <CorteCategory title="Hoja" pieces={cut.hojas} qty={qty} barLengthMm={barLengthMm} />
+        <CorteCategory title="Junquillo" pieces={cut.junquillos} qty={qty} barLengthMm={barLengthMm} />
         <p className="docIntro">
-          Barra comercial de {BAR_LENGTH_MM} mm, tolerancia de corte de {KERF_MM} mm entre piezas. Optimización por primer ajuste descendente
+          Barra comercial de {barLengthMm} mm, tolerancia de corte de {KERF_MM} mm entre piezas. Optimización por primer ajuste descendente
           (first-fit-decreasing); valida ángulos, soldadura y reglas específicas del catálogo antes de fabricar.
         </p>
       </div>

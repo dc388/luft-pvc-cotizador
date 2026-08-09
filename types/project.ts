@@ -14,6 +14,10 @@ export type ComponentData = {
   client: string;
   clientAddress: string;
   deliveryDate: string;
+  /** Contacto capturado por el cotizador público (app/cotizar) -- opcionales porque los
+   * componentes creados antes de que existiera ese flujo no los traen en su JSON. */
+  clientPhone?: string;
+  clientEmail?: string;
   selectedId: string;
   tree: FrameNode;
   marco: Marco;
@@ -22,6 +26,9 @@ export type ComponentData = {
   /** Free-text payment/warranty conditions body (RA Workshop's "Texto Secundario") -- editable per
    * component so a project-specific deposit split or warranty note doesn't require a code change. */
   paymentTerms: string;
+  /** Commercial stock bar length (mm) used for this component's cut-list optimization --
+   * see lib/calc.ts's BAR_LENGTH_MM for the historical default and Consumo tab's selector. */
+  barLengthMm: number;
 };
 
 export type ComponentRecord = {

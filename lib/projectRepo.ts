@@ -191,6 +191,59 @@ export async function createComponent(
   return toRecord(row);
 }
 
+// Proyecto contenedor de las cotizaciones que llegan del cotizador público (app/cotizar).
+// A diferencia de createProject() no siembra un componente por defecto: cada cotización web
+// agrega el suyo con sus datos reales.
+export async function getOrCreateProjectByName(db: Db, name: string): Promise<ProjectRecord> {
+  const [existing] = await db.select().from(projects).where(eq(projects.name, name)).limit(1);
+  if (existing) return projectRecord(db, existing);
+
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await db.insert(projects).values({ id, name, activeComponentId: null, createdAt: now, updatedAt: now });
+  const [row] = await db.select().from(projects).where(eq(projects.id, id));
+  return projectRecord(db, row);
+}
+
+export async function createComponentWithData(
+  db: Db,
+  projectId: string,
+  seed: {
+    code: string; designation: string; location: string; qty: number;
+    widthMm: number; heightMm: number; brand: string; systemIndex: number; colorIndex: number;
+    data: ComponentData;
+  }
+): Promise<ComponentRecord> {
+  const now = new Date().toISOString();
+  const position = await nextPosition(db, projectId);
+  const id = crypto.randomUUID();
+
+  await db.insert(components).values({
+    id,
+    projectId,
+    position,
+    code: seed.code,
+    designation: seed.designation,
+    location: seed.location,
+    qty: seed.qty,
+    widthMm: seed.widthMm,
+    heightMm: seed.heightMm,
+    brand: seed.brand,
+    systemIndex: seed.systemIndex,
+    colorIndex: seed.colorIndex,
+    data: JSON.stringify(seed.data),
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db.update(projects).set({ updatedAt: now }).where(eq(projects.id, projectId));
+
+  const [row] = await db
+    .select()
+    .from(components)
+    .where(and(eq(components.projectId, projectId), eq(components.id, id)));
+  return toRecord(row);
+}
+
 export async function updateComponent(
   db: Db,
   projectId: string,

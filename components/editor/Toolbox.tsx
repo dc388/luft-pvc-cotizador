@@ -13,14 +13,19 @@ type Props = {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  /** Wing types the active System can physically host (see allowedWingsFor in lib/tree.ts) --
+   * keeps this palette from ever letting the user assign e.g. a sliding leaf onto a
+   * Practicable-only profile, the same rule the Properties panel's own picker enforces. */
+  allowedWings: WingType[];
 };
 
 // Floating tool palette over the design canvas, modeled on RA Workshop's
 // Splitters/Wings categories: pick a tool, then click a pane in FrameCanvas
 // to apply it (see handleLeafClick in app/page.tsx).
-export function Toolbox({ activeTool, onToolChange, canMerge, onMerge, onReset, canUndo, canRedo, onUndo, onRedo }: Props) {
+export function Toolbox({ activeTool, onToolChange, canMerge, onMerge, onReset, canUndo, canRedo, onUndo, onRedo, allowedWings }: Props) {
   const isSplit = (axis: "row" | "col") => activeTool.mode === "split" && activeTool.axis === axis;
   const isWing = (w: WingType) => activeTool.mode === "assign-wing" && activeTool.wing === w;
+  const wingPalette = wingDefs.filter((w) => allowedWings.includes(w.id));
 
   return (
     <aside className="toolbox">
@@ -34,7 +39,7 @@ export function Toolbox({ activeTool, onToolChange, canMerge, onMerge, onReset, 
       <div className="toolboxGroup">
         <span>Tipo de hoja</span>
         <div className="toolboxGrid">
-          {wingDefs.map((w) => (
+          {wingPalette.map((w) => (
             <button key={w.id} type="button" className={isWing(w.id) ? "active" : ""} title={w.name} onClick={() => onToolChange({ mode: "assign-wing", wing: w.id })}>{w.icon}</button>
           ))}
         </div>
