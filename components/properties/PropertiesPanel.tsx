@@ -1,26 +1,12 @@
 "use client";
 
-import type { GlassSide, LeafNode, PaneSpec, Side } from "@/types/domain";
+import type { Brand, GlassSide, LeafNode, PaneSpec, Side, WingType } from "@/types/domain";
 import { glassCatalog } from "@/data/glass";
-import { wingName, MOVABLE_SLIDING_WINGS, SIDE_LABEL } from "@/lib/tree";
+import { wingDefs } from "@/data/wings";
+import { wingName, MOVABLE_SLIDING_WINGS, SLIDING_WINGS, SIDE_LABEL } from "@/lib/tree";
+import { familiesForSystem } from "@/lib/profileMatch";
 import type { PartKind, SideKey } from "@/components/editor/frameTypes";
 
-const OPENING_OPTIONS = Array.from(
-  new Set([
-    "Sin apertura",
-    "Corredera",
-    "Corredera elevadora",
-    "Plegable corrediza",
-    "Corredera fija (sin apertura)",
-    "Abatible interior",
-    "Abatible exterior",
-    "Oscilobatiente",
-    "Proyectante",
-    "Proyectante inferior",
-    "Persiana de cristal",
-    "Pivotante",
-  ])
-);
 const HARDWARE_OPTIONS = ["Sin herraje", "Roto · juego corredera", "Roto · carros 80 kg", "Roto · carros 120 kg", "Roto · cierre multipunto", "Roto Patio · osciloparalela", "Roto · sistema elevador (lift-slide)", "Bisagra pivote reforzada", "Bisagras reforzadas"];
 const HANDLE_OPTIONS = ["Sin manilla", "Harmony con tetones", "Slim 479092 con tetones", "Cierre embutido", "Manillón doble", "Cremona multipunto", "Manivela jalousie"];
 const POCKET_OPTIONS = ["Ninguno", "Bolsillo sencillo", "Bolsillo doble"];
@@ -31,19 +17,32 @@ type Props = {
   focusPart: PartKind | null;
   focusSide: SideKey | null;
   canMerge: boolean;
+  brand: Brand;
+  systemName: string;
+  railCount: number;
+  allowedWings: WingType[];
   onChange: (key: keyof PaneSpec, value: string | boolean | number) => void;
+  onChangeWing: (wing: WingType) => void;
   onChangeSide: (side: SideKey, patch: Partial<Side>) => void;
   onChangeGlassSide: (side: SideKey, patch: Partial<GlassSide>) => void;
   onMerge: () => void;
 };
 
-export function PropertiesPanel({ leaf, dims, focusPart, focusSide, canMerge, onChange, onChangeSide, onChangeGlassSide, onMerge }: Props) {
+export function PropertiesPanel({ leaf, dims, focusPart, focusSide, canMerge, brand, systemName, railCount, allowedWings, onChange, onChangeWing, onChangeSide, onChangeGlassSide, onMerge }: Props) {
   const spec = leaf.spec;
   const cls = (part: PartKind) => (focusPart === part ? "partFocus" : "");
   const sideSpec = focusPart === "marco" && focusSide ? spec.sides[focusSide] : null;
   const glassSideSpec = focusPart === "vidrio" && focusSide ? spec.glassSides[focusSide] : null;
   const isMovableSliding = MOVABLE_SLIDING_WINGS.includes(leaf.wing);
+  const isSliding = SLIDING_WINGS.includes(leaf.wing);
   const hasSash = leaf.wing !== "fixed" && leaf.wing !== "inactive" && leaf.wing !== "sliding-fixed";
+  const profileOptions = familiesForSystem(brand, systemName);
+  const railOutOfRange = isSliding && railCount > 0 && spec.railIndex > railCount;
+  // The current leaf's wing always stays selectable even if a stale project has it outside
+  // the active system's allowed set -- the remap on system change (see app/page.tsx's
+  // changeSystem/changeBrand) is what actually fixes that, this just avoids a <select> with
+  // no matching <option> hiding the real value from view.
+  const wingOptions = wingDefs.filter((w) => allowedWings.includes(w.id) || w.id === leaf.wing);
 
   return (
     <div className="componentEditor">
@@ -113,9 +112,9 @@ export function PropertiesPanel({ leaf, dims, focusPart, focusSide, canMerge, on
         </label>
         <label className={cls("hoja")}>
           Tipo de apertura
-          <select value={spec.opening} onChange={(e) => onChange("opening", e.target.value)}>
-            {OPENING_OPTIONS.map((o) => (
-              <option key={o}>{o}</option>
+          <select value={leaf.wing} onChange={(e) => onChangeWing(e.target.value as WingType)}>
+            {wingOptions.map((w) => (
+              <option key={w.id} value={w.id}>{w.name}</option>
             ))}
           </select>
         </label>
@@ -138,6 +137,38 @@ export function PropertiesPanel({ leaf, dims, focusPart, focusSide, canMerge, on
             ))}
           </select>
         </label>
+        <label className={`wide ${cls("marco")}`}>
+          Perfil de esta hoja
+          {profileOptions.length > 0 ? (
+            <select value={spec.profileCode} onChange={(e) => onChange("profileCode", e.target.value)}>
+              <option value="">Sin especificar (usar perfil general del sistema)</option>
+              {profileOptions.map((f) => (
+                <option key={f.code} value={f.code}>
+                  {f.code} · {f.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              value={spec.profileCode}
+              placeholder="Dato técnico pendiente — sin catálogo de perfiles para este sistema"
+              onChange={(e) => onChange("profileCode", e.target.value)}
+            />
+          )}
+        </label>
+        {isSliding && (
+          <label className={cls("marco")}>
+            Riel / carril
+            <select value={spec.railIndex} onChange={(e) => onChange("railIndex", Number(e.target.value))}>
+              {Array.from({ length: Math.max(railCount, spec.railIndex, 1) }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  Riel {n}
+                </option>
+              ))}
+            </select>
+            {railOutOfRange && <small className="fieldWarning">⚠ Fuera de rango — la configuración actual tiene {railCount} riel(es).</small>}
+          </label>
+        )}
         <label className={`wide ${cls("herraje")}`}>
           Herraje
           <select value={spec.hardware} onChange={(e) => onChange("hardware", e.target.value)}>

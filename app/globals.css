@@ -176,6 +176,12 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .toolboxAction{width:100%;border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:7px 8px;font-size:9px;text-align:left;color:var(--ink)}
 .toolboxAction:disabled{opacity:.4;cursor:not-allowed}
 
+.typologyGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.typologyButton{display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:8px 4px;cursor:pointer;color:var(--ink)}
+.typologyButton:hover{border-color:var(--accent)}
+.typologyIcon{font-size:16px;letter-spacing:-.05em;color:var(--accent)}
+.typologyName{font-size:7.5px;letter-spacing:.02em;text-align:center;line-height:1.25}
+
 .sectionRender{width:70%;display:grid;grid-template-columns:220px 1fr;gap:25px;align-items:center}
 .profileSection{height:180px;border:18px solid #1d2924;background:#d9e0db;position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:18px}
 .chamber{border:5px solid #52645c;background:#f3f5f1}
@@ -191,6 +197,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .badge.warning{background:var(--warn-bg)!important;color:var(--warn-fg)!important}
 .warnings{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;margin:10px 0;padding:8px}
 .warnings p{margin:3px;font-size:9px;color:var(--warn-fg)}
+.fieldWarning{display:block;margin-top:3px;font-size:8.5px;color:var(--warn-fg)}
 
 .componentEditor{border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:10px 0 14px}
 .componentTitle{background:var(--accent);color:#fff;padding:12px;display:grid;grid-template-columns:1fr auto;gap:3px;transition:background .2s}

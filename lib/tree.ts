@@ -7,6 +7,7 @@ import type {
   PaneSpec,
   Side,
   Sides,
+  System,
   WingType,
 } from "@/types/domain";
 import { wingDefs } from "@/data/wings";
@@ -50,6 +51,7 @@ export const SIDE_LABEL: Record<keyof Sides, string> = { top: "Arriba", bottom: 
 export function defaultSpecFor(wing: WingType): Partial<PaneSpec> {
   const fixed = wing === "fixed" || wing === "inactive" || wing === "sliding-fixed";
   const movableSliding = MOVABLE_SLIDING_WINGS.includes(wing);
+  const sliding = SLIDING_WINGS.includes(wing);
   return {
     state: wing === "inactive" ? "Inactiva" : fixed ? "Fija" : "Móvil",
     opening: OPENING_BY_WING[wing],
@@ -60,6 +62,7 @@ export function defaultSpecFor(wing: WingType): Partial<PaneSpec> {
     pocketType: movableSliding ? "Ninguno" : "N/A",
     useGancho: movableSliding,
     useAdaptador: movableSliding,
+    railIndex: sliding ? 1 : 0,
   };
 }
 
@@ -103,6 +106,7 @@ export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>): 
       glass: "Heredar vidrio general",
       notes: "",
       mallorquina: false,
+      profileCode: "",
       sides: defaultSides(),
       glassSides: defaultGlassSides(),
       ...defaultSpecFor(wing),
@@ -132,6 +136,26 @@ export function createDefaultTree(): FrameNode {
 
 export function isLeaf(node: FrameNode): node is LeafNode {
   return node.kind === "leaf";
+}
+
+// Backfills fields added to PaneSpec after some trees were already persisted (DB or offline
+// localStorage) -- without this, a leaf loaded from an older save has spec.profileCode/
+// railIndex as `undefined`, which silently breaks anything that does arithmetic on railIndex
+// (e.g. Array.from({length: Math.max(rail, undefined)}) -> NaN -> empty options). Idempotent:
+// a leaf that already has both fields set passes through unchanged.
+export function normalizeTree(tree: FrameNode): FrameNode {
+  if (tree.kind === "leaf") {
+    if (tree.spec.profileCode !== undefined && tree.spec.railIndex !== undefined) return tree;
+    return {
+      ...tree,
+      spec: {
+        ...tree.spec,
+        profileCode: tree.spec.profileCode ?? "",
+        railIndex: tree.spec.railIndex ?? (SLIDING_WINGS.includes(tree.wing) ? 1 : 0),
+      },
+    };
+  }
+  return { ...tree, children: tree.children.map(normalizeTree) };
 }
 
 export function firstLeafId(tree: FrameNode): string {
@@ -188,6 +212,35 @@ export function splitLeaf(tree: FrameNode, id: string, axis: "row" | "col", frac
 
 export function setWing(tree: FrameNode, id: string, wing: WingType): FrameNode {
   return mapLeaf(tree, id, (leaf) => ({ ...leaf, wing, spec: { ...leaf.spec, ...defaultSpecFor(wing) } }));
+}
+
+// Which opening/leaf types a system can physically host, derived from its real catalog data
+// (rails -- whether it has any sliding track at all -- and category for the Fijo/Puerta
+// special cases) instead of a hand-maintained per-system list. Used to keep the "Tipo de
+// apertura" picker and the Toolbox wing palette from ever offering (or silently keeping) a
+// combination no real profile supports, e.g. a "Corrediza" leaf on a Practicable-only system.
+export function allowedWingsFor(sys: System): WingType[] {
+  if (sys.category === "Fijo") return ["fixed", "inactive"];
+  if (sys.category === "Puerta") return ["door", "fixed", "inactive"];
+  const slidingCapable = sys.rails.some((r) => r > 0);
+  return slidingCapable
+    ? ["fixed", "inactive", "sliding", "lift-slide", "folding-sliding", "sliding-fixed"]
+    : ["fixed", "inactive", "casement-in", "casement-out", "tilt-turn", "project", "hopper", "jalousie", "pivot"];
+}
+
+// Remaps any leaf whose wing isn't in `allowed` to a sensible default for the new system --
+// called when the active brand/System changes so an existing corredera leaf can't survive
+// under a profile with no sliding track (and vice versa). Picks the first non-fixed allowed
+// wing so a 2-leaf sliding default becomes a 2-leaf casement default, etc.
+export function remapTreeToSystem(tree: FrameNode, allowed: WingType[]): FrameNode {
+  if (!allowed.length) return tree;
+  const fallback = allowed.find((w) => w !== "fixed" && w !== "inactive") ?? allowed[0];
+  function walk(node: FrameNode): FrameNode {
+    if (node.kind === "split") return { ...node, children: node.children.map(walk) };
+    if (allowed.includes(node.wing)) return node;
+    return { ...node, wing: fallback, spec: { ...node.spec, ...defaultSpecFor(fallback) } };
+  }
+  return walk(tree);
 }
 
 export function updateSpec(tree: FrameNode, id: string, patch: Partial<PaneSpec>): FrameNode {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
-import type { Brand, GlassSide, Marco, PaneSpec, Report, Side, Tab, Tool, ViewMode, ViewPreset3D } from "@/types/domain";
+import type { Brand, GlassSide, Marco, PaneSpec, Report, Side, Tab, Tool, ViewMode, ViewPreset3D, WingType } from "@/types/domain";
 import { catalog, EUR_MXN } from "@/data/catalog";
 import { glassCatalog } from "@/data/glass";
 import { colors, brandAccent } from "@/data/colors";
@@ -22,6 +22,11 @@ import {
   updateMarcoSide,
   updateSide,
   updateSpec,
+  walkLeaves,
+  normalizeTree,
+  allowedWingsFor,
+  remapTreeToSystem,
+  SLIDING_WINGS,
 } from "@/lib/tree";
 import { BAR_LENGTH_MM, KERF_MM, buildCutList, calcQuote, packBars, MIN_OPENING_MM } from "@/lib/calc";
 import { money } from "@/lib/money";
@@ -46,6 +51,8 @@ import { SectionRender } from "@/components/editor/SectionRender";
 import { Scene3D } from "@/components/editor/Scene3D";
 import { ExplorerTree } from "@/components/editor/ExplorerTree";
 import { EditableDim } from "@/components/editor/EditableDim";
+import { TypologyPicker } from "@/components/editor/TypologyPicker";
+import type { TypologyDef } from "@/data/typologies";
 import type { PartKind, SideKey } from "@/components/editor/frameTypes";
 import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
 import { MarcoPanel } from "@/components/properties/MarcoPanel";
@@ -93,6 +100,7 @@ export default function Home() {
   const [deliveryDate, setDeliveryDate] = useState("");
   const [termsHeader, setTermsHeader] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
+  const [barLengthMm, setBarLengthMm] = useState(BAR_LENGTH_MM);
   const [profileSearch, setProfileSearch] = useState("");
   const [profileSystemFilter, setProfileSystemFilter] = useState("Todos");
 
@@ -280,7 +288,7 @@ export default function Home() {
   const loadComponentIntoState = (rec: {
     id: string; code: string; designation: string; location: string; qty: number;
     widthMm: number; heightMm: number; brand: "Aluplast" | "Deceuninck"; systemIndex: number; colorIndex: number;
-    data: { rail: number; glassIndex: number; face: string; margin: number; installation: number; transport: number; discount: number; client: string; clientAddress: string; deliveryDate: string; selectedId: string; tree: typeof tree; marco: Marco; termsHeader?: string; paymentTerms?: string };
+    data: { rail: number; glassIndex: number; face: string; margin: number; installation: number; transport: number; discount: number; client: string; clientAddress: string; deliveryDate: string; selectedId: string; tree: typeof tree; marco: Marco; termsHeader?: string; paymentTerms?: string; barLengthMm?: number };
   }) => {
     // A newly loaded component starts with a clean undo/redo history -- the previous
     // component's edits aren't meaningful "past" states for this one's tree/marco.
@@ -310,9 +318,11 @@ export default function Home() {
     setDeliveryDate(rec.data.deliveryDate);
     setTermsHeader(rec.data.termsHeader ?? "");
     setPaymentTerms(rec.data.paymentTerms ?? "");
-    setTree(rec.data.tree);
+    setBarLengthMm(rec.data.barLengthMm ?? BAR_LENGTH_MM);
+    const normalizedTree = normalizeTree(rec.data.tree);
+    setTree(normalizedTree);
     setMarco(rec.data.marco);
-    setSelectedId(rec.data.selectedId || firstLeafId(rec.data.tree));
+    setSelectedId(rec.data.selectedId || firstLeafId(normalizedTree));
     setActiveTool({ mode: "select" });
     setFocusPart(null);
     setFocusSide(null);
@@ -352,7 +362,7 @@ export default function Home() {
       saveComponent(pid, cid, {
         code, designation, location, qty, widthMm: width, heightMm: height,
         brand, systemIndex, colorIndex,
-        data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, deliveryDate, termsHeader, paymentTerms, tree, marco, selectedId },
+        data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId },
       }).then(({ savedAt: savedIso, mode }) => {
         setPersistMode(mode);
         if (savedIso) setSavedAt(savedIso);
@@ -363,7 +373,7 @@ export default function Home() {
   }, [
     hydrated, projectId, componentId, brand, systemIndex, rail, width, height, qty, glassIndex, colorIndex, face,
     margin, installation, transport, discount, code, designation, location,
-    client, clientAddress, deliveryDate, termsHeader, paymentTerms, tree, marco, selectedId,
+    client, clientAddress, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId,
   ]);
 
   // ---------- Proyecto tab handlers: switch/add/duplicate/delete a component, rename the
@@ -373,14 +383,32 @@ export default function Home() {
     if (!componentId) return;
     await saveComponent(projectId ?? "offline", componentId, {
       code, designation, location, qty, widthMm: width, heightMm: height, brand, systemIndex, colorIndex,
-      data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, deliveryDate, termsHeader, paymentTerms, tree, marco, selectedId },
+      data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId },
     });
+  };
+
+  // Drops the `data` payload from a full record so it can be merged straight into the
+  // outliner's ComponentSummary list -- used to update `components` optimistically (see below)
+  // instead of solely trusting a follow-up refreshComponentList(), whose own failure (or a
+  // transient D1 lock under concurrent writes) used to leave componentId pointing at an id the
+  // list didn't know about yet, which is exactly what the self-check's project-integrity check
+  // catches.
+  const toSummary = (rec: ComponentRecord): ComponentSummary => {
+    const { data: _data, ...summary } = rec;
+    return summary;
   };
 
   const handleSwitchComponent = async (id: string) => {
     if (id === componentId || !projectId) return;
     await flushActiveComponent();
-    const rec = await fetchComponent(projectId, id);
+    let rec: ComponentRecord;
+    try {
+      rec = await fetchComponent(projectId, id);
+    } catch {
+      // Transient fetch failure -- stay on the current component rather than applying a
+      // half-loaded switch.
+      return;
+    }
     loadComponentIntoState(rec);
     setSavedAt(rec.updatedAt);
     await setActiveComponentApi(projectId, id).catch(() => {});
@@ -390,6 +418,7 @@ export default function Home() {
     if (!projectId) return;
     await flushActiveComponent();
     const rec = await createComponent(projectId);
+    setComponents((prev) => [...prev, toSummary(rec)]);
     loadComponentIntoState(rec);
     setSavedAt(rec.updatedAt);
     await refreshComponentList(projectId);
@@ -399,6 +428,7 @@ export default function Home() {
     if (!projectId) return;
     await flushActiveComponent();
     const rec = await createComponent(projectId, { duplicateFromId: id });
+    setComponents((prev) => [...prev, toSummary(rec)]);
     loadComponentIntoState(rec);
     setSavedAt(rec.updatedAt);
     await refreshComponentList(projectId);
@@ -408,13 +438,20 @@ export default function Home() {
     if (!projectId || components.length <= 1) return;
     if (!window.confirm("¿Eliminar este componente del proyecto? Esta acción no se puede deshacer.")) return;
     await deleteComponentApi(projectId, id);
+    setComponents((prev) => prev.filter((c) => c.id !== id));
     if (id === componentId) {
       const next = components.find((c) => c.id !== id);
       if (next) {
-        const rec = await fetchComponent(projectId, next.id);
-        loadComponentIntoState(rec);
-        setSavedAt(rec.updatedAt);
-        await setActiveComponentApi(projectId, next.id).catch(() => {});
+        try {
+          const rec = await fetchComponent(projectId, next.id);
+          loadComponentIntoState(rec);
+          setSavedAt(rec.updatedAt);
+          await setActiveComponentApi(projectId, next.id).catch(() => {});
+        } catch {
+          // The just-deleted component is already gone from `components` above; leaving the
+          // (now-deleted) design in view is safer than throwing away unsaved edits by
+          // guessing at a replacement that also failed to load.
+        }
       }
     }
     await refreshComponentList(projectId);
@@ -433,9 +470,25 @@ export default function Home() {
   const sys = catalog[brand][Math.min(systemIndex, catalog[brand].length - 1)];
   const glass = glassCatalog[glassIndex];
   const color = colors[brand][Math.min(colorIndex, colors[brand].length - 1)];
+  // Wing types the active System can physically host (Fijo/Puerta/Practicable/Corredera
+  // categories each allow a different set) -- feeds both the Toolbox palette and the
+  // Properties panel's own wing picker so neither ever offers an incompatible assignment.
+  const allowedWings = useMemo(() => allowedWingsFor(sys), [sys]);
 
-  const changeBrand = (b: Brand) => { setBrand(b); setSystemIndex(0); setColorIndex(0); setRail(catalog[b][0].rails[0]); };
-  const changeSystem = (i: number) => { setSystemIndex(i); setRail(catalog[brand][i].rails[0]); };
+  const changeBrand = (b: Brand) => {
+    const nextSys = catalog[b][0];
+    setBrand(b);
+    setSystemIndex(0);
+    setColorIndex(0);
+    setRail(nextSys.rails[0]);
+    setTree((prev) => remapTreeToSystem(prev, allowedWingsFor(nextSys)));
+  };
+  const changeSystem = (i: number) => {
+    const nextSys = catalog[brand][i];
+    setSystemIndex(i);
+    setRail(nextSys.rails[0]);
+    setTree((prev) => remapTreeToSystem(prev, allowedWingsFor(nextSys)));
+  };
   const changeTab = (t: Tab) => { setTab(t); if (t !== "Diseño") setActiveTool({ mode: "select" }); };
   const changeView = (v: ViewMode) => { setView(v); if (v === "3D") setPresetToken((n) => n + 1); };
   const changePreset = (p: ViewPreset3D) => { setViewPreset(p); setPresetToken((n) => n + 1); };
@@ -451,8 +504,8 @@ export default function Home() {
   }, [profileSearch, profileSystemFilter]);
 
   const calc = useMemo(
-    () => calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco }),
-    [width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco]
+    () => calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco, barLengthMm }),
+    [width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco, barLengthMm]
   );
 
   const selectedLeaf = useMemo(() => {
@@ -601,6 +654,12 @@ export default function Home() {
     if (!selectedLeaf) return;
     setTree((prev) => updateSpec(prev, selectedLeaf.id, { [key]: value } as Partial<PaneSpec>));
   };
+  // Changes a leaf's wing type directly from the Properties panel -- same mutation the
+  // Toolbox's assign-wing tool performs, just without needing to click the canvas first.
+  const handleChangeWing = (wing: WingType) => {
+    if (!selectedLeaf) return;
+    setTree((prev) => setWing(prev, selectedLeaf.id, wing));
+  };
   const updateLeafSide = (side: SideKey, patch: Partial<Side>) => {
     if (!selectedLeaf) return;
     setTree((prev) => updateSide(prev, selectedLeaf.id, side, patch));
@@ -616,6 +675,16 @@ export default function Home() {
     if (!parentSplitId) return;
     setTree((prev) => removeSplit(prev, parentSplitId));
     setSelectedId(parentSplitId);
+    setFocusPart(null);
+    setFocusSide(null);
+    setFocusScope("leaf");
+  };
+
+  const handleApplyTypology = (t: TypologyDef) => {
+    const fresh = t.build();
+    setTree(fresh);
+    setSelectedId(firstLeafId(fresh));
+    setActiveTool({ mode: "select" });
     setFocusPart(null);
     setFocusSide(null);
     setFocusScope("leaf");
@@ -678,7 +747,7 @@ export default function Home() {
       categories.forEach(([label, pieces]) => {
         const allPieces = [];
         for (let i = 0; i < qty; i++) allPieces.push(...pieces);
-        const bars = packBars(allPieces, BAR_LENGTH_MM, KERF_MM);
+        const bars = packBars(allPieces, barLengthMm, KERF_MM);
         bars.forEach((bar, bi) => {
           bar.pieces.forEach((p, pi) => rows.push([label, bi + 1, pi + 1, p.length, p.angle, p.label]));
         });
@@ -690,11 +759,27 @@ export default function Home() {
 
   const hasRailOptions = sys.rails.some((x) => x > 0);
 
+  const leaves = useMemo(() => walkLeaves(tree), [tree]);
+  const leafGlassWarnings = leaves
+    .filter((l) => l.spec.glass !== "Heredar vidrio general")
+    .map((l) => {
+      const g = glassCatalog.find((x) => x.name === l.spec.glass);
+      return g && g.thickness > sys.glazing
+        ? `Hoja con vidrio propio "${g.name}" (${g.thickness} mm) supera el galce de referencia (${sys.glazing} mm).`
+        : null;
+    })
+    .filter((x): x is string => !!x);
+  const leafRailWarnings = leaves
+    .filter((l) => SLIDING_WINGS.includes(l.wing) && rail > 0 && l.spec.railIndex > rail)
+    .map((l) => `Una hoja corrediza está asignada al riel ${l.spec.railIndex}, pero la configuración actual solo tiene ${rail} riel(es).`);
+
   const warnings = [
     ...(width < MIN_OPENING_MM || height < MIN_OPENING_MM ? [`Medida menor al mínimo fabricable de ${MIN_OPENING_MM} × ${MIN_OPENING_MM} mm — se ajustará al salir del campo.`] : []),
     ...(width > sys.maxW || height > sys.maxH ? [`Medida supera el límite de referencia ${sys.maxW} × ${sys.maxH} mm.`] : []),
     ...(glass.thickness > sys.glazing ? [`Vidrio de ${glass.thickness} mm supera el galce de referencia (${sys.glazing} mm).`] : []),
     ...(rail > 0 && !sys.rails.includes(rail) ? [`El sistema no contempla ${rail} riel(es).`] : []),
+    ...leafGlassWarnings,
+    ...leafRailWarnings,
   ];
 
   const toolHint =
@@ -806,7 +891,9 @@ export default function Home() {
                   </select>
                 </label>
               )}
-              <Block n="02" title="Composición" sub="Haz clic en el marco, la hoja, el vidrio o el herraje del dibujo para seleccionar esa parte, o usa la paleta para dividir y asignar tipos de apertura." />
+              <Block n="02" title="Tipología" sub="Elige una configuración prediseñada para reemplazar la composición actual, o arma la tuya con la paleta del lienzo." />
+              <TypologyPicker onApply={handleApplyTypology} />
+              <Block n="03" title="Composición" sub="Haz clic en el marco, la hoja, el vidrio o el herraje del dibujo para seleccionar esa parte, o usa la paleta para dividir y asignar tipos de apertura." />
               <ExplorerTree
                 tree={tree}
                 selectedId={selectedId}
@@ -819,7 +906,7 @@ export default function Home() {
                 onSelectLeafSide={handleExplorerLeafSide}
                 onSelectGlassSide={handleExplorerGlassSide}
               />
-              <Block n="03" title="Geometría" sub="Cotas generales en milímetros." />
+              <Block n="04" title="Geometría" sub="Cotas generales en milímetros." />
               <div className="inputGrid">
                 {/* Clamp to MIN_OPENING_MM on blur, not on every keystroke -- clamping mid-typing
                     snaps "1" to "300" before the next digit lands, so typing "1200" digit-by-digit
@@ -829,7 +916,7 @@ export default function Home() {
                 <label>Alto<input type="number" value={height} onChange={(e) => setHeight(Math.max(0, Number(e.target.value) || 0))} onBlur={() => setHeight((v) => Math.max(MIN_OPENING_MM, v))} /></label>
                 <label>Cant.<input type="number" min="1" value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value)))} /></label>
               </div>
-              <Block n="04" title="Materiales" sub="Color, aplicación y vidrio." />
+              <Block n="05" title="Materiales" sub="Color, aplicación y vidrio." />
               <label>Color / folio
                 <select value={colorIndex} onChange={(e) => setColorIndex(Number(e.target.value))}>
                   {colors[brand].map((x, i) => <option value={i} key={x.code}>{x.code} · {x.name}</option>)}
@@ -858,7 +945,11 @@ export default function Home() {
                 <b>{calc.waste.toFixed(2)} m</b><span>remanente teórico</span>
               </div>
               <label>Longitud de barra
-                <select><option>6,000 mm</option><option>6,500 mm</option></select>
+                <select value={barLengthMm} onChange={(e) => setBarLengthMm(Number(e.target.value))}>
+                  <option value={5800}>5,800 mm (estándar)</option>
+                  <option value={6000}>6,000 mm</option>
+                  <option value={6500}>6,500 mm</option>
+                </select>
               </label>
               <div className="cutPlan">
                 {calc.leaves.slice(0, 6).map((l, i) => {
@@ -955,6 +1046,7 @@ export default function Home() {
               <Toolbox
                 activeTool={activeTool} onToolChange={setActiveTool} canMerge={canMerge} onMerge={handleMerge} onReset={handleResetTree}
                 canUndo={past.length > 0} canRedo={future.length > 0} onUndo={handleUndo} onRedo={handleRedo}
+                allowedWings={allowedWings}
               />
             )}
             <div className="canvasStage" onClick={(e) => { if (e.target === e.currentTarget) clearFocus(); }}>
@@ -1035,6 +1127,11 @@ export default function Home() {
               focusPart={focusPart}
               focusSide={focusSide}
               canMerge={canMerge}
+              brand={brand}
+              systemName={sys.name}
+              railCount={rail}
+              allowedWings={allowedWings}
+              onChangeWing={handleChangeWing}
               onChange={updatePane}
               onChangeSide={updateLeafSide}
               onChangeGlassSide={updateLeafGlassSide}
@@ -1049,7 +1146,7 @@ export default function Home() {
               ) : report === "Cotización" ? (
                 <ProjectCotizacionDoc components={projectComponents} projectName={projectName} client={client} clientAddress={clientAddress} deliveryDate={deliveryDate} />
               ) : report === "Optimización de corte" ? (
-                <ProjectCorteDoc components={projectComponents} projectName={projectName} />
+                <ProjectCorteDoc components={projectComponents} projectName={projectName} barLengthMm={barLengthMm} />
               ) : (
                 <ProjectVidrioDoc components={projectComponents} projectName={projectName} />
               )
@@ -1060,7 +1157,7 @@ export default function Home() {
                 configSummary={configSummary} termsHeader={termsHeader} paymentTerms={paymentTerms}
               />
             ) : report === "Optimización de corte" ? (
-              <CorteDoc tree={tree} width={width} height={height} qty={qty} designation={designation} location={location} system={sys} />
+              <CorteDoc tree={tree} width={width} height={height} qty={qty} designation={designation} location={location} system={sys} barLengthMm={barLengthMm} />
             ) : report === "Pedido de vidrio" ? (
               <VidrioDoc calc={calc} glass={glass} qty={qty} designation={designation} location={location} />
             ) : (
@@ -1115,7 +1212,7 @@ export default function Home() {
                 <Item code="VIDRIO" name={glass.name} qty={`${calc.glassArea.toFixed(3)} m²`} />
                 <Item code="REF-AC" name="Refuerzo galvanizado" qty={`${(calc.frameM + calc.sashM).toFixed(2)} m`} />
                 <Item code="EPDM" name="Juntas y sellos" qty={`${(calc.frameM + calc.sashM).toFixed(2)} m`} />
-                <Item code="HERRAJE" name="Juego de herrajes" qty={`${calc.leaves.length} set`} />
+                <Item code="HERRAJE" name="Juego de herrajes" qty={`${calc.hardwareLeafCount} set`} />
               </details>
               <p className="priceNote">Motor técnico v4 · Editor compositivo estilo RA Workshop + catálogo real Aluplast (EXWORK Veracruz, rev. ABR_22 2022). Valores en MXN. Los precios y límites deben validarse con la lista vigente y la ingeniería de cada proyecto.</p>
             </>

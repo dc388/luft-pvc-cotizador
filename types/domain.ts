@@ -51,6 +51,14 @@ export type PaneSpec = {
   useAdaptador: boolean;
   /** Handle position along the leaf, in mm. 0 for fixed/inactive/sliding-fixed leaves. */
   handlePosition: number;
+  /** This leaf's own profile family code (see lib/profileMatch.ts), independent of the window's
+   * general System selection -- lets one component mix e.g. a 2-hojas marco family with a
+   * leaf that actually needs the 3-hojas variant's stile. Empty string = not set. */
+  profileCode: string;
+  /** Which physical riel/carril (track) this leaf rides, for any leaf in the sliding family
+   * (movable or "corredera fija" -- both sit in a track, see SLIDING_WINGS). 1-based; 0 for
+   * leaves outside the sliding family, where the concept doesn't apply. */
+  railIndex: number;
 };
 
 // Opening/leaf types a cell in the composed window can be assigned, modeled on

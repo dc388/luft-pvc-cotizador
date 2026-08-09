@@ -1,6 +1,7 @@
 import type { ColorItem, FrameNode, GlassItem, Marco, PaneSpec, System, WingType } from "@/types/domain";
 import { buildReinforcementCutList, flattenToLeafFrames } from "./tree";
 import { profileFamilies } from "@/data/families";
+import { glassCatalog } from "@/data/glass";
 import { EUR_MXN } from "@/data/catalog";
 
 // Representative rate for the Mallorquina louvre-shutter accessory (avg. of the 5
@@ -21,7 +22,18 @@ export type LeafCalc = {
   hMm: number;
   glassArea: number;
   sashPerimeter: number;
+  /** The glass actually costed for this leaf -- spec.glass's own catalog entry when the leaf
+   * overrides the window's general glass, otherwise the general glass itself. */
+  glassUsed: GlassItem;
 };
+
+// A leaf's `spec.glass` can name a different catalog glass than the window's general
+// selection ("Heredar vidrio general" = no override). Resolves to the real GlassItem so both
+// the cost engine and reports price/report each leaf's ACTUAL glass, not always the general one.
+export function resolveLeafGlass(spec: PaneSpec, generalGlass: GlassItem): GlassItem {
+  if (spec.glass === "Heredar vidrio general") return generalGlass;
+  return glassCatalog.find((g) => g.name === spec.glass) ?? generalGlass;
+}
 
 export type QuoteCalc = {
   w: number;
@@ -37,6 +49,7 @@ export type QuoteCalc = {
   reinforce: number;
   seals: number;
   accessories: number;
+  hardwareLeafCount: number;
   addons: number;
   consumables: number;
   direct: number;
@@ -61,6 +74,9 @@ type Params = {
   margin: number;
   discount: number;
   marco: Marco;
+  /** Commercial stock bar length used for cut-list bin-packing (bars/waste below and the
+   * despiece report) -- defaults to BAR_LENGTH_MM when not given. */
+  barLengthMm?: number;
 };
 
 // Meters of internal splitter/mullion profile contributed by every SplitNode:
@@ -87,9 +103,10 @@ function reinforcementProfile(code: string) {
   return profileFamilies.find((f) => f.code === code && /^refuerzo/i.test(f.name)) ?? null;
 }
 
-export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco }: Params): QuoteCalc {
+export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco, barLengthMm }: Params): QuoteCalc {
   const w = width / 1000, h = height / 1000;
   const area = w * h, perimeter = 2 * (w + h);
+  const barLength = barLengthMm ?? BAR_LENGTH_MM;
 
   // Real fabrication size per leaf: for sliding leaves this differs from a plain marco/n
   // split -- each hoja seats sys.frameSeatMm into the outer marco on the sides that touch
@@ -111,6 +128,7 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
       hMm: r.fabH,
       glassArea: Math.max(0, (wM - 0.12) * (hM - 0.12)),
       sashPerimeter: hasSash ? 2 * (wM + hM) : 0,
+      glassUsed: resolveLeafGlass(r.spec, glass),
     };
   });
 
@@ -119,7 +137,11 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
   const glassArea = leaves.reduce((a, l) => a + l.glassArea, 0);
 
   const profileCost = (frameM * sys.frame + sashM * sys.sash) * color.factor;
-  const glassCost = glassArea * glass.price;
+  // Per-leaf glass cost: a leaf that overrides the window's general glass (spec.glass) is
+  // costed at ITS OWN catalog price, not the general glass's -- previously every leaf's area
+  // was costed at the general glass's price even when VidrioDoc's report already showed the
+  // override, so a leaf upgraded to a pricier glass was silently undercharged.
+  const glassCost = leaves.reduce((a, l) => a + l.glassArea * l.glassUsed.price, 0);
   // Reinforcement used to be a flat (frameM+sashM)*78 guess regardless of whether the marco/hoja
   // side editors' "reinforcement" checkboxes were even on. Now: if the marco's global toggle is
   // on, a code is set, and it resolves to a real catalog profile, cost the exact flagged sides at
@@ -131,27 +153,36 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
     ? (reinforcementPieces.reduce((a, pc) => a + pc.length, 0) / 1000) * reinforcementMatch.priceEUR * EUR_MXN
     : (frameM + sashM) * 78;
   const seals = (frameM + sashM) * 24;
-  const accessories = sys.hardware + leaves.length * 110 + rail * 165;
+  // The per-leaf $110 "juego de herraje" fee only applies to leaves that actually carry
+  // hardware (spec.hardware !== "Sin herraje") -- previously every leaf was charged this flat
+  // fee regardless, so fixed/inactive panes (which defaultSpecFor always sets to "Sin
+  // herraje") were incorrectly billed for hardware they don't have. This does NOT differentiate
+  // by hardware TYPE (carros 80kg vs 120kg, etc.) -- there is no sourced per-type price list
+  // yet, and Fase 5's rule is to never invent one; that stays a flat fee until real supplier
+  // pricing exists.
+  const hardwareLeafCount = leaves.filter((l) => l.spec.hardware !== "Sin herraje").length;
+  const accessories = sys.hardware + hardwareLeafCount * 110 + rail * 165;
   const addons = leaves.reduce((a, l) => a + (l.spec.mallorquina ? (l.wMm / 1000) * MALLORQUINA_RATE_MXN_PER_M * 2 : 0), 0);
   const consumables = (profileCost + glassCost) * 0.045;
   const direct = profileCost + glassCost + reinforce + seals + accessories + addons + consumables + installation + transport;
   const sale = (direct / (1 - margin / 100)) * (1 - discount / 100);
 
-  // Real per-category bin-packing against the actual commercial bar length/kerf, instead of a
-  // flat (frameM+sashM)/6m estimate that ignored kerf and ignored qty>1's opportunity to share
-  // bars across units -- this now matches exactly what CorteDoc's cut-optimization report shows.
+  // Real per-category bin-packing against the actual commercial bar length/kerf (configurable
+  // via barLengthMm -- see the Consumo tab's "Longitud de barra" selector), instead of a flat
+  // (frameM+sashM)/6m estimate that ignored kerf and ignored qty>1's opportunity to share bars
+  // across units -- this now matches exactly what CorteDoc's cut-optimization report shows.
   const cutForBars = buildCutList(tree, width, height, sys);
   const packedCategories = [cutForBars.marco, cutForBars.travesanos, cutForBars.hojas, cutForBars.junquillos, reinforcementPieces].map((pieces) => {
     const qtyPieces: CutPiece[] = [];
     for (let i = 0; i < qty; i++) qtyPieces.push(...pieces);
-    return packBars(qtyPieces, BAR_LENGTH_MM, KERF_MM);
+    return packBars(qtyPieces, barLength, KERF_MM);
   });
   const bars = packedCategories.reduce((a, bs) => a + bs.length, 0);
   const waste = packedCategories.reduce((a, bs) => a + bs.reduce((x, b) => x + b.waste, 0), 0) / 1000;
 
   return {
     w, h, area, perimeter, leaves, frameM, sashM, glassArea,
-    profileCost, glassCost, reinforce, seals, accessories, addons, consumables,
+    profileCost, glassCost, reinforce, seals, accessories, hardwareLeafCount, addons, consumables,
     direct, sale, total: sale * qty, utility: (sale - direct) * qty, bars, waste,
   };
 }

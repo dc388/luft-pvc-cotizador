@@ -10,12 +10,12 @@ function todayStr() {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
-type Props = { components: ComponentRecord[]; projectName: string };
+type Props = { components: ComponentRecord[]; projectName: string; barLengthMm?: number };
 
 // Direct port of renderProjectCorteDoc from static/cotizador.html — nests cut pieces from
 // EVERY component that shares brand+system+color into one packBars run per category, instead
 // of optimizing each component's bars in isolation (see buildProjectCutList).
-export function ProjectCorteDoc({ components, projectName }: Props) {
+export function ProjectCorteDoc({ components, projectName, barLengthMm = BAR_LENGTH_MM }: Props) {
   const groups = buildProjectCutList(components);
   return (
     <div className="reportDoc">
@@ -42,15 +42,15 @@ export function ProjectCorteDoc({ components, projectName }: Props) {
               <h2 className="docGroupTitle">
                 {g.brand} · {sys.name} · {color.name} — {g.components.length} componente(s): {g.components.map((c) => c.designation).join(", ")}
               </h2>
-              <CorteCategory title="Marco" pieces={g.marco} qty={1} />
-              <CorteCategory title="Travesaño" pieces={g.travesanos} qty={1} />
-              <CorteCategory title="Hoja" pieces={g.hojas} qty={1} />
-              <CorteCategory title="Junquillo" pieces={g.junquillos} qty={1} />
+              <CorteCategory title="Marco" pieces={g.marco} qty={1} barLengthMm={barLengthMm} />
+              <CorteCategory title="Travesaño" pieces={g.travesanos} qty={1} barLengthMm={barLengthMm} />
+              <CorteCategory title="Hoja" pieces={g.hojas} qty={1} barLengthMm={barLengthMm} />
+              <CorteCategory title="Junquillo" pieces={g.junquillos} qty={1} barLengthMm={barLengthMm} />
             </div>
           );
         })}
         <p className="docIntro">
-          Barra comercial de {BAR_LENGTH_MM} mm, tolerancia de corte de {KERF_MM} mm. Las piezas se agrupan y anidan entre TODOS los componentes del
+          Barra comercial de {barLengthMm} mm, tolerancia de corte de {KERF_MM} mm. Las piezas se agrupan y anidan entre TODOS los componentes del
           proyecto que comparten marca, sistema y color — no es una optimización independiente por ventana.
         </p>
       </div>

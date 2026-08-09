@@ -42,11 +42,29 @@ function offlineToComponentRecord(o: OfflineComponent): ComponentRecord {
   };
 }
 
-async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Local D1/SQLite can throw a transient "database is locked" 500 under concurrent writes
+// (multiple dev servers/tabs saving at once) -- retried with a short backoff since the lock
+// window is normally milliseconds, not a real outage. 4xx and other client errors never retry.
+async function api<T>(url: string, init?: RequestInit, retriesLeft = 2): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...init?.headers },
+    });
+  } catch (err) {
+    if (retriesLeft <= 0) throw err;
+    await delay(150 * 2 ** (2 - retriesLeft));
+    return api<T>(url, init, retriesLeft - 1);
+  }
+  if (res.status >= 500 && retriesLeft > 0) {
+    await delay(150 * 2 ** (2 - retriesLeft));
+    return api<T>(url, init, retriesLeft - 1);
+  }
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };
   if (!res.ok) throw new Error(body.error || `${res.status} ${res.statusText}`);
   return body;

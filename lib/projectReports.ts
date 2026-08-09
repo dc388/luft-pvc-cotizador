@@ -29,6 +29,7 @@ export function calcForComponent(c: ComponentRecord): QuoteCalc {
     margin: c.data.margin,
     discount: c.data.discount,
     marco: c.data.marco,
+    barLengthMm: c.data.barLengthMm,
   });
 }
 
