@@ -38,9 +38,8 @@ export type PublicPrice = {
   /** true cuando el cliente pidió algo que el motor no tarifa todavía (mosquitero) y que
    * por tanto NO está incluido en `total` -- la UI debe decirlo explícitamente. */
   hasQuoteOnRequestItems: boolean;
-  /** true cuando el sistema cotizado no tiene precios de lista del proveedor (hoy, todo
-   * Deceuninck -- ver isEstimatedSystem). La UI DEBE presentarlo como precio aproximado
-   * sujeto a confirmación, nunca como precio en firme. */
+  /** true cuando el sistema cotizado no tiene precios de lista del proveedor. La UI DEBE
+   * presentarlo como precio aproximado sujeto a confirmación, nunca como precio en firme. */
   estimated: boolean;
   /** Desglose del anticipo, calculado en servidor a partir del porcentaje configurado
    * (lib/companySettings.ts). El navegador nunca decide cuánto debe depositar un cliente.

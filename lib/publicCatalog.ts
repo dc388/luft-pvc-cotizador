@@ -148,125 +148,13 @@ const STYLE_DEFS: StyleDef[] = [
     build: () => splitCol([createLeaf("lift-slide", { direction: "Derecha" }), createLeaf("lift-slide", { direction: "Izquierda" })]),
   },
 
-  // ---------- Deceuninck (tarifas estimadas, ver isEstimatedSystem) ----------
-  {
-    id: "dec-fija",
-    brand: "Deceuninck",
-    productId: "ventana",
-    name: "Fija",
-    blurb: "No abre. Máxima entrada de luz al menor costo.",
-    systemIndex: 4,
-    rail: 0,
-    panels: 1,
-    build: () => createLeaf("fixed"),
-  },
-  {
-    id: "dec-corrediza-2",
-    brand: "Deceuninck",
-    productId: "ventana",
-    name: "Corrediza de 2 hojas",
-    blurb: "Las dos hojas se deslizan hacia el centro. La más común.",
-    systemIndex: 0,
-    rail: 2,
-    panels: 2,
-    build: () => splitCol([createLeaf("sliding", { direction: "Derecha" }), createLeaf("sliding", { direction: "Izquierda" })]),
-  },
-  {
-    id: "dec-corrediza-fija-movil",
-    brand: "Deceuninck",
-    productId: "ventana",
-    name: "Corrediza fija + móvil",
-    blurb: "Un panel fijo y uno que se desliza. Ideal para vanos anchos.",
-    systemIndex: 0,
-    rail: 2,
-    panels: 2,
-    build: () => splitCol([createLeaf("sliding-fixed"), createLeaf("sliding", { direction: "Izquierda" })]),
-  },
-  {
-    id: "dec-corrediza-3",
-    brand: "Deceuninck",
-    productId: "ventana",
-    name: "Corrediza de 3 hojas",
-    blurb: "Fija · móvil · fija. Para ventanales amplios.",
-    systemIndex: 2,
-    rail: 2,
-    panels: 3,
-    build: () => splitCol([createLeaf("sliding-fixed"), createLeaf("sliding"), createLeaf("sliding-fixed")]),
-  },
-  {
-    id: "dec-abatible",
-    brand: "Deceuninck",
-    productId: "ventana",
-    name: "Abatible",
-    blurb: "Abre hacia afuera como una puerta. Cierre muy hermético.",
-    systemIndex: 4,
-    rail: 0,
-    panels: 1,
-    build: () => createLeaf("casement-out"),
-  },
-  {
-    id: "dec-oscilobatiente",
-    brand: "Deceuninck",
-    productId: "ventana",
-    name: "Oscilobatiente",
-    blurb: "Abre de lado o se inclina desde arriba para ventilar sin abrir del todo.",
-    systemIndex: 4,
-    rail: 0,
-    panels: 1,
-    build: () => createLeaf("tilt-turn"),
-  },
-  {
-    id: "dec-proyectante",
-    brand: "Deceuninck",
-    productId: "ventana",
-    name: "Proyectante",
-    blurb: "Bascula desde arriba hacia afuera. Ventila incluso con lluvia.",
-    systemIndex: 4,
-    rail: 0,
-    panels: 1,
-    build: () => createLeaf("project"),
-  },
-  {
-    id: "dec-puerta-corrediza-2",
-    brand: "Deceuninck",
-    productId: "puerta",
-    name: "Corrediza de 2 hojas",
-    blurb: "Dos hojas que se deslizan hacia el centro.",
-    systemIndex: 2,
-    rail: 2,
-    panels: 2,
-    build: () => splitCol([createLeaf("sliding", { direction: "Derecha" }), createLeaf("sliding", { direction: "Izquierda" })]),
-  },
-  {
-    id: "dec-puerta-corrediza-fija-movil",
-    brand: "Deceuninck",
-    productId: "puerta",
-    name: "Corrediza fija + móvil",
-    blurb: "Un paño fijo de piso a techo y una hoja que corre.",
-    systemIndex: 2,
-    rail: 2,
-    panels: 2,
-    build: () => splitCol([createLeaf("sliding-fixed"), createLeaf("sliding", { direction: "Izquierda" })]),
-  },
-  {
-    id: "dec-puerta-elevadora",
-    brand: "Deceuninck",
-    productId: "puerta",
-    name: "Elevadora (premium)",
-    blurb: "Hojas grandes que se elevan al abrir: se deslizan sin esfuerzo y sellan al cerrar.",
-    systemIndex: 7,
-    rail: 2,
-    panels: 2,
-    build: () => splitCol([createLeaf("lift-slide", { direction: "Derecha" }), createLeaf("lift-slide", { direction: "Izquierda" })]),
-  },
 ];
 
 // Subconjunto comercial por marca: solo colores con nombre descriptivo real en data/colors.ts.
 // Los códigos Aluplast sin nombre (BR/BD/NB/...) no se le muestran a un cliente final porque no
 // significan nada para él.
-const PUBLIC_COLOR_CODES: Record<Brand, string[]> = {
+const PUBLIC_COLOR_CODES: Partial<Record<Brand, string[]>> = {
   Aluplast: ["bl", "ag", "negro", "mar", "sil", "ceylon"],
-  Deceuninck: ["M3", "408", "192", "191", "190", "911"],
 };
 
 // Vidrio explicado por beneficio, no por término técnico. `name` es el nombre exacto del
@@ -279,15 +167,13 @@ const PUBLIC_GLASS_DEFS = [
   { name: "Laminado 6+6 mm", label: "Laminado antirruido", benefit: "Máxima seguridad y el mejor bloqueo de ruido de la calle." },
 ];
 
-const BRAND_BLURBS: Record<Brand, string> = {
+const BRAND_BLURBS: Partial<Record<Brand, string>> = {
   Aluplast: "Perfil alemán. Es la línea con precio cerrado al momento.",
-  Deceuninck: "Perfil belga, con más acabados tipo madera. El precio que verás es aproximado.",
 };
 
 // Un sistema está "estimado" cuando sus tarifas no vienen de una lista de precios real del
-// proveedor (`sourced` en data/catalog.ts). Hoy eso es todo Deceuninck: se puede cotizar, pero
-// el precio se le presenta al cliente como aproximado y sujeto a confirmación de un asesor --
-// nunca como precio en firme, que es lo que la regla del proyecto prohíbe inventar.
+// proveedor (`sourced` en data/catalog.ts). El soporte queda en el motor para cualquier futura
+// línea pública sin tarifa, aunque el catálogo público actual solo ofrezca Aluplast.
 export function isEstimatedSystem(brand: Brand, systemIndex: number): boolean {
   return catalog[brand][systemIndex]?.sourced !== true;
 }
@@ -327,7 +213,7 @@ export const publicProducts: PublicProduct[] = [
   { id: "puerta", name: "Puerta corrediza", blurb: "Acceso a terraza, jardín o balcón." },
 ];
 
-const PUBLIC_BRANDS: Brand[] = ["Aluplast", "Deceuninck"];
+const PUBLIC_BRANDS: Brand[] = ["Aluplast"];
 
 export function buildPublicCatalog(): PublicCatalog {
   const styles: PublicStyle[] = STYLE_DEFS.map((s) => {
@@ -350,14 +236,14 @@ export function buildPublicCatalog(): PublicCatalog {
     brands: PUBLIC_BRANDS.map((brand) => ({
       id: brand,
       name: brand,
-      blurb: BRAND_BLURBS[brand],
+      blurb: BRAND_BLURBS[brand] ?? "Línea disponible para cotización.",
       // Basta con que un estilo de la marca sea estimado para avisarlo desde la tarjeta: es lo
       // que el cliente necesita saber ANTES de elegir, no después de configurar todo.
       estimated: styles.some((s) => s.brandId === brand && s.estimated),
     })),
     styles,
     colors: PUBLIC_BRANDS.flatMap((brand) =>
-      PUBLIC_COLOR_CODES[brand].map((code) => {
+      (PUBLIC_COLOR_CODES[brand] ?? []).map((code) => {
         const c = colors[brand].find((x) => x.code === code);
         if (!c) throw new Error(`Color público sin respaldo en data/colors.ts: ${brand} ${code}`);
         return { id: c.code, brandId: brand, name: c.name, hex: c.hex ?? "#cccccc" };
@@ -378,10 +264,10 @@ export function findStyle(styleId: string): StyleDef | null {
   return STYLE_DEFS.find((s) => s.id === styleId) ?? null;
 }
 
-// El color se resuelve dentro de la marca del estilo elegido, así que dos marcas pueden usar el
-// mismo código sin ambigüedad (Aluplast "bl" y Deceuninck "M3" son ambos blanco, por ejemplo).
+// El color se valida contra el subconjunto autorizado para el cotizador público. Las marcas del
+// editor profesional que no aparezcan en PUBLIC_COLOR_CODES quedan rechazadas en esta frontera.
 export function colorIndexFor(brand: Brand, colorId: string): number {
-  if (!PUBLIC_COLOR_CODES[brand].includes(colorId)) return -1;
+  if (!PUBLIC_COLOR_CODES[brand]?.includes(colorId)) return -1;
   return colors[brand].findIndex((c) => c.code === colorId);
 }
 

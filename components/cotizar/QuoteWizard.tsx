@@ -12,9 +12,8 @@ import { PublicQuoteDocument } from "./PublicQuoteDocument";
 // anticipo). El resto del recorrido es autoservicio.
 const WHATSAPP_NUMBER = "529932211158";
 
-// Lo que se le dice al cliente cuando la línea que eligió no tiene precio de lista del
-// proveedor (hoy, Deceuninck -- ver isEstimatedSystem en lib/publicCatalog.ts). Nunca se le
-// presenta ese número como precio en firme.
+// Lo que se le dice al cliente si una futura línea pública no tiene precio de lista del
+// proveedor. Nunca se le presenta ese número como precio en firme.
 const ESTIMATE_NOTE = "Precio aproximado: esta línea la confirma tu asesor antes de firmar.";
 
 type Price = {
@@ -230,7 +229,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         )}
 
         {step === S.BRAND && (
-          <Screen title="Elige la línea" hint="Las dos son PVC de importación. Cambia el acabado y el precio.">
+          <Screen title="Elige la línea" hint="PVC de importación con precio respaldado por el catálogo vigente.">
             <div className="cotCards">
               {catalog.brands.map((b) => (
                 <button
