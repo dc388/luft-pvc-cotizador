@@ -7,6 +7,7 @@ import { ProcessSection } from "./ProcessSection";
 import { GlassTimeline } from "./glass/GlassTimeline";
 import { LiveQuotePreview } from "./LiveQuotePreview";
 import { QuoteAssistant } from "./QuoteAssistant";
+import type { PublicAssistantAction, PublicAssistantContext } from "./publicAssistant";
 import { WindowPreview } from "./WindowPreview";
 import { PublicQuoteDocument, type PublicQuotePrintableItem } from "./PublicQuoteDocument";
 
@@ -45,6 +46,7 @@ type ItemDetails = {
 };
 
 const DEFAULT_EXTRAS: Extras = { instalacion: true };
+const DRAFT_KEY = "luft-public-quote-draft-v1";
 const STEPS = ["Producto", "Línea", "Estilo", "Medidas", "Color", "Vidrio", "Instalación", "Precio", "Resumen", "Proceso", "Contacto", "Listo"];
 const S = {
   PRODUCT: 0,
@@ -84,11 +86,15 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   const [projectError, setProjectError] = useState("");
 
   const [contact, setContact] = useState({ name: "", phone: "", email: "", city: "" });
+  const [consentToContact, setConsentToContact] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [folio, setFolio] = useState("");
+  const [draftReady, setDraftReady] = useState(false);
 
   const style = useMemo(() => catalog.styles.find((s) => s.id === styleId) ?? null, [catalog.styles, styleId]);
+  const product = catalog.products.find((entry) => entry.id === productId) ?? null;
+  const brand = catalog.brands.find((entry) => entry.id === brandId) ?? null;
   const colorsForBrand = useMemo(() => catalog.colors.filter((c) => c.brandId === brandId), [catalog.colors, brandId]);
   const color = colorsForBrand.find((c) => c.id === colorId) ?? colorsForBrand[0] ?? null;
   const glass = catalog.glass.find((entry) => entry.id === glassId) ?? catalog.glass[0];
@@ -119,6 +125,84 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   const totalPieces = reviewItems.reduce((sum, item) => sum + item.config.qty, 0);
   const isEstimated = projectPrice?.estimated ?? reviewItems.some((item) => item.price.estimated);
   const headerItemCount = step >= S.PROCESS ? (doneItems.length || lockedItems.length) : reviewItems.length;
+
+  // Recupera únicamente la configuración no sensible de esta pestaña. Los precios guardados
+  // nunca se reutilizan: el servidor vuelve a cotizar cada elemento antes de mostrarlo.
+  useEffect(() => {
+    let active = true;
+    async function restoreDraft() {
+      try {
+        const raw = sessionStorage.getItem(DRAFT_KEY);
+        if (!raw) return;
+        const draft = JSON.parse(raw) as {
+          version?: number;
+          step?: number;
+          productId?: string;
+          brandId?: string;
+          styleId?: string;
+          widthMm?: number;
+          heightMm?: number;
+          qty?: number;
+          colorId?: string;
+          glassId?: string;
+          extras?: Extras;
+          savedConfigs?: QuoteConfig[];
+        };
+        if (draft.version !== 1) return;
+        if (draft.productId && catalog.products.some((entry) => entry.id === draft.productId)) setProductId(draft.productId);
+        if (draft.brandId && catalog.brands.some((entry) => entry.id === draft.brandId)) setBrandId(draft.brandId);
+        if (draft.styleId && catalog.styles.some((entry) => entry.id === draft.styleId)) setStyleId(draft.styleId);
+        if (Number.isFinite(draft.widthMm)) setWidthMm(Number(draft.widthMm));
+        if (Number.isFinite(draft.heightMm)) setHeightMm(Number(draft.heightMm));
+        if (Number.isFinite(draft.qty)) setQty(Math.max(1, Math.min(catalog.maxQty, Number(draft.qty))));
+        if (draft.colorId && catalog.colors.some((entry) => entry.id === draft.colorId)) setColorId(draft.colorId);
+        if (draft.glassId && catalog.glass.some((entry) => entry.id === draft.glassId)) setGlassId(draft.glassId);
+        if (draft.extras && typeof draft.extras.instalacion === "boolean") setExtras({ instalacion: draft.extras.instalacion });
+        if (Number.isFinite(draft.step)) setStep(Math.max(S.PRODUCT, Math.min(S.SUMMARY, Number(draft.step))));
+
+        const savedConfigs = Array.isArray(draft.savedConfigs) ? draft.savedConfigs.slice(0, 100) : [];
+        if (savedConfigs.length) {
+          const response = await fetch("/api/public-quote", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ items: savedConfigs }),
+          });
+          const payload = (await response.json()) as { itemPrices?: Price[] };
+          if (active && response.ok && payload.itemPrices?.length === savedConfigs.length) {
+            setSavedItems(savedConfigs.map((config, index) => ({ id: crypto.randomUUID(), config, price: payload.itemPrices![index] })));
+          }
+        }
+      } catch {
+        sessionStorage.removeItem(DRAFT_KEY);
+      } finally {
+        if (active) setDraftReady(true);
+      }
+    }
+    void restoreDraft();
+    return () => { active = false; };
+  }, [catalog]);
+
+  useEffect(() => {
+    if (!draftReady || step === S.DONE) return;
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+        version: 1,
+        step,
+        productId,
+        brandId,
+        styleId,
+        widthMm,
+        heightMm,
+        qty,
+        colorId,
+        glassId,
+        extras,
+        savedConfigs: savedItems.map((item) => item.config),
+      }));
+    } catch {
+      // La cotización continúa aunque el navegador deshabilite el almacenamiento de sesión.
+    }
+  }, [draftReady, step, productId, brandId, styleId, widthMm, heightMm, qty, colorId, glassId, extras, savedItems]);
 
   function detailsFor(item: ProjectItem): ItemDetails {
     const itemStyle = catalog.styles.find((entry) => entry.id === item.config.styleId);
@@ -253,7 +337,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       const res = await fetch("/api/public-quote/submit", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ items: lockedItems.map((item) => item.config), contact }),
+        body: JSON.stringify({ items: lockedItems.map((item) => item.config), contact: { ...contact, consentToContact } }),
       });
       const json = (await res.json()) as { folio?: string; price?: Price; itemPrices?: Price[]; error?: string };
       if (!res.ok || !json.folio || !json.price) {
@@ -267,6 +351,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       setProjectPrice(json.price);
       setFinalItems(authoritativeItems);
       setStep(S.DONE);
+      sessionStorage.removeItem(DRAFT_KEY);
     } catch {
       setSubmitError("No pudimos enviar tu cotización. Revisa tu conexión.");
     } finally {
@@ -280,6 +365,56 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       return;
     }
     setStep((current) => Math.max(S.PRODUCT, current - 1));
+  }
+
+  function applyAssistantAction(action: PublicAssistantAction) {
+    // Cualquier cambio autorizado invalida los totales de proyecto bloqueados. El efecto de
+    // cotización solicitará un precio nuevo; el asistente jamás escribe un total por su cuenta.
+    setLockedItems([]);
+    setProjectPrice(null);
+    setProjectError("");
+    if (action.kind === "dimensions") {
+      setWidthMm(action.widthMm);
+      setHeightMm(action.heightMm);
+      return;
+    }
+    if (action.kind === "width") {
+      setWidthMm(action.widthMm);
+      return;
+    }
+    if (action.kind === "height") {
+      setHeightMm(action.heightMm);
+      return;
+    }
+    if (action.kind === "product") {
+      setProductId(action.productId);
+      setBrandId("");
+      setStyleId("");
+      setColorId("");
+      setStep(S.BRAND);
+      return;
+    }
+    if (action.kind === "style") {
+      const nextStyle = catalog.styles.find((entry) => entry.id === action.styleId);
+      if (!nextStyle) return;
+      setProductId(nextStyle.productId);
+      setBrandId(nextStyle.brandId);
+      setStyleId(nextStyle.id);
+      setColorId(catalog.colors.find((entry) => entry.brandId === nextStyle.brandId)?.id ?? "");
+      setWidthMm(nextStyle.defaultW);
+      setHeightMm(nextStyle.defaultH);
+      setStep(S.SIZE);
+      return;
+    }
+    if (action.kind === "color") {
+      if (catalog.colors.some((entry) => entry.id === action.colorId && entry.brandId === brandId)) setColorId(action.colorId);
+      return;
+    }
+    if (action.kind === "glass") {
+      if (catalog.glass.some((entry) => entry.id === action.glassId)) setGlassId(action.glassId);
+      return;
+    }
+    setExtras({ instalacion: action.value });
   }
 
   const whatsappLines = doneItems.flatMap((item, index) => {
@@ -307,6 +442,29 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     };
   });
   const footPrice = step >= S.PROCESS ? projectPrice : price;
+  const assistantContext: PublicAssistantContext = {
+    step,
+    stepName: STEPS[step] ?? STEPS[0],
+    productName: product?.name ?? "",
+    brandName: brand?.name ?? "",
+    styleName: style?.name ?? "",
+    widthMm,
+    heightMm,
+    qty,
+    colorName: color?.name ?? "",
+    glassName: glass?.name ?? "",
+    installation: extras.instalacion,
+    sizeError,
+    total: footPrice?.total ?? (reviewTotal || null),
+    estimated: footPrice?.estimated ?? isEstimated,
+    designCount: reviewItems.length,
+    folio,
+    minMm: catalog.minMm,
+    styleMaxW: style?.maxW ?? null,
+    styleMaxH: style?.maxH ?? null,
+    stylePanels: style?.panels ?? 1,
+    catalog,
+  };
   const livePreview = style && color && step >= S.SIZE && step <= S.PRICE ? (
     <LiveQuotePreview
       styleName={style.name}
@@ -472,6 +630,10 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
             <label className="cotField">Teléfono<input type="tel" inputMode="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} autoComplete="tel" /></label>
             <label className="cotField">Correo (opcional)<input type="email" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} autoComplete="email" /></label>
             <label className="cotField">Ciudad<input value={contact.city} onChange={(e) => setContact({ ...contact, city: e.target.value })} autoComplete="address-level2" /></label>
+            <label className="cotToggle" style={{ cursor: "pointer" }}>
+              <span><b>Autorizo el seguimiento</b><small>LUFT PVC puede contactarme únicamente para continuar con esta cotización.</small></span>
+              <input type="checkbox" checked={consentToContact} onChange={(event) => setConsentToContact(event.target.checked)} aria-label="Autorizar contacto de LUFT PVC" />
+            </label>
             {submitError && <p className="cotWarn">{submitError}</p>}
           </Screen>
         )}
@@ -502,7 +664,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         )}
       </main>
 
-      <QuoteAssistant step={step} supportHref={whatsappHref} />
+      <QuoteAssistant context={assistantContext} onApply={applyAssistantAction} supportHref={whatsappHref} humanAvailable={step === S.DONE} />
 
       {step < S.DONE && (
         <footer className="cotFoot">
@@ -511,7 +673,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
             <span className="cotFootPrice">{pricing ? "Calculando…" : money(footPrice.total)}</span>
           )}
           {step === S.CONTACT ? (
-            <button className="cotPrimary" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar proyecto"}</button>
+            <button className="cotPrimary" onClick={submit} disabled={submitting || !consentToContact}>{submitting ? "Enviando…" : "Enviar proyecto"}</button>
           ) : step === S.SUMMARY ? (
             <button className="cotPrimary" onClick={prepareProject} disabled={!canAdvance}>{preparingProject ? "Calculando…" : "Continuar"}</button>
           ) : (

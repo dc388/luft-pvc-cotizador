@@ -5,7 +5,7 @@ import { colorIndexFor } from "@/lib/publicCatalog";
 import { createComponentWithData, createEmptyProject, setActiveComponent } from "@/lib/projectRepo";
 import { clientIp, enforceRateLimit, SUBMIT_RULES, tooManyRequests } from "@/lib/rateLimit";
 
-type Contact = { name: string; phone: string; email: string; city: string };
+type Contact = { name: string; phone: string; email: string; city: string; consentToContact: true };
 
 function parseContact(raw: unknown): Contact {
   const body = (raw ?? {}) as Record<string, unknown>;
@@ -13,15 +13,17 @@ function parseContact(raw: unknown): Contact {
   const phone = String(body.phone ?? "").trim();
   const email = String(body.email ?? "").trim();
   const city = String(body.city ?? "").trim();
+  const consentToContact = body.consentToContact === true;
 
   if (name.length < 2) throw new PublicQuoteError("Escribe tu nombre.");
   if (phone.replace(/\D/g, "").length < 10) throw new PublicQuoteError("Escribe un teléfono de 10 dígitos.");
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new PublicQuoteError("Revisa tu correo electrónico.");
   if (city.length < 2) throw new PublicQuoteError("Escribe tu ciudad.");
+  if (!consentToContact) throw new PublicQuoteError("Autoriza el contacto para registrar y dar seguimiento a tu cotización.");
   if (name.length > 120 || phone.length > 40 || email.length > 160 || city.length > 120) {
     throw new PublicQuoteError("Alguno de los datos es demasiado largo.");
   }
-  return { name, phone, email, city };
+  return { name, phone, email, city, consentToContact: true };
 }
 
 // Guarda cada envío como un Proyecto real con N Componentes, usando el mismo repositorio que

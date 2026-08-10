@@ -14,6 +14,14 @@ import type { ComponentData } from "@/types/project";
 // motor que la app interna (lib/calc.ts). El cliente nunca manda margen, descuento ni precios
 // -- esos los fija el negocio aquí, no el formulario.
 
+// Política comercial exclusiva del servidor público. `calcQuote` interpreta margin como
+// margen bruto sobre venta: sale = direct / (1 - margin). Elegimos el punto medio del rango
+// autorizado (40–45%) y anulamos descuentos públicos para que el precio mostrado no pueda
+// caer fuera del rango por cambios en defaults del editor profesional.
+const PUBLIC_GROSS_MARGIN_PERCENT = 42;
+const PUBLIC_GROSS_MARGIN_MIN = 40;
+const PUBLIC_GROSS_MARGIN_MAX = 45;
+
 export type PublicExtras = {
   instalacion: boolean;
 };
@@ -132,6 +140,8 @@ export function buildComponentData(config: PublicQuoteConfig): ComponentData {
 
   return {
     ...base,
+    margin: PUBLIC_GROSS_MARGIN_PERCENT,
+    discount: 0,
     rail: style.rail,
     glassIndex: glassIndexFor(config.glassId),
     installation: config.extras.instalacion ? base.installation : 0,
@@ -165,6 +175,14 @@ export function priceConfig(config: PublicQuoteConfig): PublicPrice {
     marco: data.marco,
     barLengthMm: data.barLengthMm,
   });
+
+  // Defensa adicional: si una modificación futura del motor o de la configuración pública
+  // rompe la política comercial, se detiene la respuesta en servidor. Nunca se envían al
+  // navegador `direct`, `utility` ni el porcentaje usado para esta comprobación.
+  const realizedGrossMargin = calc.sale > 0 ? ((calc.sale - calc.direct) / calc.sale) * 100 : 0;
+  if (realizedGrossMargin < PUBLIC_GROSS_MARGIN_MIN || realizedGrossMargin > PUBLIC_GROSS_MARGIN_MAX) {
+    throw new Error("La cotización pública quedó fuera de la política comercial configurada.");
+  }
 
   // Solo se devuelve el precio comercial. `direct`, `utility`, `profileCost`, la lista de
   // corte y demás internos de QuoteCalc nunca salen de este archivo.

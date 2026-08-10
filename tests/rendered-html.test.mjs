@@ -75,6 +75,7 @@ test("public quote exposes only Aluplast and rejects removed Deceuninck styles",
   assert.match(html, /Aluplast/i);
   assert.match(html, /Puerta abatible de 1 hoja/i);
   assert.match(html, /Puerta abatible de 2 hojas/i);
+  assert.match(html, /LUFT Asesor/i);
   assert.doesNotMatch(html, /Puerta corrediza/i);
   assert.doesNotMatch(html, /Deceuninck/i);
   assert.doesNotMatch(html, /Persiana exterior|Mosquitero/i);
@@ -98,6 +99,22 @@ test("public quote exposes only Aluplast and rejects removed Deceuninck styles",
   );
   assert.equal(apiResponse.status, 400);
   assert.match((await apiResponse.json()).error, /Elige un estilo de la lista/i);
+});
+
+test("public assistant keeps confidential pricing fields out of the rendered client payload", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-public-assistant-security`);
+  const { default: worker } = await import(workerUrl.href);
+  const response = await worker.fetch(
+    new Request("http://localhost/cotizar", { headers: { accept: "text/html" } }),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+  const html = await response.text();
+  assert.equal(response.status, 200);
+  assert.match(html, /LUFT Asesor/i);
+  assert.doesNotMatch(html, /PUBLIC_GROSS_MARGIN|costo directo|utilidad estimada/i);
+  assert.doesNotMatch(html, /Hablar con un asesor/i);
 });
 
 test("public quote prices the existing Aluplast hinged-door typologies", async () => {
