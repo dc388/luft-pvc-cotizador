@@ -54,6 +54,7 @@ import { ExplorerTree } from "@/components/editor/ExplorerTree";
 import { EditableDim } from "@/components/editor/EditableDim";
 import { DimensionField } from "@/components/editor/DimensionField";
 import { TypologyPicker } from "@/components/editor/TypologyPicker";
+import { PanZoomViewport } from "@/components/editor/PanZoomViewport";
 import type { TypologyDef } from "@/data/typologies";
 import type { PartKind, SideKey } from "@/components/editor/frameTypes";
 import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
@@ -795,7 +796,7 @@ export function Workspace({ company }: { company: CompanySettings }) {
       : `Haz clic en una hoja para asignarle "${wingDefs.find((w) => w.id === activeTool.wing)?.name}"`;
 
   return (
-    <main>
+    <main className="internalApp">
       <TopBar code={code} designation={designation} location={location} onPrint={handlePrint} selfCheck={selfCheck} savedAt={savedAt} />
       <ModuleNav tabs={TABS} active={tab} onChange={changeTab} />
 
@@ -1059,29 +1060,33 @@ export function Workspace({ company }: { company: CompanySettings }) {
               />
             )}
             <div className="canvasStage" onClick={(e) => { if (e.target === e.currentTarget) clearFocus(); }}>
-              {view !== "3D" && (
+              {view === "Sección" && (
                 <>
                   <div className="dim top"><EditableDim label="W" valueMm={width} min={MIN_OPENING_MM} onCommit={setWidth} /></div>
                   <div className="dim side"><EditableDim label="H" valueMm={height} min={MIN_OPENING_MM} onCommit={setHeight} /></div>
+                  <SectionRender depth={sys.depth} rail={rail} glazing={glass.thickness} />
                 </>
               )}
-              {view === "Sección" && <SectionRender depth={sys.depth} rail={rail} glazing={glass.thickness} />}
               {view === "2D" && (
-                <FrameCanvas
-                  tree={tree}
-                  width={width}
-                  height={height}
-                  selectedId={selectedId}
-                  color={color}
-                  system={sys}
-                  focusScope={focusScope}
-                  focusPart={focusPart}
-                  focusSide={focusSide}
-                  showFocus
-                  onPartClick={handlePartClick}
-                  onAssemblyMarcoClick={handleAssemblyFocus}
-                  onCentralLockClick={handleCentralLockClick}
-                />
+                <PanZoomViewport onBackgroundClick={clearFocus}>
+                  <div className="dim top"><EditableDim label="W" valueMm={width} min={MIN_OPENING_MM} onCommit={setWidth} /></div>
+                  <div className="dim side"><EditableDim label="H" valueMm={height} min={MIN_OPENING_MM} onCommit={setHeight} /></div>
+                  <FrameCanvas
+                    tree={tree}
+                    width={width}
+                    height={height}
+                    selectedId={selectedId}
+                    color={color}
+                    system={sys}
+                    focusScope={focusScope}
+                    focusPart={focusPart}
+                    focusSide={focusSide}
+                    showFocus
+                    onPartClick={handlePartClick}
+                    onAssemblyMarcoClick={handleAssemblyFocus}
+                    onCentralLockClick={handleCentralLockClick}
+                  />
+                </PanZoomViewport>
               )}
               <div className={`canvas3dWrap ${view === "3D" ? "" : "canvas3dWrapHidden"}`}>
                 <Scene3D
@@ -1153,7 +1158,7 @@ export function Workspace({ company }: { company: CompanySettings }) {
               !projectComponents ? (
                 <p className="notice">{projectComponentsLoading ? "Cargando componentes del proyecto…" : "No se pudieron cargar los componentes del proyecto."}</p>
               ) : report === "Cotización" ? (
-                <ProjectCotizacionDoc components={projectComponents} projectName={projectName} client={client} clientAddress={clientAddress} deliveryDate={deliveryDate} />
+                <ProjectCotizacionDoc components={projectComponents} projectName={projectName} client={client} clientAddress={clientAddress} deliveryDate={deliveryDate} company={company} />
               ) : report === "Optimización de corte" ? (
                 <ProjectCorteDoc components={projectComponents} projectName={projectName} barLengthMm={barLengthMm} />
               ) : (

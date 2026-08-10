@@ -6,6 +6,7 @@ import type { PublicCatalog } from "@/lib/publicCatalog";
 import { ProcessSection } from "./ProcessSection";
 import { GlassTimeline } from "./glass/GlassTimeline";
 import { WindowPreview } from "./WindowPreview";
+import { PublicQuoteDocument } from "./PublicQuoteDocument";
 
 // Número de atención humana: se usa solo cuando el cliente ya decidió avanzar (firma y
 // anticipo). El resto del recorrido es autoservicio.
@@ -70,6 +71,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
 
   const style = useMemo(() => catalog.styles.find((s) => s.id === styleId) ?? null, [catalog.styles, styleId]);
   const brand = catalog.brands.find((b) => b.id === brandId) ?? null;
+  const product = catalog.products.find((p) => p.id === productId) ?? null;
   // Cada marca tiene su propia paleta real (data/colors.ts), así que la lista de colores
   // depende de la línea elegida, no del catálogo completo.
   const colorsForBrand = useMemo(() => catalog.colors.filter((c) => c.brandId === brandId), [catalog.colors, brandId]);
@@ -170,7 +172,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   }
 
   const summaryLines = [
-    `${style?.name ?? ""} · ${catalog.products.find((p) => p.id === productId)?.name ?? ""}`,
+    `${style?.name ?? ""} · ${product?.name ?? ""}`,
     `Línea ${brand?.name ?? ""}`,
     `${widthMm} × ${heightMm} mm · ${qty} ${qty === 1 ? "pieza" : "piezas"}`,
     `Color ${color?.name ?? ""}`,
@@ -428,6 +430,26 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
               <h3>¿Qué sigue?</h3>
               <GlassTimeline currentIndex={1} />
             </div>
+            {price && style && color && brand && product && (
+              <div className="quotePrintOnly">
+                <PublicQuoteDocument
+                  folio={folio}
+                  client={{ name: contact.name, city: contact.city }}
+                  productName={product.name}
+                  styleName={style.name}
+                  brandName={brand.name}
+                  panels={style.panels}
+                  widthMm={widthMm}
+                  heightMm={heightMm}
+                  quantity={qty}
+                  colorName={color.name}
+                  frameHex={frameHex}
+                  glassName={glass.name}
+                  extras={extras}
+                  price={price}
+                />
+              </div>
+            )}
             <div className="cotFinalActions">
               <button className="cotPrimary" onClick={() => window.print()}>
                 Descargar / imprimir
