@@ -35,7 +35,7 @@ export function WindowPreview({ panels = 1, wings, widthMm, heightMm, frameHex, 
         {paneWings.map((wing, index) => (
           <div className="cotPreviewPane" key={`${wing}-${index}`} style={{ borderColor: frameHex }}>
             <span className="cotPreviewGlass" data-glass={glassTone} />
-            <OpeningMark wing={wing} />
+            <OpeningMark wing={wing} index={index} count={paneWings.length} />
           </div>
         ))}
       </div>
@@ -43,7 +43,7 @@ export function WindowPreview({ panels = 1, wings, widthMm, heightMm, frameHex, 
   );
 }
 
-function OpeningMark({ wing }: { wing: WingType }) {
+function OpeningMark({ wing, index, count }: { wing: WingType; index: number; count: number }) {
   if (wing === "fixed" || wing === "inactive" || wing === "sliding-fixed") return null;
 
   if (wing === "sliding" || wing === "lift-slide" || wing === "folding-sliding") {
@@ -58,6 +58,20 @@ function OpeningMark({ wing }: { wing: WingType }) {
     return (
       <svg className="cotPreviewOpening" viewBox="0 0 100 100" aria-hidden="true">
         <path d="M12 14 50 84 88 14M28 30h44" />
+      </svg>
+    );
+  }
+
+  if (wing === "door") {
+    // En una puerta doble las bisagras quedan hacia los extremos y las manijas al centro.
+    // Una puerta sencilla conserva la orientación de la referencia: bisagras a la izquierda.
+    const mirror = count > 1 && index === count - 1;
+    return (
+      <svg className="cotPreviewOpening" viewBox="0 0 100 100" aria-hidden="true">
+        <g transform={mirror ? "translate(100 0) scale(-1 1)" : undefined}>
+          <path d="M12 10 86 50 12 90M12 20v14M12 66v14M80 50h10" />
+          <circle cx="80" cy="50" r="2.5" />
+        </g>
       </svg>
     );
   }

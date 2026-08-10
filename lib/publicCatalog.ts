@@ -1,6 +1,7 @@
 import { catalog } from "@/data/catalog";
 import { colors } from "@/data/colors";
 import { glassCatalog } from "@/data/glass";
+import { typologyDefs } from "@/data/typologies";
 import { createLeaf, walkLeaves } from "@/lib/tree";
 import type { Brand, FrameNode, WingType } from "@/types/domain";
 
@@ -17,6 +18,22 @@ function splitCol(children: FrameNode[]): FrameNode {
   return { kind: "split", id: crypto.randomUUID(), axis: "col", ratios: Array(children.length).fill(1 / children.length), children };
 }
 
+function buildExistingTypology(id: string): FrameNode {
+  const typology = typologyDefs.find((entry) => entry.id === id);
+  if (!typology) throw new Error(`Tipología pública sin respaldo en data/typologies.ts: ${id}`);
+  return typology.build();
+}
+
+// La categoría Puerta del catálogo interno identifica los perfiles abatibles reales. Resolver
+// el índice desde esos datos evita convertir "puerta" en sinónimo codificado de corredera y
+// mantiene data/catalog.ts como fuente de verdad si el orden del catálogo cambia.
+const ALUPLAST_HINGED_DOOR_SYSTEM_INDEX = catalog.Aluplast.findIndex(
+  (system) => system.category === "Puerta" && system.rails.every((rail) => rail === 0),
+);
+if (ALUPLAST_HINGED_DOOR_SYSTEM_INDEX < 0) {
+  throw new Error("No se encontró el sistema Aluplast de puerta abatible en data/catalog.ts");
+}
+
 type StyleDef = {
   id: string;
   brand: Brand;
@@ -29,6 +46,9 @@ type StyleDef = {
   rail: number;
   /** Cuántas hojas produce build(); el wizard lo usa para dibujar el preview. */
   panels: number;
+  /** Medida inicial de presentación; el cliente puede modificarla antes de cotizar. */
+  defaultW?: number;
+  defaultH?: number;
   build: () => FrameNode;
 };
 
@@ -115,6 +135,32 @@ const STYLE_DEFS: StyleDef[] = [
     build: () => createLeaf("project"),
   },
   {
+    id: "alu-puerta-abatible-1",
+    brand: "Aluplast",
+    productId: "puerta",
+    name: "Puerta abatible de 1 hoja",
+    blurb: "Apertura tradicional con bisagras y manija. Ideal para accesos principales o de servicio.",
+    systemIndex: ALUPLAST_HINGED_DOOR_SYSTEM_INDEX,
+    rail: 0,
+    panels: 1,
+    defaultW: 1000,
+    defaultH: 2200,
+    build: () => buildExistingTypology("puerta-1"),
+  },
+  {
+    id: "alu-puerta-abatible-2",
+    brand: "Aluplast",
+    productId: "puerta",
+    name: "Puerta abatible de 2 hojas",
+    blurb: "Dos hojas con bisagras para conseguir una entrada más amplia.",
+    systemIndex: ALUPLAST_HINGED_DOOR_SYSTEM_INDEX,
+    rail: 0,
+    panels: 2,
+    defaultW: 1800,
+    defaultH: 2200,
+    build: () => buildExistingTypology("puerta-2"),
+  },
+  {
     id: "alu-puerta-corrediza-2",
     brand: "Aluplast",
     productId: "puerta",
@@ -189,6 +235,8 @@ export type PublicStyle = {
   name: string;
   blurb: string;
   panels: number;
+  defaultW: number;
+  defaultH: number;
   /** Aperturas reales de las hojas, usadas únicamente para la representación visual. */
   wings: WingType[];
   maxW: number;
@@ -212,7 +260,7 @@ export const MAX_QTY = 20;
 
 export const publicProducts: PublicProduct[] = [
   { id: "ventana", name: "Ventana", blurb: "Para iluminar y ventilar una habitación." },
-  { id: "puerta", name: "Puerta corrediza", blurb: "Acceso a terraza, jardín o balcón." },
+  { id: "puerta", name: "Puerta", blurb: "Acceso tradicional de una o dos hojas con apertura mediante bisagras." },
 ];
 
 const PUBLIC_BRANDS: Brand[] = ["Aluplast"];
@@ -227,6 +275,8 @@ export function buildPublicCatalog(): PublicCatalog {
       name: s.name,
       blurb: s.blurb,
       panels: s.panels,
+      defaultW: s.defaultW ?? 1500,
+      defaultH: s.defaultH ?? 1200,
       wings: walkLeaves(s.build()).map((leaf) => leaf.wing),
       maxW: sys.maxW,
       maxH: sys.maxH,
@@ -240,9 +290,10 @@ export function buildPublicCatalog(): PublicCatalog {
       id: brand,
       name: brand,
       blurb: BRAND_BLURBS[brand] ?? "Línea disponible para cotización.",
-      // Basta con que un estilo de la marca sea estimado para avisarlo desde la tarjeta: es lo
-      // que el cliente necesita saber ANTES de elegir, no después de configurar todo.
-      estimated: styles.some((s) => s.brandId === brand && s.estimated),
+      // La marca se etiqueta completa solo cuando todas sus opciones son estimadas. En una
+      // línea mixta, cada estilo muestra su propio aviso para no marcar como aproximadas las
+      // ventanas que sí tienen precio de lista.
+      estimated: styles.filter((s) => s.brandId === brand).every((s) => s.estimated),
     })),
     styles,
     colors: PUBLIC_BRANDS.flatMap((brand) =>

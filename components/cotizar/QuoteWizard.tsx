@@ -89,7 +89,6 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   const [folio, setFolio] = useState("");
 
   const style = useMemo(() => catalog.styles.find((s) => s.id === styleId) ?? null, [catalog.styles, styleId]);
-  const brand = catalog.brands.find((b) => b.id === brandId) ?? null;
   const colorsForBrand = useMemo(() => catalog.colors.filter((c) => c.brandId === brandId), [catalog.colors, brandId]);
   const color = colorsForBrand.find((c) => c.id === colorId) ?? colorsForBrand[0] ?? null;
   const glass = catalog.glass.find((entry) => entry.id === glassId) ?? catalog.glass[0];
@@ -374,12 +373,16 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
 
         {step === S.STYLE && (
           <Screen title="Elige el estilo" hint="Cada elemento de tu proyecto puede tener un estilo distinto.">
-            {brand?.estimated && <p className="cotNote">{ESTIMATE_NOTE}</p>}
             <div className="cotCards">
               {stylesForProduct.map((s) => (
-                <button key={s.id} className={`cotCard cotCardStyle ${styleId === s.id ? "sel" : ""}`} onClick={() => { setStyleId(s.id); setStep(S.SIZE); }}>
-                  <WindowPreview wings={s.wings} widthMm={3} heightMm={2} frameHex={frameHex} label={`Vista previa de ${s.name}`} />
-                  <b>{s.name}</b><small>{s.blurb}</small>
+                <button key={s.id} className={`cotCard cotCardStyle ${styleId === s.id ? "sel" : ""}`} onClick={() => {
+                  setStyleId(s.id);
+                  setWidthMm(s.defaultW);
+                  setHeightMm(s.defaultH);
+                  setStep(S.SIZE);
+                }}>
+                  <WindowPreview wings={s.wings} widthMm={s.defaultW} heightMm={s.defaultH} frameHex={frameHex} label={`Vista previa de ${s.name}`} />
+                  <b>{s.name}{s.estimated && <i className="cotBadge">Precio estimado</i>}</b><small>{s.blurb}</small>
                 </button>
               ))}
             </div>

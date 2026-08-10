@@ -73,6 +73,9 @@ test("public quote exposes only Aluplast and rejects removed Deceuninck styles",
   const html = await pageResponse.text();
   assert.equal(pageResponse.status, 200);
   assert.match(html, /Aluplast/i);
+  assert.match(html, /Puerta abatible de 1 hoja/i);
+  assert.match(html, /Puerta abatible de 2 hojas/i);
+  assert.doesNotMatch(html, /Puerta corrediza/i);
   assert.doesNotMatch(html, /Deceuninck/i);
   assert.doesNotMatch(html, /Persiana exterior|Mosquitero/i);
 
@@ -95,6 +98,42 @@ test("public quote exposes only Aluplast and rejects removed Deceuninck styles",
   );
   assert.equal(apiResponse.status, 400);
   assert.match((await apiResponse.json()).error, /Elige un estilo de la lista/i);
+});
+
+test("public quote prices the existing Aluplast hinged-door typologies", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-hinged-doors`);
+  const { default: worker } = await import(workerUrl.href);
+  const env = { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } };
+  const ctx = { waitUntil() {}, passThroughOnException() {} };
+  const quote = async (styleId, widthMm, ip) => {
+    const response = await worker.fetch(
+      new Request("http://localhost/api/public-quote", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": ip },
+        body: JSON.stringify({
+          styleId,
+          widthMm,
+          heightMm: 2200,
+          qty: 1,
+          colorId: "bl",
+          glassId: "Cristal templado claro 6 mm",
+          extras: { instalacion: true },
+        }),
+      }),
+      env,
+      ctx,
+    );
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+
+  const single = await quote("alu-puerta-abatible-1", 1000, "203.0.113.40");
+  const double = await quote("alu-puerta-abatible-2", 1800, "203.0.113.41");
+  assert.ok(single.price.total > 0);
+  assert.ok(double.price.total > single.price.total);
+  assert.equal(single.price.estimated, true);
+  assert.equal(double.price.estimated, true);
 });
 
 test("public quote ignores removed curtain and mosquito-screen fields from old clients", async () => {
