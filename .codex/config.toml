@@ -1,0 +1,6 @@
+[mcp_servers.graphify]
+url = "https://api.graphify.com/mcp"
+
+[mcp_servers.graphify-local]
+command = 'C:\Users\jsald\.local\bin\graphify-mcp.exe'
+args = ['C:\Users\jsald\LUFT PVC\graphify-out\graph.json']
