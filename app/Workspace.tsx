@@ -26,6 +26,7 @@ import {
   updateSpec,
   walkLeaves,
   normalizeTree,
+  remapTreeToSystem,
   SLIDING_WINGS,
 } from "@/lib/tree";
 import { BAR_LENGTH_MM, KERF_MM, buildCutList, calcQuote, packBars, MIN_OPENING_MM } from "@/lib/calc";
@@ -51,6 +52,7 @@ import { SectionRender } from "@/components/editor/SectionRender";
 import { Scene3D } from "@/components/editor/Scene3D";
 import { ExplorerTree } from "@/components/editor/ExplorerTree";
 import { EditableDim } from "@/components/editor/EditableDim";
+import { DimensionField } from "@/components/editor/DimensionField";
 import { TypologyPicker } from "@/components/editor/TypologyPicker";
 import type { TypologyDef } from "@/data/typologies";
 import type { PartKind, SideKey } from "@/components/editor/frameTypes";
@@ -480,8 +482,20 @@ export function Workspace({ company }: { company: CompanySettings }) {
   const color = colors[brand][Math.min(colorIndex, colors[brand].length - 1)];
   const allowedWings = useMemo(() => allowedWingsFor(sys), [sys]);
 
-  const changeBrand = (b: Brand) => { setBrand(b); setSystemIndex(0); setColorIndex(0); setRail(catalog[b][0].rails[0]); };
-  const changeSystem = (i: number) => { setSystemIndex(i); setRail(catalog[brand][i].rails[0]); };
+  const changeBrand = (b: Brand) => {
+    const nextSys = catalog[b][0];
+    setBrand(b);
+    setSystemIndex(0);
+    setColorIndex(0);
+    setRail(nextSys.rails[0]);
+    setTree((prev) => remapTreeToSystem(prev, allowedWingsFor(nextSys)));
+  };
+  const changeSystem = (i: number) => {
+    const nextSys = catalog[brand][i];
+    setSystemIndex(i);
+    setRail(nextSys.rails[0]);
+    setTree((prev) => remapTreeToSystem(prev, allowedWingsFor(nextSys)));
+  };
   const changeTab = (t: Tab) => { setTab(t); if (t !== "Diseño") setActiveTool({ mode: "select" }); };
   const changeView = (v: ViewMode) => { setView(v); if (v === "3D") setPresetToken((n) => n + 1); };
   const changePreset = (p: ViewPreset3D) => { setViewPreset(p); setPresetToken((n) => n + 1); };
@@ -899,13 +913,13 @@ export function Workspace({ company }: { company: CompanySettings }) {
               />
               <Block n="04" title="Geometría" sub="Cotas generales en milímetros." />
               <div className="inputGrid">
-                {/* Clamp to MIN_OPENING_MM on blur, not on every keystroke -- clamping mid-typing
-                    snaps "1" to "300" before the next digit lands, so typing "1200" digit-by-digit
-                    never reaches it. The warnings list above still flags an in-progress out-of-range
-                    value immediately; only the hard floor waits for blur. */}
-                <label>Ancho<input type="number" value={width} onChange={(e) => setWidth(Math.max(0, Number(e.target.value) || 0))} onBlur={() => setWidth((v) => Math.max(MIN_OPENING_MM, v))} /></label>
-                <label>Alto<input type="number" value={height} onChange={(e) => setHeight(Math.max(0, Number(e.target.value) || 0))} onBlur={() => setHeight((v) => Math.max(MIN_OPENING_MM, v))} /></label>
-                <label>Cant.<input type="number" min="1" value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value)))} /></label>
+                {/* DimensionField keeps a local text draft and only commits on blur/Enter -- typing
+                    never touches width/height/qty state mid-edit, so clearing the field, retyping,
+                    or a momentarily invalid value never snaps to 0, fights the cursor, or forces a
+                    calc/2D/3D recompute per keystroke (see components/editor/DimensionField.tsx). */}
+                <label>Ancho<DimensionField value={width} min={MIN_OPENING_MM} onCommit={setWidth} /></label>
+                <label>Alto<DimensionField value={height} min={MIN_OPENING_MM} onCommit={setHeight} /></label>
+                <label>Cant.<DimensionField value={qty} min={1} onCommit={setQty} /></label>
               </div>
               <Block n="05" title="Materiales" sub="Color, aplicación y vidrio." />
               <label>Color / folio
