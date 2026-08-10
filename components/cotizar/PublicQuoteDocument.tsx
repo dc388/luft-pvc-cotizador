@@ -1,4 +1,5 @@
 import { CustomerQuoteDocument, type QuoteDocumentItem } from "@/components/reports/CustomerQuoteDocument";
+import type { WingType } from "@/types/domain";
 import { WindowPreview } from "./WindowPreview";
 
 export type PublicQuotePrintableItem = {
@@ -7,13 +8,14 @@ export type PublicQuotePrintableItem = {
   styleName: string;
   brandName: string;
   panels: number;
+  wings: WingType[];
   widthMm: number;
   heightMm: number;
   quantity: number;
   colorName: string;
   frameHex: string;
   glassName: string;
-  extras: { instalacion: boolean; persianaExterior: boolean; mosquitero: boolean };
+  extras: { instalacion: boolean };
   price: {
     unit: number;
     total: number;
@@ -44,8 +46,6 @@ export function PublicQuoteDocument({ folio, client, items, price }: Props) {
   const documentItems: QuoteDocumentItem[] = items.map((item, index) => {
     const extrasText = [
       item.extras.instalacion ? "Instalación incluida" : "Sin instalación",
-      item.extras.persianaExterior ? "Persiana exterior" : "",
-      item.extras.mosquitero ? "Mosquitero por cotizar" : "",
     ].filter(Boolean).join(" · ");
     const areaM2 = item.widthMm * item.heightMm / 1_000_000;
 
@@ -63,7 +63,7 @@ export function PublicQuoteDocument({ folio, client, items, price }: Props) {
         ["Extras", extrasText],
         ["Cantidad", `${item.quantity} ${item.quantity === 1 ? "pieza" : "piezas"}`],
       ],
-      diagram: <WindowPreview panels={item.panels} widthMm={item.widthMm} heightMm={item.heightMm} frameHex={item.frameHex} />,
+      diagram: <WindowPreview wings={item.wings} widthMm={item.widthMm} heightMm={item.heightMm} frameHex={item.frameHex} glassName={item.glassName} label={`Vista previa de ${item.styleName}`} />,
       widthMm: item.widthMm,
       heightMm: item.heightMm,
       areaM2,

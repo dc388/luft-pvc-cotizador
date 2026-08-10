@@ -5,6 +5,8 @@ import { money } from "@/lib/money";
 import type { PublicCatalog } from "@/lib/publicCatalog";
 import { ProcessSection } from "./ProcessSection";
 import { GlassTimeline } from "./glass/GlassTimeline";
+import { LiveQuotePreview } from "./LiveQuotePreview";
+import { QuoteAssistant } from "./QuoteAssistant";
 import { WindowPreview } from "./WindowPreview";
 import { PublicQuoteDocument, type PublicQuotePrintableItem } from "./PublicQuoteDocument";
 
@@ -20,7 +22,7 @@ type Price = {
   deposit: number;
   remaining: number;
 };
-type Extras = { instalacion: boolean; persianaExterior: boolean; mosquitero: boolean };
+type Extras = { instalacion: boolean };
 type QuoteConfig = {
   styleId: string;
   widthMm: number;
@@ -36,13 +38,14 @@ type ItemDetails = {
   styleName: string;
   brandName: string;
   panels: number;
+  wings: PublicCatalog["styles"][number]["wings"];
   colorName: string;
   frameHex: string;
   glassName: string;
 };
 
-const DEFAULT_EXTRAS: Extras = { instalacion: true, persianaExterior: false, mosquitero: false };
-const STEPS = ["Producto", "Línea", "Estilo", "Medidas", "Color", "Vidrio", "Extras", "Precio", "Resumen", "Proceso", "Contacto", "Listo"];
+const DEFAULT_EXTRAS: Extras = { instalacion: true };
+const STEPS = ["Producto", "Línea", "Estilo", "Medidas", "Color", "Vidrio", "Instalación", "Precio", "Resumen", "Proceso", "Contacto", "Listo"];
 const S = {
   PRODUCT: 0,
   BRAND: 1,
@@ -89,6 +92,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   const brand = catalog.brands.find((b) => b.id === brandId) ?? null;
   const colorsForBrand = useMemo(() => catalog.colors.filter((c) => c.brandId === brandId), [catalog.colors, brandId]);
   const color = colorsForBrand.find((c) => c.id === colorId) ?? colorsForBrand[0] ?? null;
+  const glass = catalog.glass.find((entry) => entry.id === glassId) ?? catalog.glass[0];
   const frameHex = color?.hex ?? "#f3f3ef";
   const stylesForProduct = catalog.styles.filter((s) => s.productId === productId && s.brandId === brandId);
   const sizeError = useMemo(() => {
@@ -128,6 +132,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       styleName: itemStyle?.name ?? "Configuración",
       brandName: itemBrand?.name ?? "",
       panels: itemStyle?.panels ?? 1,
+      wings: itemStyle?.wings ?? ["fixed"],
       colorName: itemColor?.name ?? "",
       frameHex: itemColor?.hex ?? "#f3f3ef",
       glassName: itemGlass?.name ?? "",
@@ -303,6 +308,18 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     };
   });
   const footPrice = step >= S.PROCESS ? projectPrice : price;
+  const livePreview = style && color && step >= S.SIZE && step <= S.PRICE ? (
+    <LiveQuotePreview
+      styleName={style.name}
+      wings={style.wings}
+      widthMm={widthMm}
+      heightMm={heightMm}
+      qty={qty}
+      frameHex={frameHex}
+      colorName={color.name}
+      glassName={glass?.name ?? "Vidrio por elegir"}
+    />
+  ) : null;
 
   return (
     <div className="cotShell">
@@ -361,7 +378,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
             <div className="cotCards">
               {stylesForProduct.map((s) => (
                 <button key={s.id} className={`cotCard cotCardStyle ${styleId === s.id ? "sel" : ""}`} onClick={() => { setStyleId(s.id); setStep(S.SIZE); }}>
-                  <WindowPreview panels={s.panels} widthMm={3} heightMm={2} frameHex={frameHex} />
+                  <WindowPreview wings={s.wings} widthMm={3} heightMm={2} frameHex={frameHex} label={`Vista previa de ${s.name}`} />
                   <b>{s.name}</b><small>{s.blurb}</small>
                 </button>
               ))}
@@ -371,6 +388,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
 
         {step === S.SIZE && (
           <Screen title="¿De qué medida?" hint="En milímetros. Si no estás seguro, un asesor lo verifica después.">
+            {livePreview}
             <label className="cotField">Ancho (mm)<input type="number" inputMode="numeric" value={widthMm} onChange={(e) => setWidthMm(Number(e.target.value) || 0)} /></label>
             <label className="cotField">Alto (mm)<input type="number" inputMode="numeric" value={heightMm} onChange={(e) => setHeightMm(Number(e.target.value) || 0)} /></label>
             <div className="cotField">Cantidad<div className="cotStepper">
@@ -384,6 +402,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
 
         {step === S.COLOR && (
           <Screen title="Elige el color" hint="Color del marco, por dentro y por fuera.">
+            {livePreview}
             <div className="cotSwatches">
               {colorsForBrand.map((entry) => (
                 <button key={entry.id} className={`cotSwatch ${color?.id === entry.id ? "sel" : ""}`} onClick={() => setColorId(entry.id)}>
@@ -396,6 +415,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
 
         {step === S.GLASS && (
           <Screen title="Elige el vidrio" hint="De más económico a mayor aislamiento.">
+            {livePreview}
             <div className="cotCards">
               {catalog.glass.map((entry) => (
                 <button key={entry.id} className={`cotCard ${glassId === entry.id ? "sel" : ""}`} onClick={() => setGlassId(entry.id)}>
@@ -407,15 +427,15 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         )}
 
         {step === S.EXTRAS && (
-          <Screen title="¿Algo más?" hint="Puedes dejarlo como está y seguir.">
+          <Screen title="¿Incluimos la instalación?" hint="Elige si deseas que nuestro equipo instale tu proyecto.">
+            {livePreview}
             <Toggle label="Instalación" detail="Nuestro equipo la instala en tu domicilio." on={extras.instalacion} onChange={(value) => setExtras((current) => ({ ...current, instalacion: value }))} />
-            <Toggle label="Persiana exterior" detail="Da sombra y privacidad desde afuera." on={extras.persianaExterior} onChange={(value) => setExtras((current) => ({ ...current, persianaExterior: value }))} />
-            <Toggle label="Mosquitero" detail="Lo cotiza tu asesor aparte; no se suma al total." on={extras.mosquitero} onChange={(value) => setExtras((current) => ({ ...current, mosquitero: value }))} />
           </Screen>
         )}
 
         {step === S.PRICE && (
           <Screen title="Tu precio" hint="Se actualiza solo si cambias algo.">
+            {livePreview}
             <PriceBox price={price} pricing={pricing} error={priceError} qty={qty} />
           </Screen>
         )}
@@ -462,7 +482,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
               </div>
               {projectPrice && <p className="cotFinalTotal">Total del proyecto <b>{money(projectPrice.total)}</b></p>}
               {isEstimated && <p className="cotNote">{ESTIMATE_NOTE}</p>}
-              <p className="cotFinePrint">Precio preliminar con las medidas que capturaste. Un asesor confirma medidas en sitio antes de fabricar.</p>
+              <p className="cotFinePrint">Tu cotización ya se agregó como proyecto en LUFT PVC. El precio sigue siendo preliminar hasta que un asesor confirme las medidas en sitio.</p>
             </div>
             <div className="cotDoc procTimelineCard"><h3>¿Qué sigue?</h3><GlassTimeline currentIndex={1} /></div>
             {projectPrice && printableItems.length > 0 && (
@@ -478,6 +498,8 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
           </Screen>
         )}
       </main>
+
+      <QuoteAssistant step={step} supportHref={whatsappHref} />
 
       {step < S.DONE && (
         <footer className="cotFoot">
@@ -519,7 +541,6 @@ function PriceBox({ price, pricing, error, qty }: { price: Price | null; pricing
         <span>{price.estimated ? "Total aproximado" : "Total"}{pricing ? " · actualizando…" : ""}</span>
         <strong>{money(price.total)}</strong>
         {qty > 1 && <small>{money(price.unit)} por pieza</small>}
-        {price.hasQuoteOnRequestItems && <small>El mosquitero lo cotiza tu asesor aparte.</small>}
       </div>
       {price.estimated && <p className="cotNote">{ESTIMATE_NOTE}</p>}
     </>
@@ -539,7 +560,7 @@ function ProjectBar({ items, total, onReview }: { items: ProjectItem[]; total: n
 function ProjectItemCard({ index, item, details, current, onRemove }: { index: number; item: ProjectItem; details: ItemDetails; current?: boolean; onRemove?: () => void }) {
   return (
     <article className={`cotProjectItem ${current ? "isCurrent" : ""}`}>
-      <div className="cotProjectItemVisual"><WindowPreview panels={details.panels} widthMm={item.config.widthMm} heightMm={item.config.heightMm} frameHex={details.frameHex} /></div>
+      <div className="cotProjectItemVisual"><WindowPreview wings={details.wings} widthMm={item.config.widthMm} heightMm={item.config.heightMm} frameHex={details.frameHex} glassName={details.glassName} label={`Vista previa de ${details.styleName}`} /></div>
       <div className="cotProjectItemBody">
         <div className="cotProjectItemHead">
           <span><small>{current ? "Diseño actual" : `Diseño ${index + 1}`}</small><b>{details.styleName}</b></span>

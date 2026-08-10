@@ -44,7 +44,9 @@ export async function POST(request: Request) {
     const { price, itemPrices } = priceProjectConfigs(configs);
 
     const folio = `W-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-    const project = await createEmptyProject(db, `Cotización ${folio}`);
+    // Se guarda en la misma tabla `projects` que abre LUFT PVC. El prefijo y el cliente
+    // permiten reconocer de inmediato que llegó desde el cotizador público.
+    const project = await createEmptyProject(db, `Cotización WEB ${folio} · ${contact.name}`);
     let firstComponentId = "";
 
     for (const [index, config] of configs.entries()) {

@@ -1,8 +1,8 @@
 import { catalog } from "@/data/catalog";
 import { colors } from "@/data/colors";
 import { glassCatalog } from "@/data/glass";
-import { createLeaf } from "@/lib/tree";
-import type { Brand, FrameNode } from "@/types/domain";
+import { createLeaf, walkLeaves } from "@/lib/tree";
+import type { Brand, FrameNode, WingType } from "@/types/domain";
 
 // Catálogo de cara al cliente para app/cotizar.
 //
@@ -189,6 +189,8 @@ export type PublicStyle = {
   name: string;
   blurb: string;
   panels: number;
+  /** Aperturas reales de las hojas, usadas únicamente para la representación visual. */
+  wings: WingType[];
   maxW: number;
   maxH: number;
   estimated: boolean;
@@ -225,6 +227,7 @@ export function buildPublicCatalog(): PublicCatalog {
       name: s.name,
       blurb: s.blurb,
       panels: s.panels,
+      wings: walkLeaves(s.build()).map((leaf) => leaf.wing),
       maxW: sys.maxW,
       maxH: sys.maxH,
       estimated: isEstimatedSystem(s.brand, s.systemIndex),

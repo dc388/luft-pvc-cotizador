@@ -6,7 +6,7 @@ import { getCompanySettings, splitDeposit } from "@/lib/companySettings";
 import { defaultComponentData } from "@/lib/componentDefaults";
 import { colorIndexFor, findStyle, glassIndexFor, isEstimatedSystem, MAX_QTY } from "@/lib/publicCatalog";
 import { defaultMarco, walkLeaves } from "@/lib/tree";
-import type { Brand, FrameNode } from "@/types/domain";
+import type { Brand } from "@/types/domain";
 import type { ComponentData } from "@/types/project";
 
 // Núcleo del cotizador público (app/cotizar). Vive solo en el servidor: valida la
@@ -16,8 +16,6 @@ import type { ComponentData } from "@/types/project";
 
 export type PublicExtras = {
   instalacion: boolean;
-  persianaExterior: boolean;
-  mosquitero: boolean;
 };
 
 export type PublicQuoteConfig = {
@@ -35,8 +33,7 @@ export type PublicPrice = {
   unit: number;
   /** Precio total (unit × cantidad). */
   total: number;
-  /** true cuando el cliente pidió algo que el motor no tarifa todavía (mosquitero) y que
-   * por tanto NO está incluido en `total` -- la UI debe decirlo explícitamente. */
+  /** Reservado para futuros servicios que deban confirmar precio con un asesor. */
   hasQuoteOnRequestItems: boolean;
   /** true cuando el sistema cotizado no tiene precios de lista del proveedor. La UI DEBE
    * presentarlo como precio aproximado sujeto a confirmación, nunca como precio en firme. */
@@ -109,8 +106,6 @@ export function parseConfig(raw: unknown): PublicQuoteConfig {
     glassId,
     extras: {
       instalacion: asBool(extrasRaw.instalacion),
-      persianaExterior: asBool(extrasRaw.persianaExterior),
-      mosquitero: asBool(extrasRaw.mosquitero),
     },
   };
 }
@@ -125,11 +120,6 @@ export function parseProjectConfigs(raw: unknown): PublicQuoteConfig[] {
   return raw.map(parseConfig);
 }
 
-function withMallorquina(tree: FrameNode): FrameNode {
-  if (tree.kind === "leaf") return { ...tree, spec: { ...tree.spec, mallorquina: true } };
-  return { ...tree, children: tree.children.map(withMallorquina) };
-}
-
 // Construye el ComponentData real (el mismo que guarda la app interna) a partir de la
 // configuración pública. Margen, transporte e instalación salen de los valores de negocio ya
 // definidos en defaultComponentData() -- el cliente no puede tocarlos.
@@ -137,7 +127,7 @@ export function buildComponentData(config: PublicQuoteConfig): ComponentData {
   const style = findStyle(config.styleId);
   if (!style) throw new PublicQuoteError("Elige un estilo de la lista para continuar.");
   const base = defaultComponentData();
-  const tree = config.extras.persianaExterior ? withMallorquina(style.build()) : style.build();
+  const tree = style.build();
   const leaves = walkLeaves(tree);
 
   return {
@@ -146,7 +136,9 @@ export function buildComponentData(config: PublicQuoteConfig): ComponentData {
     glassIndex: glassIndexFor(config.glassId),
     installation: config.extras.instalacion ? base.installation : 0,
     tree,
-    marco: { ...defaultMarco(), mosquitero: config.extras.mosquitero },
+    // Cortina/persiana exterior y mosquitero no forman parte del cotizador público. Una
+    // pestaña antigua puede enviarlos, pero parseConfig los descarta y aquí quedan apagados.
+    marco: defaultMarco(),
     selectedId: leaves[0]?.id ?? "",
   };
 }
@@ -181,9 +173,7 @@ export function priceConfig(config: PublicQuoteConfig): PublicPrice {
   return {
     unit: Math.round(calc.sale),
     total,
-    // El mosquitero no tiene tarifa en el motor y la regla del proyecto es no inventar una,
-    // así que se registra en la cotización pero no se suma al total.
-    hasQuoteOnRequestItems: config.extras.mosquitero,
+    hasQuoteOnRequestItems: false,
     estimated: isEstimatedSystem(style.brand, style.systemIndex),
     depositPercentage,
     deposit,

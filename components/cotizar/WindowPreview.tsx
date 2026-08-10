@@ -1,17 +1,41 @@
-type Props = { panels: number; widthMm: number; heightMm: number; frameHex: string };
+import type { WingType } from "@/types/domain";
 
-// Dibujo simple del vano para el cliente: proporción real (ancho/alto), color de marco
-// elegido y una hoja por panel. No es el render técnico de la app interna (components/editor)
-// -- aquí solo hace falta que el cliente reconozca lo que está comprando.
-export function WindowPreview({ panels, widthMm, heightMm, frameHex }: Props) {
+type Props = {
+  panels?: number;
+  wings?: WingType[];
+  widthMm: number;
+  heightMm: number;
+  frameHex: string;
+  glassName?: string;
+  label?: string;
+};
+
+// Representación comercial derivada de las aperturas reales del catálogo. No reutiliza el
+// editor técnico ni expone perfiles o costos internos: solo proporción, hojas, color y vidrio.
+export function WindowPreview({ panels = 1, wings, widthMm, heightMm, frameHex, glassName = "", label }: Props) {
   const ratio = widthMm > 0 && heightMm > 0 ? widthMm / heightMm : 1.5;
   const light = isLight(frameHex);
+  const paneWings = wings?.length ? wings : Array.from({ length: panels }, () => "fixed" as WingType);
+  const glassTone = /doble|dvh/i.test(glassName)
+    ? "double"
+    : /laminado/i.test(glassName)
+      ? "laminated"
+      : /seguridad|templado/i.test(glassName)
+        ? "security"
+        : "clear";
+
   return (
-    <div className="cotPreview" style={{ aspectRatio: String(ratio) }}>
+    <div
+      className="cotPreview"
+      style={{ aspectRatio: String(ratio) }}
+      role="img"
+      aria-label={label ?? `Vista previa de ${paneWings.length} ${paneWings.length === 1 ? "hoja" : "hojas"}`}
+    >
       <div className="cotPreviewFrame" style={{ background: frameHex, borderColor: light ? "#00000022" : "#ffffff22" }}>
-        {Array.from({ length: panels }, (_, i) => (
-          <div className="cotPreviewPane" key={i} style={{ borderColor: frameHex }}>
-            <span className="cotPreviewGlass" />
+        {paneWings.map((wing, index) => (
+          <div className="cotPreviewPane" key={`${wing}-${index}`} style={{ borderColor: frameHex }}>
+            <span className="cotPreviewGlass" data-glass={glassTone} />
+            <OpeningMark wing={wing} />
           </div>
         ))}
       </div>
@@ -19,10 +43,37 @@ export function WindowPreview({ panels, widthMm, heightMm, frameHex }: Props) {
   );
 }
 
+function OpeningMark({ wing }: { wing: WingType }) {
+  if (wing === "fixed" || wing === "inactive" || wing === "sliding-fixed") return null;
+
+  if (wing === "sliding" || wing === "lift-slide" || wing === "folding-sliding") {
+    return (
+      <svg className="cotPreviewOpening" viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M18 50h64M30 38 18 50l12 12M70 38l12 12-12 12" />
+      </svg>
+    );
+  }
+
+  if (wing === "project" || wing === "hopper") {
+    return (
+      <svg className="cotPreviewOpening" viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M12 14 50 84 88 14M28 30h44" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="cotPreviewOpening" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M12 10 86 50 12 90" />
+      {wing === "tilt-turn" && <path d="M12 10 50 84 88 10" />}
+    </svg>
+  );
+}
+
 function isLight(hex: string): boolean {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return true;
-  const n = parseInt(m[1], 16);
-  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  return (r * 299 + g * 587 + b * 114) / 1000 > 140;
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!match) return true;
+  const value = parseInt(match[1], 16);
+  const [red, green, blue] = [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+  return (red * 299 + green * 587 + blue * 114) / 1000 > 140;
 }
