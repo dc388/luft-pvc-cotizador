@@ -21,14 +21,17 @@ export function EditableDim({ label, valueMm, min, onCommit }: Props) {
 
   useEffect(() => {
     if (!editing) return;
-    setDraft(String(valueMm));
     const id = requestAnimationFrame(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
     });
     return () => cancelAnimationFrame(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing]);
+
+  const startEditing = () => {
+    setDraft(String(valueMm));
+    setEditing(true);
+  };
 
   const commit = () => {
     setEditing(false);
@@ -54,7 +57,7 @@ export function EditableDim({ label, valueMm, min, onCommit }: Props) {
   }
 
   return (
-    <button type="button" className="dimLabel" onClick={() => setEditing(true)} title="Clic para editar la medida">
+    <button type="button" className="dimLabel" onClick={startEditing} title="Clic para editar la medida">
       {label}={valueMm.toLocaleString()} mm
     </button>
   );

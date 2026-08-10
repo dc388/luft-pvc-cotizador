@@ -59,7 +59,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   const [glassId, setGlassId] = useState(catalog.glass[0].id);
   const [extras, setExtras] = useState<Extras>({ instalacion: true, persianaExterior: false, mosquitero: false });
 
-  const [price, setPrice] = useState<Price | null>(null);
+  const [quotedPrice, setQuotedPrice] = useState<Price | null>(null);
   const [pricing, setPricing] = useState(false);
   const [priceError, setPriceError] = useState("");
 
@@ -77,10 +77,6 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   const frameHex = color?.hex ?? "#f3f3ef";
   const glass = catalog.glass.find((g) => g.id === glassId) ?? catalog.glass[0];
   const stylesForProduct = catalog.styles.filter((s) => s.productId === productId && s.brandId === brandId);
-  // El servidor manda la verdad (price.estimated); el estilo la anticipa para poder avisar
-  // antes de que exista un precio que mostrar.
-  const isEstimated = price?.estimated ?? style?.estimated ?? false;
-
   const sizeError = useMemo(() => {
     if (!style) return "";
     if (widthMm < catalog.minMm || heightMm < catalog.minMm) return `La medida mínima es de ${catalog.minMm} mm por lado.`;
@@ -89,14 +85,18 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     return "";
   }, [style, widthMm, heightMm, catalog.minMm]);
 
+  // Keep an earlier server response cached while the user edits, but never expose it for an
+  // incomplete or invalid configuration. This avoids synchronously clearing state in an effect.
+  const price = style && color && !sizeError ? quotedPrice : null;
+  // El servidor manda la verdad (price.estimated); el estilo la anticipa para poder avisar
+  // antes de que exista un precio que mostrar.
+  const isEstimated = price?.estimated ?? style?.estimated ?? false;
+
   // Recotiza en el servidor cada vez que cambia la configuración. El precio nunca se calcula
   // en el navegador: aquí solo se muestra lo que responde /api/public-quote.
   const requestId = useRef(0);
   useEffect(() => {
-    if (!style || !color || sizeError) {
-      setPrice(null);
-      return;
-    }
+    if (!style || !color || sizeError) return;
     const id = ++requestId.current;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
@@ -112,15 +112,15 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         const json = (await res.json()) as { price?: Price; error?: string };
         if (id !== requestId.current) return;
         if (!res.ok || !json.price) {
-          setPrice(null);
+          setQuotedPrice(null);
           setPriceError(json.error ?? "No pudimos calcular el precio.");
         } else {
-          setPrice(json.price);
+          setQuotedPrice(json.price);
         }
       } catch (error) {
         if ((error as Error).name === "AbortError") return;
         if (id !== requestId.current) return;
-        setPrice(null);
+        setQuotedPrice(null);
         setPriceError("No pudimos calcular el precio. Revisa tu conexión.");
       } finally {
         if (id === requestId.current) setPricing(false);
@@ -160,7 +160,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         return;
       }
       setFolio(json.folio);
-      if (json.price) setPrice(json.price);
+      if (json.price) setQuotedPrice(json.price);
       setStep(S.DONE);
     } catch {
       setSubmitError("No pudimos enviar tu cotización. Revisa tu conexión.");

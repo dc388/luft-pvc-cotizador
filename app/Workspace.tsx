@@ -255,31 +255,35 @@ export function Workspace({ company }: { company: CompanySettings }) {
   // share brand+system+color). The full records (tree/marco included) are fetched on demand --
   // the outliner's ComponentSummary list deliberately omits that payload. ----------
   const [reportScope, setReportScope] = useState<"vano" | "proyecto">("vano");
-  const [projectComponents, setProjectComponents] = useState<ComponentRecord[] | null>(null);
-  const [projectComponentsLoading, setProjectComponentsLoading] = useState(false);
+  const [projectComponentsResult, setProjectComponentsResult] = useState<{
+    key: string;
+    records: ComponentRecord[] | null;
+  }>({ key: "", records: null });
   const scopeApplies = PROJECT_SCOPED_REPORTS.includes(report);
+  const projectComponentsKey =
+    projectId && reportScope === "proyecto" && scopeApplies && components.length > 1
+      ? `${projectId}:${components.map((component) => component.id).join(",")}`
+      : "";
 
   useEffect(() => {
-    if (!projectId || reportScope !== "proyecto" || !scopeApplies || components.length <= 1) {
-      setProjectComponents(null);
-      return;
-    }
+    if (!projectId || !projectComponentsKey) return;
     let cancelled = false;
-    setProjectComponentsLoading(true);
     Promise.all(components.map((c) => fetchComponent(projectId, c.id)))
       .then((records) => {
-        if (!cancelled) setProjectComponents(records);
+        if (!cancelled) setProjectComponentsResult({ key: projectComponentsKey, records });
       })
       .catch(() => {
-        if (!cancelled) setProjectComponents(null);
-      })
-      .finally(() => {
-        if (!cancelled) setProjectComponentsLoading(false);
+        if (!cancelled) setProjectComponentsResult({ key: projectComponentsKey, records: null });
       });
     return () => {
       cancelled = true;
     };
-  }, [projectId, reportScope, scopeApplies, components]);
+  }, [projectId, projectComponentsKey, components]);
+
+  const projectComponents =
+    projectComponentsResult.key === projectComponentsKey ? projectComponentsResult.records : null;
+  const projectComponentsLoading =
+    projectComponentsKey !== "" && projectComponentsResult.key !== projectComponentsKey;
 
   const refreshComponentList = async (pid: string) => {
     try {

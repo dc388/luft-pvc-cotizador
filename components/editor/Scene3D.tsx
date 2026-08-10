@@ -68,7 +68,9 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
   const raycasterRef = useRef<THREE.Raycaster | null>(null);
   const clickableRef = useRef<THREE.Object3D[]>([]);
   const stateRef = useRef({ tree, width, height, activeTool, onSelect, onSplit, onAssignWing });
-  stateRef.current = { tree, width, height, activeTool, onSelect, onSplit, onAssignWing };
+  useEffect(() => {
+    stateRef.current = { tree, width, height, activeTool, onSelect, onSplit, onAssignWing };
+  }, [tree, width, height, activeTool, onSelect, onSplit, onAssignWing]);
   // Scene3D mounts once on page load, while the 2D view is active and .canvas3dWrap has
   // display:none -- so the very first resize() below measures a 0-size .scene3dSlot (a
   // display:none ancestor gives it no layout box at all) and pins the canvas at 1x1 forever via

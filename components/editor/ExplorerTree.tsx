@@ -1,8 +1,8 @@
 "use client";
 
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import type { FocusScope, FrameNode } from "@/types/domain";
-import { wingName } from "@/lib/tree";
+import { walkLeaves, wingName } from "@/lib/tree";
 import { SIDES, SIDE_LABELS, type PartKind, type SideKey } from "./frameTypes";
 
 type Props = {
@@ -46,7 +46,10 @@ export function ExplorerTree({
       return next;
     });
 
-  let leafNumber = 0;
+  const leafNumbers = useMemo(
+    () => new Map(walkLeaves(tree).map((leaf, index) => [leaf.id, index + 1])),
+    [tree],
+  );
 
   function renderNode(node: FrameNode, depth: number): ReactNode {
     if (node.kind === "split") {
@@ -69,8 +72,7 @@ export function ExplorerTree({
     }
 
     const leaf = node;
-    leafNumber += 1;
-    const i = leafNumber;
+    const i = leafNumbers.get(leaf.id) ?? 0;
     const leafActive = focusScope === "leaf" && leaf.id === selectedId;
     const leafIsOperable = leaf.wing !== "fixed" && leaf.wing !== "inactive" && leaf.wing !== "sliding-fixed";
     return (
