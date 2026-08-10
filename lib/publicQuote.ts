@@ -50,6 +50,11 @@ export type PublicPrice = {
   remaining: number;
 };
 
+// La interfaz no impone un límite práctico de ventanas, pero el servidor sí necesita un
+// techo anti-abuso para que un único payload no consuma memoria o llene la base de datos.
+// Cien configuraciones por proyecto cubren holgadamente una vivienda o edificio pequeño.
+export const MAX_PROJECT_ITEMS = 100;
+
 export class PublicQuoteError extends Error {}
 
 function asInt(value: unknown): number | null {
@@ -108,6 +113,16 @@ export function parseConfig(raw: unknown): PublicQuoteConfig {
       mosquitero: asBool(extrasRaw.mosquitero),
     },
   };
+}
+
+export function parseProjectConfigs(raw: unknown): PublicQuoteConfig[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new PublicQuoteError("Agrega al menos una ventana a tu proyecto.");
+  }
+  if (raw.length > MAX_PROJECT_ITEMS) {
+    throw new PublicQuoteError(`Un proyecto puede incluir hasta ${MAX_PROJECT_ITEMS} configuraciones. Un asesor puede ayudarte con proyectos mayores.`);
+  }
+  return raw.map(parseConfig);
 }
 
 function withMallorquina(tree: FrameNode): FrameNode {
@@ -173,6 +188,29 @@ export function priceConfig(config: PublicQuoteConfig): PublicPrice {
     depositPercentage,
     deposit,
     remaining,
+  };
+}
+
+export function priceProjectConfigs(configs: PublicQuoteConfig[]): { price: PublicPrice; itemPrices: PublicPrice[] } {
+  if (configs.length === 0) throw new PublicQuoteError("Agrega al menos una ventana a tu proyecto.");
+  const itemPrices = configs.map(priceConfig);
+  const total = itemPrices.reduce((sum, item) => sum + item.total, 0);
+  const { depositPercentage, deposit, remaining } = splitDeposit(total, getCompanySettings().depositPercentage);
+
+  return {
+    price: {
+      // En un proyecto de varias configuraciones no existe un único precio unitario. Se
+      // conserva el contrato de PublicPrice y se usa el total; cada renglón mantiene su
+      // precio unitario real dentro de itemPrices.
+      unit: total,
+      total,
+      hasQuoteOnRequestItems: itemPrices.some((item) => item.hasQuoteOnRequestItems),
+      estimated: itemPrices.some((item) => item.estimated),
+      depositPercentage,
+      deposit,
+      remaining,
+    },
+    itemPrices,
   };
 }
 

@@ -50,7 +50,8 @@ que sostenerla.
 **Motor y datos**
 - `calcQuote()` (`lib/calc.ts`) — única fuente del precio. El frontend nunca calcula.
 - `data/catalog.ts`, `colors.ts`, `glass.ts`, `families.ts` — únicos catálogos.
-- `lib/publicQuote.ts` — `parseConfig()` / `priceConfig()` / `buildComponentData()`.
+- `lib/publicQuote.ts` — `parseConfig()` / `parseProjectConfigs()` /
+  `priceConfig()` / `priceProjectConfigs()` / `buildComponentData()`.
   Ya es la frontera de seguridad: valida contra catálogos reales y responde solo
   con el precio comercial, nunca con `direct`, `margin` ni `utility`.
 - `lib/publicCatalog.ts` — el allowlist `STYLE_DEFS` es lo que impide cotizar
@@ -58,8 +59,9 @@ que sostenerla.
   de estimado.
 
 **Persistencia**
-- `lib/projectRepo.ts` — `getOrCreateProjectByName()`, `createComponentWithData()`,
-  `updateComponent()`. Un solo camino de guardado, compartido con la app interna.
+- `lib/projectRepo.ts` — `createEmptyProject()`, `createComponentWithData()`,
+  `updateComponent()`. Cada envío público crea un proyecto con uno o varios
+  componentes mediante el mismo camino de guardado de la app interna.
 - **`components.data` es una columna JSON**: campos nuevos del cliente (contacto,
   extras, metadatos) entran sin migración de esquema. Lo que sí necesita columna
   propia es cualquier cosa por la que haya que *filtrar o buscar* — el estado, por

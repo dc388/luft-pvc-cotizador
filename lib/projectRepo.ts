@@ -91,6 +91,16 @@ export async function createProject(db: Db, name = "Proyecto sin nombre"): Promi
   return projectRecord(db, row);
 }
 
+// Crea un proyecto vacío para flujos que ya traen todos sus componentes, como el cotizador
+// público. Evita sembrar la ventana genérica que createProject() necesita en el editor.
+export async function createEmptyProject(db: Db, name: string): Promise<ProjectRecord> {
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await db.insert(projects).values({ id, name, activeComponentId: null, createdAt: now, updatedAt: now });
+  const [row] = await db.select().from(projects).where(eq(projects.id, id));
+  return projectRecord(db, row);
+}
+
 export async function getProject(db: Db, projectId: string): Promise<ProjectRecord | null> {
   const [row] = await db.select().from(projects).where(eq(projects.id, projectId));
   if (!row) return null;
@@ -197,12 +207,7 @@ export async function createComponent(
 export async function getOrCreateProjectByName(db: Db, name: string): Promise<ProjectRecord> {
   const [existing] = await db.select().from(projects).where(eq(projects.name, name)).limit(1);
   if (existing) return projectRecord(db, existing);
-
-  const id = crypto.randomUUID();
-  const now = new Date().toISOString();
-  await db.insert(projects).values({ id, name, activeComponentId: null, createdAt: now, updatedAt: now });
-  const [row] = await db.select().from(projects).where(eq(projects.id, id));
-  return projectRecord(db, row);
+  return createEmptyProject(db, name);
 }
 
 export async function createComponentWithData(

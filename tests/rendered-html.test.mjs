@@ -79,3 +79,64 @@ test("public quote exposes only Aluplast and rejects removed Deceuninck styles",
   assert.equal(apiResponse.status, 400);
   assert.match((await apiResponse.json()).error, /Elige un estilo de la lista/i);
 });
+
+test("public quote prices multiple window configurations as one project", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-multi-item`);
+  const { default: worker } = await import(workerUrl.href);
+  const env = { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } };
+  const ctx = { waitUntil() {}, passThroughOnException() {} };
+  const base = {
+    widthMm: 1200,
+    heightMm: 1200,
+    colorId: "bl",
+    glassId: "Cristal recocido claro 6 mm",
+    extras: { instalacion: true, persianaExterior: false, mosquitero: false },
+  };
+
+  const response = await worker.fetch(
+    new Request("http://localhost/api/public-quote", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.20" },
+      body: JSON.stringify({
+        items: [
+          { ...base, styleId: "alu-fija", qty: 1 },
+          { ...base, styleId: "alu-corrediza-2", widthMm: 1800, qty: 2 },
+        ],
+      }),
+    }),
+    env,
+    ctx,
+  );
+  const json = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(json.itemPrices.length, 2);
+  assert.equal(json.price.total, json.itemPrices[0].total + json.itemPrices[1].total);
+  assert.equal(json.price.deposit + json.price.remaining, json.price.total);
+});
+
+test("public quote rejects abusive project payload sizes", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-multi-item-limit`);
+  const { default: worker } = await import(workerUrl.href);
+  const config = {
+    styleId: "alu-fija",
+    widthMm: 1200,
+    heightMm: 1200,
+    qty: 1,
+    colorId: "bl",
+    glassId: "Cristal recocido claro 6 mm",
+    extras: { instalacion: true, persianaExterior: false, mosquitero: false },
+  };
+  const response = await worker.fetch(
+    new Request("http://localhost/api/public-quote", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.21" },
+      body: JSON.stringify({ items: Array.from({ length: 101 }, () => config) }),
+    }),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error, /hasta 100 configuraciones/i);
+});

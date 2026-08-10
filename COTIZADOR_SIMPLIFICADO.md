@@ -173,19 +173,19 @@ presente en `app/globals.css` en vez de crear una hoja de estilos paralela.
 
 | Pieza | Archivo |
 |-------|---------|
-| Wizard de 10 pantallas (mobile-first) | `app/cotizar/page.tsx` (server component) + `components/cotizar/QuoteWizard.tsx` (cliente) |
+| Wizard de 12 pantallas (mobile-first) + proyecto de múltiples configuraciones | `app/cotizar/page.tsx` (server component) + `components/cotizar/QuoteWizard.tsx` (cliente) |
 | Dibujo del vano para el cliente | `components/cotizar/WindowPreview.tsx` |
 | Catálogo público (sin precios) | `lib/publicCatalog.ts` — `buildPublicCatalog()` corre en servidor; el cliente solo hace `import type` |
 | Validación + precio | `lib/publicQuote.ts` — llama `calcQuote()` de `lib/calc.ts` |
-| Precio en vivo | `POST /api/public-quote` — devuelve solo `{ unit, total }` |
-| Guardar cotización | `POST /api/public-quote/submit` — repriceo server-side + `getOrCreateProjectByName("Cotizador web")` |
+| Precio en vivo | `POST /api/public-quote` — cotiza una configuración o un arreglo `items`; devuelve precios comerciales por renglón y total |
+| Guardar cotización | `POST /api/public-quote/submit` — repriceo server-side + un proyecto independiente por folio con N componentes |
 | Contacto en el modelo | `ComponentData.clientPhone` / `clientEmail` (opcionales) + campos Teléfono/Correo en la pestaña Resumen interna |
 | Estilos | bloque "Cotizador público" en `app/globals.css` |
 
-Decisiones aplicadas: PDF = imprimir el resumen desde el navegador (mismo
+Decisiones aplicadas: PDF = imprimir el resumen multipágina desde el navegador (mismo
 patrón que ya existía); WhatsApp = enlace `wa.me/529932211158`, usado como paso
-de atención humana cuando el cliente ya decidió avanzar; proyecto contenedor
-único **"Cotizador web"**.
+de atención humana cuando el cliente ya decidió avanzar; cada envío se guarda
+como su propio proyecto y todas sus ventanas comparten un único folio.
 
 Comportamiento verificado en el navegador (dev): el precio se recalcula solo al
 cambiar cualquier opción; un estilo fuera de catálogo o una medida sobre el

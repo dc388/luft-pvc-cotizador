@@ -1,5 +1,5 @@
 import { checkBurst, clientIp, tooManyRequests } from "@/lib/rateLimit";
-import { parseConfig, priceConfig, PublicQuoteError } from "@/lib/publicQuote";
+import { parseConfig, parseProjectConfigs, priceConfig, priceProjectConfigs, PublicQuoteError } from "@/lib/publicQuote";
 
 // Precio en vivo del cotizador público (app/cotizar). Recalcula con el mismo motor que la app
 // interna y responde SOLO con el precio comercial -- ningún costo, margen ni detalle de
@@ -12,7 +12,11 @@ export async function POST(request: Request) {
   if (!checkBurst(clientIp(request))) return tooManyRequests(60);
 
   try {
-    const config = parseConfig(await request.json().catch(() => ({})));
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    if (Array.isArray(body.items)) {
+      return Response.json(priceProjectConfigs(parseProjectConfigs(body.items)));
+    }
+    const config = parseConfig(body);
     return Response.json({ price: priceConfig(config) });
   } catch (error) {
     if (error instanceof PublicQuoteError) return Response.json({ error: error.message }, { status: 400 });

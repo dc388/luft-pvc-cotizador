@@ -641,6 +641,55 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .cotSummary{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .cotSummary li{font-size:14px;padding-bottom:8px;border-bottom:1px solid var(--cg-line)}
 .cotSummary li:last-child{border-bottom:0;padding-bottom:0}
+
+/* Proyecto con múltiples configuraciones. Cada renglón conserva su propio precio de
+   servidor; el total conjunto se valida de nuevo antes de avanzar. */
+.cotProjectBar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;border-radius:22px;
+  border:1px solid color-mix(in srgb,var(--cg-mint) 48%,var(--cg-line));
+  background:linear-gradient(145deg,rgba(255,255,255,.72),color-mix(in srgb,var(--cg-mint) 17%,rgba(255,255,255,.54)));
+  backdrop-filter:blur(16px) saturate(170%);-webkit-backdrop-filter:blur(16px) saturate(170%);
+  box-shadow:inset 0 1px 0 var(--cg-edge),0 12px 28px -18px var(--cg-shadow)
+}
+.cotProjectBar>span{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cotProjectBar b{font-size:14px;font-weight:680}
+.cotProjectBar small{font-size:11.5px;color:var(--cg-muted);line-height:1.35}
+.cotProjectBar button{flex:0 0 auto;min-height:38px;padding:0 15px;border-radius:999px;font-size:12px;font-weight:700;color:var(--cg-accent-deep);border:1px solid var(--cg-line);background:rgba(255,255,255,.6);box-shadow:inset 0 1px 0 var(--cg-edge)}
+.cotProjectList{display:flex;flex-direction:column;gap:11px}
+.cotProjectItem{
+  display:grid;grid-template-columns:94px minmax(0,1fr);gap:13px;align-items:center;padding:14px;border-radius:23px;
+  border:1px solid var(--cg-line);background:var(--cg-tint);backdrop-filter:blur(16px) saturate(165%);-webkit-backdrop-filter:blur(16px) saturate(165%);
+  box-shadow:inset 0 1px 0 var(--cg-edge),0 10px 26px -18px var(--cg-shadow)
+}
+.cotProjectItem.isCurrent{border-color:color-mix(in srgb,var(--cg-accent) 44%,transparent);box-shadow:inset 0 1px 0 var(--cg-edge),0 0 0 3px color-mix(in srgb,var(--cg-accent) 12%,transparent),0 12px 28px -18px var(--cg-accent)}
+.cotProjectItemVisual{height:96px;display:flex;align-items:center}
+.cotProjectItemVisual .cotPreview{height:100%;padding:6px}
+.cotProjectItemBody{min-width:0;display:flex;flex-direction:column;gap:5px}
+.cotProjectItemHead{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.cotProjectItemHead>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cotProjectItemHead small{font-size:9.5px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--cg-accent-deep)}
+.cotProjectItemHead b{font-size:14.5px;font-weight:680;line-height:1.25}
+.cotProjectItemHead button{padding:5px 7px;border:0;background:transparent;color:var(--cg-muted);font-size:10.5px;text-decoration:underline;text-underline-offset:2px}
+.cotProjectItemBody p{margin:0;font-size:11.5px;color:var(--cg-muted);line-height:1.35}
+.cotProjectItemBody>strong{margin-top:2px;font-size:16px;font-weight:720;font-variant-numeric:tabular-nums}
+.cotProjectTotal{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;border-radius:22px;
+  border:1px solid rgba(255,255,255,.62);background:linear-gradient(140deg,rgba(197,214,255,.78),rgba(214,199,255,.74) 50%,rgba(255,209,232,.72));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 14px 32px -22px var(--cg-accent)
+}
+.cotProjectTotal span{font-size:11.5px;font-weight:600;color:color-mix(in srgb,var(--cg-ink) 72%,transparent)}
+.cotProjectTotal b{font-size:22px;font-weight:740;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.cotAddAnother{
+  width:100%;display:flex;align-items:center;gap:13px;text-align:left;padding:15px 17px;color:var(--cg-ink);border-radius:23px;
+  border:1px dashed color-mix(in srgb,var(--cg-accent) 52%,var(--cg-line));background:rgba(255,255,255,.4);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:inset 0 1px 0 var(--cg-edge);transition:transform .18s,background .2s,border-color .2s
+}
+.cotAddAnother:active{transform:scale(.985)}
+.cotAddAnother i{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;font-size:22px;font-style:normal;color:#fff;background:linear-gradient(145deg,var(--cg-accent),var(--cg-accent-deep));box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 8px 18px -10px var(--cg-accent-deep)}
+.cotAddAnother span{display:flex;flex-direction:column;gap:3px}
+.cotAddAnother b{font-size:14.5px;font-weight:680}
+.cotAddAnother small{font-size:11.5px;color:var(--cg-muted);line-height:1.35}
+.cotProjectListCompact .cotProjectItem{background:rgba(255,255,255,.34);box-shadow:inset 0 1px 0 var(--cg-edge)}
 /* La pieza protagonista: cristal pastel teñido, no un bloque de color plano. Texto en tinta
    oscura (no blanco) porque sobre pastel claro el blanco no alcanza contraste legible. */
 .cotPriceBox{
@@ -765,6 +814,8 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 
 @media(min-width:620px){
   .cotSwatches{grid-template-columns:repeat(3,1fr)}
+  .cotProjectItem{grid-template-columns:120px minmax(0,1fr);padding:16px}
+  .cotProjectItemVisual{height:108px}
   .cotFoot{left:50%;right:auto;transform:translateX(-50%);width:min(596px,calc(100% - 28px));justify-content:center}
   .cotFoot .cotPrimary{flex:0 0 auto;min-width:220px}
   /* En pantalla ancha la ilustración se va al costado en vez de ocupar su propia fila. */
@@ -847,15 +898,15 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 
 @media (prefers-reduced-transparency: reduce){
   .cotShell{--cg-tint:rgba(255,255,255,.95);--cg-tint-strong:rgba(255,255,255,.98)}
-  .cotTop,.cotFoot,.cotCard,.cotSwatch,.cotToggle,.cotDoc,.cotPriceBox,.cotField input,.cotStepper button,.cotSecondary,.cotWarn,.cotNote,.glassCard{backdrop-filter:none;-webkit-backdrop-filter:none}
+  .cotTop,.cotFoot,.cotCard,.cotSwatch,.cotToggle,.cotDoc,.cotPriceBox,.cotField input,.cotStepper button,.cotSecondary,.cotWarn,.cotNote,.glassCard,.cotProjectBar,.cotProjectItem,.cotAddAnother{backdrop-filter:none;-webkit-backdrop-filter:none}
   .cotPriceBox::after{display:none}
 }
 
 /* Reveal ya se desactiva en JS al detectar esta preferencia (el contenido nace visible); esta
    regla es el respaldo por si el CSS carga antes de que el componente hidrate. */
 @media (prefers-reduced-motion: reduce){
-  .cotCard,.cotSwatch,.cotToggle,.cotPrimary,.cotSecondary,.cotStepper button,.cotProgress span{transition:none}
-  .cotCard:active,.cotSwatch:active,.cotPrimary:active:not(:disabled),.cotSecondary:active,.cotStepper button:active{transform:none}
+  .cotCard,.cotSwatch,.cotToggle,.cotPrimary,.cotSecondary,.cotStepper button,.cotProgress span,.cotAddAnother{transition:none}
+  .cotCard:active,.cotSwatch:active,.cotPrimary:active:not(:disabled),.cotSecondary:active,.cotStepper button:active,.cotAddAnother:active{transform:none}
   .glassReveal,.glassReveal.isHidden{opacity:1;transform:none;filter:none;transition:none}
 }
 
