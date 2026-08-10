@@ -19,12 +19,14 @@ hosting="${SITES_PROJECT_ROOT}/dist/.openai/hosting.json"
   exit 66
 }
 
-node --input-type=module - "${worker}" "${hosting}" <<'NODE'
+node --input-type=module - "${worker}" "${hosting}" "${SITES_PROJECT_ROOT}/tests/cloudflare-workers-loader.mjs" <<'NODE'
 import { readFile } from "node:fs/promises";
+import { register } from "node:module";
 import { pathToFileURL } from "node:url";
 
-const [workerPath, hostingPath] = process.argv.slice(2);
+const [workerPath, hostingPath, loaderPath] = process.argv.slice(2);
 JSON.parse(await readFile(hostingPath, "utf8"));
+register(pathToFileURL(loaderPath));
 
 const workerUrl = pathToFileURL(workerPath);
 workerUrl.searchParams.set("sites-validation", `${process.pid}-${Date.now()}`);

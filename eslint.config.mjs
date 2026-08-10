@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local/generated workspaces and vendored browser libraries are not app source.
+    ".claude/worktrees/**",
+    ".sites-runtime/**",
+    ".vinext/**",
+    ".wrangler/**",
+    "graphify-out/**",
+    "static/vendor/**",
   ]),
 ]);
 
