@@ -166,38 +166,38 @@ function validatedAction(value: unknown, context: PublicAssistantContext): Publi
   if (kind === "dimensions") {
     const widthMm = integer(action.widthMm, 0, 1, 20_000);
     const heightMm = integer(action.heightMm, 0, 1, 20_000);
-    return dimensionsAllowed(widthMm, heightMm, context) ? { kind, widthMm, heightMm } : undefined;
+    return dimensionsAllowed(widthMm, heightMm, context) && (widthMm !== context.widthMm || heightMm !== context.heightMm) ? { kind, widthMm, heightMm } : undefined;
   }
   if (kind === "width") {
     const widthMm = integer(action.widthMm, 0, 1, 20_000);
-    return dimensionsAllowed(widthMm, context.heightMm, context) ? { kind, widthMm } : undefined;
+    return dimensionsAllowed(widthMm, context.heightMm, context) && widthMm !== context.widthMm ? { kind, widthMm } : undefined;
   }
   if (kind === "height") {
     const heightMm = integer(action.heightMm, 0, 1, 20_000);
-    return dimensionsAllowed(context.widthMm, heightMm, context) ? { kind, heightMm } : undefined;
+    return dimensionsAllowed(context.widthMm, heightMm, context) && heightMm !== context.heightMm ? { kind, heightMm } : undefined;
   }
   if (kind === "quantity") {
     const qty = integer(action.qty, 0, 1, context.catalog.maxQty);
-    return qty ? { kind, qty } : undefined;
+    return qty && qty !== context.qty ? { kind, qty } : undefined;
   }
   if (kind === "product") {
     const product = context.catalog.products.find((entry) => entry.id === text(action.productId, 100));
-    return product ? { kind, productId: product.id, productName: product.name } : undefined;
+    return product && product.id !== context.productId ? { kind, productId: product.id, productName: product.name } : undefined;
   }
   if (kind === "style") {
     const style = context.catalog.styles.find((entry) => entry.id === text(action.styleId, 100));
-    return style ? { kind, styleId: style.id, styleName: style.name } : undefined;
+    return style && style.id !== context.styleId ? { kind, styleId: style.id, styleName: style.name } : undefined;
   }
   if (kind === "color") {
     const activeBrand = context.catalog.styles.find((entry) => entry.id === context.styleId)?.brandId ?? context.brandId;
     const color = context.catalog.colors.find((entry) => entry.id === text(action.colorId, 100) && entry.brandId === activeBrand);
-    return color ? { kind, colorId: color.id, colorName: color.name } : undefined;
+    return color && color.id !== context.colorId ? { kind, colorId: color.id, colorName: color.name } : undefined;
   }
   if (kind === "glass") {
     const glass = context.catalog.glass.find((entry) => entry.id === text(action.glassId, 160));
-    return glass ? { kind, glassId: glass.id, glassName: glass.name } : undefined;
+    return glass && glass.id !== context.glassId ? { kind, glassId: glass.id, glassName: glass.name } : undefined;
   }
-  if (kind === "installation" && typeof action.installation === "boolean") return { kind, value: action.installation };
+  if (kind === "installation" && typeof action.installation === "boolean" && action.installation !== context.installation) return { kind, value: action.installation };
   return undefined;
 }
 
@@ -267,6 +267,8 @@ export async function answerPublicAssistant(
   const context = canonicalPublicAssistantContext(rawContext);
   const fallback = (): PublicAssistantAnswer => ({ ...buildPublicAssistantReply(question, context), source: "rules" });
   if (!question || !runModel || isConfidentialAssistantRequest(question) || /(?:precio|cu[aá]nto cuesta|total|dep[oó]sito|saldo)/i.test(question)) return fallback();
+  const direct = buildPublicAssistantReply(question, context);
+  if (direct.action) return { ...direct, source: "rules" };
 
   const safeHistory = history.slice(-8).map((entry) => ({
     role: entry.role === "assistant" ? "assistant" : "user",

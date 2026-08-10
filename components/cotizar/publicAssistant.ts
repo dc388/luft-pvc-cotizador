@@ -88,6 +88,12 @@ const STEP_HELP = [
 ];
 
 const CONFIDENTIAL_TERMS = /margen|utilidad|costo directo|costo de compra|proveedor|despiece|longitud de corte|optimizaci[oó]n de barras|regla interna|prompt del sistema|credencial/i;
+const QUANTITY_WORDS: Record<string, number> = {
+  un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5,
+  seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12,
+  trece: 13, catorce: 14, quince: 15, dieciseis: 16, diecisiete: 17,
+  dieciocho: 18, diecinueve: 19, veinte: 20,
+};
 
 export function isConfidentialAssistantRequest(value: string): boolean {
   return CONFIDENTIAL_TERMS.test(value.slice(0, 500));
@@ -249,9 +255,9 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
   const dimensions = dimensionProposal(text, context);
   if (dimensions) return dimensions;
 
-  const quantity = normalized.match(/(?:cantidad|quiero|necesito|serian|son)\s*(?:de\s*)?(\d{1,3})\s*(?:piezas?|ventanas?|puertas?|unidades?)?/i);
+  const quantity = normalized.match(/(?:cantidad|quiero|necesito|serian|son)\s*(?:de\s*)?(\d{1,3}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte)\b/i);
   if (quantity) {
-    const qty = Number(quantity[1]);
+    const qty = /^\d+$/.test(quantity[1]) ? Number(quantity[1]) : QUANTITY_WORDS[quantity[1]];
     if (qty < 1 || qty > context.catalog.maxQty) {
       return { text: `La cantidad permitida por diseño es de 1 a ${context.catalog.maxQty} piezas. No aplicaré ningún cambio.` };
     }

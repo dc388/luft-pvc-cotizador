@@ -52,25 +52,36 @@ test("LUFT Asesor convierte metros, centímetros y milímetros sin aplicar cambi
   assert.match(meters.text, /¿Deseas aplicar/i);
 });
 
-test("el motor semántico interpreta lenguaje natural pero solo propone acciones validadas", async () => {
+test("el motor semántico interpreta una necesidad aunque el cliente no nombre el estilo", async () => {
   const runner = async (model: string) => {
     assert.equal(model, PUBLIC_ASSISTANT_MODEL);
     return {
       response: {
-        text: "El cliente quiere tres piezas.",
-        actionKind: "quantity",
+        text: "Una corrediza ayuda a ahorrar espacio.",
+        actionKind: "style",
         widthMm: 0,
         heightMm: 0,
-        qty: 3,
-        optionId: "",
+        qty: 0,
+        optionId: "alu-corrediza-fija-movil",
         installation: false,
       },
     };
   };
-  const reply = await answerPublicAssistant("Mejor serían tres de estas", publicAssistantRequestContext(context()), [], runner);
+  const reply = await answerPublicAssistant("Busco algo que no invada el cuarto al abrir", publicAssistantRequestContext(context()), [], runner);
   assert.equal(reply.source, "model");
+  assert.deepEqual(reply.action, { kind: "style", styleId: "alu-corrediza-fija-movil", styleName: "Corrediza fija + móvil" });
+  assert.match(reply.text, /Corrediza fija \+ móvil/i);
+});
+
+test("LUFT Asesor entiende cantidades escritas con palabras antes de consultar el modelo", async () => {
+  let calls = 0;
+  const reply = await answerPublicAssistant("Mejor serían tres de estas", publicAssistantRequestContext(context()), [], async () => {
+    calls += 1;
+    return {};
+  });
+  assert.equal(calls, 0);
+  assert.equal(reply.source, "rules");
   assert.deepEqual(reply.action, { kind: "quantity", qty: 3 });
-  assert.match(reply.text, /3 piezas.*recalcular/i);
 });
 
 test("el servidor rechaza acciones que el modelo invente fuera del catálogo", async () => {
