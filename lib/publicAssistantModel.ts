@@ -19,21 +19,6 @@ export type PublicAssistantModelRunner = (model: string, input: Record<string, u
 const STEPS = ["Producto", "Línea", "Estilo", "Medidas", "Color", "Vidrio", "Instalación", "Precio", "Resumen", "Proceso", "Contacto", "Listo"];
 const FORBIDDEN_OUTPUT = /margen|utilidad|costo directo|costo de compra|proveedor|prompt del sistema|credencial/i;
 
-const RESPONSE_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    text: { type: "string" },
-    actionKind: { type: "string", enum: ["none", "dimensions", "width", "height", "quantity", "product", "style", "color", "glass", "installation"] },
-    widthMm: { type: "integer" },
-    heightMm: { type: "integer" },
-    qty: { type: "integer" },
-    optionId: { type: "string" },
-    installation: { type: "boolean" },
-  },
-  required: ["text", "actionKind", "widthMm", "heightMm", "qty", "optionId", "installation"],
-} as const;
-
 const SYSTEM_PROMPT = `Eres LUFT Asesor, el asistente del cotizador público de ventanas y puertas de PVC.
 Responde en español de México, con lenguaje claro, breve y amable. Interpreta expresiones naturales, errores ortográficos y unidades de medida.
 
@@ -50,7 +35,11 @@ REGLAS OBLIGATORIAS:
 - Si el cliente solicita algo fuera del catálogo, explica la limitación y ofrece únicamente opciones del catálogo.
 - No pidas nombre, teléfono ni correo antes de la etapa Contacto.
 - Si falta información para comprender una medida o una preferencia, formula una sola pregunta concreta.
-- No uses markdown, tablas ni listas largas.`;
+- No uses markdown, tablas ni listas largas.
+
+Devuelve solamente un objeto JSON con estas claves exactas:
+{"text":"respuesta para el cliente","actionKind":"none","widthMm":0,"heightMm":0,"qty":0,"optionId":"","installation":false}
+actionKind solo puede ser: none, dimensions, width, height, quantity, product, style, color, glass o installation.`;
 
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -230,7 +219,12 @@ function parsedModelPayload(value: unknown): Record<string, unknown> {
   if (response && typeof response === "object") return record(response);
   const raw = typeof response === "string" ? response : typeof payload.output_text === "string" ? payload.output_text : "";
   if (!raw) return {};
-  try { return record(JSON.parse(raw)); } catch { return {}; }
+  try { return record(JSON.parse(raw)); } catch {
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start < 0 || end <= start) return {};
+    try { return record(JSON.parse(raw.slice(start, end + 1))); } catch { return {}; }
+  }
 }
 
 function modelContext(context: PublicAssistantContext) {
@@ -285,7 +279,7 @@ export async function answerPublicAssistant(
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: JSON.stringify({ HISTORIAL: safeHistory, MENSAJE_ACTUAL: question, CONTEXTO_PUBLICO: modelContext(context) }) },
       ],
-      response_format: { type: "json_schema", json_schema: RESPONSE_SCHEMA },
+      response_format: { type: "json_object" },
       max_tokens: 300,
       temperature: 0.2,
     });
