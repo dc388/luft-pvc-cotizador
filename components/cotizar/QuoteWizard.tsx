@@ -386,6 +386,10 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       setHeightMm(action.heightMm);
       return;
     }
+    if (action.kind === "quantity") {
+      setQty(Math.max(1, Math.min(catalog.maxQty, action.qty)));
+      return;
+    }
     if (action.kind === "product") {
       setProductId(action.productId);
       setBrandId("");
@@ -442,9 +446,23 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     };
   });
   const footPrice = step >= S.PROCESS ? projectPrice : price;
+  const assistantItems = (step >= S.PROCESS ? doneItems : reviewItems).map((item) => ({
+    styleId: item.config.styleId,
+    widthMm: item.config.widthMm,
+    heightMm: item.config.heightMm,
+    qty: item.config.qty,
+    colorId: item.config.colorId,
+    glassId: item.config.glassId,
+    installation: item.config.extras.instalacion,
+  }));
   const assistantContext: PublicAssistantContext = {
     step,
     stepName: STEPS[step] ?? STEPS[0],
+    productId,
+    brandId,
+    styleId,
+    colorId: color?.id ?? "",
+    glassId,
     productName: product?.name ?? "",
     brandName: brand?.name ?? "",
     styleName: style?.name ?? "",
@@ -464,6 +482,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     styleMaxH: style?.maxH ?? null,
     stylePanels: style?.panels ?? 1,
     catalog,
+    projectItems: assistantItems,
   };
   const livePreview = style && color && step >= S.SIZE && step <= S.PRICE ? (
     <LiveQuotePreview

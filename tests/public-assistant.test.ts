@@ -3,6 +3,8 @@ import test from "node:test";
 import { buildPublicCatalog } from "@/lib/publicCatalog";
 import { buildComponentData, parseConfig, priceConfig } from "@/lib/publicQuote";
 import { buildPublicAssistantReply, type PublicAssistantContext } from "@/components/cotizar/publicAssistant";
+import { publicAssistantRequestContext } from "@/components/cotizar/publicAssistant";
+import { answerPublicAssistant, PUBLIC_ASSISTANT_MODEL } from "@/lib/publicAssistantModel";
 
 const catalog = buildPublicCatalog();
 const style = catalog.styles.find((entry) => entry.id === "alu-corrediza-2")!;
@@ -11,6 +13,11 @@ function context(patch: Partial<PublicAssistantContext> = {}): PublicAssistantCo
   return {
     step: 3,
     stepName: "Medidas",
+    productId: "ventana",
+    brandId: "Aluplast",
+    styleId: style.id,
+    colorId: "bl",
+    glassId: catalog.glass[0].id,
     productName: "Ventana",
     brandName: "Aluplast",
     styleName: style.name,
@@ -30,6 +37,7 @@ function context(patch: Partial<PublicAssistantContext> = {}): PublicAssistantCo
     styleMaxH: style.maxH,
     stylePanels: style.panels,
     catalog,
+    projectItems: [],
     ...patch,
   };
 }
@@ -42,6 +50,82 @@ test("LUFT Asesor convierte metros, centímetros y milímetros sin aplicar cambi
   assert.deepEqual(centimeters.action, meters.action);
   assert.deepEqual(millimeters.action, meters.action);
   assert.match(meters.text, /¿Deseas aplicar/i);
+});
+
+test("el motor semántico interpreta lenguaje natural pero solo propone acciones validadas", async () => {
+  const runner = async (model: string) => {
+    assert.equal(model, PUBLIC_ASSISTANT_MODEL);
+    return {
+      response: {
+        text: "El cliente quiere tres piezas.",
+        action: {
+          kind: "quantity",
+          widthMm: null,
+          heightMm: null,
+          qty: 3,
+          productId: null,
+          styleId: null,
+          colorId: null,
+          glassId: null,
+          installation: null,
+        },
+      },
+    };
+  };
+  const reply = await answerPublicAssistant("Mejor serían tres de estas", publicAssistantRequestContext(context()), [], runner);
+  assert.equal(reply.source, "model");
+  assert.deepEqual(reply.action, { kind: "quantity", qty: 3 });
+  assert.match(reply.text, /3 piezas.*recalcular/i);
+});
+
+test("el servidor rechaza acciones que el modelo invente fuera del catálogo", async () => {
+  const runner = async () => ({
+    response: {
+      text: "Ya elegí el producto inventado.",
+      action: {
+        kind: "style",
+        widthMm: null,
+        heightMm: null,
+        qty: null,
+        productId: null,
+        styleId: "estilo-inventado",
+        colorId: null,
+        glassId: null,
+        installation: null,
+      },
+    },
+  });
+  const reply = await answerPublicAssistant("Quiero el estilo espacial", publicAssistantRequestContext(context()), [], runner);
+  assert.equal(reply.source, "rules");
+  assert.equal(reply.action, undefined);
+  assert.doesNotMatch(reply.text, /Ya elegí el producto inventado/i);
+});
+
+test("el contexto enviado al modelo se recalcula y no acepta un total del navegador", async () => {
+  let captured = "";
+  const runner = async (_model: string, input: Record<string, unknown>) => {
+    captured = JSON.stringify(input);
+    return {
+      response: {
+        text: "La configuración está dentro del catálogo público.",
+        action: {
+          kind: "none",
+          widthMm: null,
+          heightMm: null,
+          qty: null,
+          productId: null,
+          styleId: null,
+          colorId: null,
+          glassId: null,
+          installation: null,
+        },
+      },
+    };
+  };
+  const request = publicAssistantRequestContext(context());
+  await answerPublicAssistant("¿Esta opción sirve para una recámara?", { ...request, total: 1 }, [], runner);
+  assert.doesNotMatch(captured, /"total":1(?:\D|$)/);
+  assert.doesNotMatch(captured, /"margin"|"utility"|"directCost"/i);
 });
 
 test("LUFT Asesor rechaza medidas fuera del catálogo", () => {

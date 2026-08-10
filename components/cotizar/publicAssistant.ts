@@ -3,6 +3,11 @@ import type { PublicCatalog } from "@/lib/publicCatalog";
 export type PublicAssistantContext = {
   step: number;
   stepName: string;
+  productId: string;
+  brandId: string;
+  styleId: string;
+  colorId: string;
+  glassId: string;
   productName: string;
   brandName: string;
   styleName: string;
@@ -22,12 +27,40 @@ export type PublicAssistantContext = {
   styleMaxH: number | null;
   stylePanels: number;
   catalog: PublicCatalog;
+  projectItems: PublicAssistantQuoteItem[];
+};
+
+export type PublicAssistantQuoteItem = {
+  styleId: string;
+  widthMm: number;
+  heightMm: number;
+  qty: number;
+  colorId: string;
+  glassId: string;
+  installation: boolean;
+};
+
+export type PublicAssistantRequestContext = {
+  step: number;
+  productId: string;
+  brandId: string;
+  styleId: string;
+  widthMm: number;
+  heightMm: number;
+  qty: number;
+  colorId: string;
+  glassId: string;
+  installation: boolean;
+  designCount: number;
+  folio: string;
+  projectItems: PublicAssistantQuoteItem[];
 };
 
 export type PublicAssistantAction =
   | { kind: "dimensions"; widthMm: number; heightMm: number }
   | { kind: "width"; widthMm: number }
   | { kind: "height"; heightMm: number }
+  | { kind: "quantity"; qty: number }
   | { kind: "product"; productId: string; productName: string }
   | { kind: "style"; styleId: string; styleName: string }
   | { kind: "color"; colorId: string; colorName: string }
@@ -55,6 +88,28 @@ const STEP_HELP = [
 ];
 
 const CONFIDENTIAL_TERMS = /margen|utilidad|costo directo|costo de compra|proveedor|despiece|longitud de corte|optimizaci[oó]n de barras|regla interna|prompt del sistema|credencial/i;
+
+export function isConfidentialAssistantRequest(value: string): boolean {
+  return CONFIDENTIAL_TERMS.test(value.slice(0, 500));
+}
+
+export function publicAssistantRequestContext(context: PublicAssistantContext): PublicAssistantRequestContext {
+  return {
+    step: context.step,
+    productId: context.productId,
+    brandId: context.brandId,
+    styleId: context.styleId,
+    widthMm: context.widthMm,
+    heightMm: context.heightMm,
+    qty: context.qty,
+    colorId: context.colorId,
+    glassId: context.glassId,
+    installation: context.installation,
+    designCount: context.designCount,
+    folio: context.folio,
+    projectItems: context.projectItems.slice(0, 100),
+  };
+}
 
 function normalize(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -193,6 +248,15 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
 
   const dimensions = dimensionProposal(text, context);
   if (dimensions) return dimensions;
+
+  const quantity = normalized.match(/(?:cantidad|quiero|necesito|serian|son)\s*(?:de\s*)?(\d{1,3})\s*(?:piezas?|ventanas?|puertas?|unidades?)?/i);
+  if (quantity) {
+    const qty = Number(quantity[1]);
+    if (qty < 1 || qty > context.catalog.maxQty) {
+      return { text: `La cantidad permitida por diseño es de 1 a ${context.catalog.maxQty} piezas. No aplicaré ningún cambio.` };
+    }
+    return { text: `Cambiaré la cantidad de este diseño a ${qty} ${qty === 1 ? "pieza" : "piezas"}. ¿Deseas aplicarlo y recalcular?`, action: { kind: "quantity", qty } };
+  }
 
   const product = findNamedOption(text, context.catalog.products);
   if (product && /(quiero|cambia|selecciona|elegir|cotizar)/.test(normalized)) {

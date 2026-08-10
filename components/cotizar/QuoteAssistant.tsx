@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { buildPublicAssistantReply, type PublicAssistantAction, type PublicAssistantContext } from "./publicAssistant";
+import { buildPublicAssistantReply, publicAssistantRequestContext, type PublicAssistantAction, type PublicAssistantContext } from "./publicAssistant";
 import styles from "./QuoteAssistant.module.css";
 
 type Message = { id: string; role: "assistant" | "user"; text: string };
@@ -32,7 +32,6 @@ export function QuoteAssistant({
   const [typing, setTyping] = useState(false);
   const [pending, setPending] = useState<PublicAssistantAction | null>(null);
   const [memoryReady, setMemoryReady] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -63,28 +62,40 @@ export function QuoteAssistant({
     messageEndRef.current?.scrollIntoView({ block: "nearest" });
   }, [memoryReady, messages, typing]);
 
-  useEffect(() => () => {
-    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
-  }, []);
-
-  function ask(raw: string) {
+  async function ask(raw: string) {
     const question = raw.trim().slice(0, 500);
     if (!question || typing) return;
+    const conversation = messages.slice(-8).map(({ role, text }) => ({ role, text }));
     setMessages((current) => [...current, message("user", question)]);
     setInput("");
     setPending(null);
     setTyping(true);
-    timeoutRef.current = window.setTimeout(() => {
-      const reply = buildPublicAssistantReply(question, context);
-      setMessages((current) => [...current, message("assistant", reply.text)]);
-      setPending(reply.action ?? null);
+    try {
+      const response = await fetch("/api/public-assistant", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message: question, history: conversation, context: publicAssistantRequestContext(context) }),
+      });
+      const payload = (await response.json()) as { text?: string; action?: PublicAssistantAction; error?: string };
+      if (!response.ok || !payload.text) throw new Error(payload.error ?? "No pudimos consultar LUFT Asesor.");
+      setMessages((current) => [...current, message("assistant", payload.text!)]);
+      setPending(payload.action ?? null);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("demasiadas solicitudes")) {
+        setMessages((current) => [...current, message("assistant", error.message)]);
+      } else {
+        const reply = buildPublicAssistantReply(question, context);
+        setMessages((current) => [...current, message("assistant", reply.text)]);
+        setPending(reply.action ?? null);
+      }
+    } finally {
       setTyping(false);
-    }, 260);
+    }
   }
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    ask(input);
+    void ask(input);
   }
 
   function applyPending() {
@@ -115,7 +126,7 @@ export function QuoteAssistant({
             </div>
           )}
           <div className={styles.quick} aria-label="Respuestas rápidas">
-            {QUICK_REPLIES.map((reply) => <button key={reply} onClick={() => ask(reply)} disabled={typing}>{reply}</button>)}
+            {QUICK_REPLIES.map((reply) => <button key={reply} onClick={() => void ask(reply)} disabled={typing}>{reply}</button>)}
           </div>
           {humanAvailable && <a className={styles.human} href={supportHref} target="_blank" rel="noopener noreferrer">Continuar con un asesor humano</a>}
           <form className={styles.form} onSubmit={submit}>

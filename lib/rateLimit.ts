@@ -22,6 +22,13 @@ export const SUBMIT_RULES: RateRule[] = [
   { limit: 20, windowSec: 24 * 60 * 60 },
 ];
 
+// El chat sí consume inferencia de IA. Permite una conversación normal, pero evita que una
+// sola conexión convierta el endpoint público en un servicio gratuito de generación de texto.
+export const ASSISTANT_RULES: RateRule[] = [
+  { limit: 20, windowSec: 10 * 60 },
+  { limit: 100, windowSec: 24 * 60 * 60 },
+];
+
 export type RateLimitResult = { allowed: true } | { allowed: false; retryAfterSec: number };
 
 // Cloudflare pone la IP real del cliente en CF-Connecting-IP y la reescribe en cada request,
@@ -89,6 +96,7 @@ const BURST_LIMIT = 60;
 const BURST_WINDOW_MS = 60 * 1000;
 const BURST_MAX_KEYS = 5000;
 const burstHits = new Map<string, number[]>();
+const assistantBurstHits = new Map<string, number[]>();
 
 export function checkBurst(ip: string): boolean {
   const now = Date.now();
@@ -110,6 +118,20 @@ export function checkBurst(ip: string): boolean {
   }
   recent.push(now);
   burstHits.set(ip, recent);
+  return true;
+}
+
+export function checkAssistantBurst(ip: string): boolean {
+  const now = Date.now();
+  const windowStart = now - 60 * 1000;
+  const recent = (assistantBurstHits.get(ip) ?? []).filter((stamp) => stamp >= windowStart);
+  if (recent.length >= 8) {
+    assistantBurstHits.set(ip, recent);
+    return false;
+  }
+  recent.push(now);
+  assistantBurstHits.set(ip, recent);
+  if (assistantBurstHits.size > BURST_MAX_KEYS) assistantBurstHits.clear();
   return true;
 }
 
