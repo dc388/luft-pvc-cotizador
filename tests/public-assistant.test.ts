@@ -58,17 +58,12 @@ test("el motor semántico interpreta lenguaje natural pero solo propone acciones
     return {
       response: {
         text: "El cliente quiere tres piezas.",
-        action: {
-          kind: "quantity",
-          widthMm: null,
-          heightMm: null,
-          qty: 3,
-          productId: null,
-          styleId: null,
-          colorId: null,
-          glassId: null,
-          installation: null,
-        },
+        actionKind: "quantity",
+        widthMm: 0,
+        heightMm: 0,
+        qty: 3,
+        optionId: "",
+        installation: false,
       },
     };
   };
@@ -82,17 +77,12 @@ test("el servidor rechaza acciones que el modelo invente fuera del catálogo", a
   const runner = async () => ({
     response: {
       text: "Ya elegí el producto inventado.",
-      action: {
-        kind: "style",
-        widthMm: null,
-        heightMm: null,
-        qty: null,
-        productId: null,
-        styleId: "estilo-inventado",
-        colorId: null,
-        glassId: null,
-        installation: null,
-      },
+      actionKind: "style",
+      widthMm: 0,
+      heightMm: 0,
+      qty: 0,
+      optionId: "estilo-inventado",
+      installation: false,
     },
   });
   const reply = await answerPublicAssistant("Quiero el estilo espacial", publicAssistantRequestContext(context()), [], runner);
@@ -108,17 +98,12 @@ test("el contexto enviado al modelo se recalcula y no acepta un total del navega
     return {
       response: {
         text: "La configuración está dentro del catálogo público.",
-        action: {
-          kind: "none",
-          widthMm: null,
-          heightMm: null,
-          qty: null,
-          productId: null,
-          styleId: null,
-          colorId: null,
-          glassId: null,
-          installation: null,
-        },
+        actionKind: "none",
+        widthMm: 0,
+        heightMm: 0,
+        qty: 0,
+        optionId: "",
+        installation: false,
       },
     };
   };
