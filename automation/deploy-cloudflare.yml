@@ -1,0 +1,49 @@
+# Plantilla lista para copiar a .github/workflows/deploy-cloudflare.yml cuando la credencial
+# de GitHub tenga el alcance `workflow`. Se respalda fuera de .github porque GitHub rechaza
+# ese directorio con la credencial OAuth actual.
+name: Deploy cotizador permanente
+
+on:
+  push:
+    branches:
+      - master
+      - feat/cotizador-publico
+  workflow_dispatch:
+
+concurrency:
+  group: production-cotizador
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_BUILD_ID: ${{ github.sha }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar y probar
+        run: npm test
+
+      - name: Desplegar el mismo Worker permanente
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config dist/server/wrangler.json

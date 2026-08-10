@@ -101,9 +101,10 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 ## Enlace permanente y despliegue continuo
 
 El acceso público oficial es `https://luft-pvc-cotizador.luft-pvc.workers.dev/cotizar`.
-El workflow `.github/workflows/deploy-cloudflare.yml` compila, prueba y despliega sobre ese
-mismo Worker al hacer push a `master` o `feat/cotizador-publico`. Para activarlo una sola vez,
-el repositorio de GitHub debe tener los secretos `CLOUDFLARE_API_TOKEN` y
+La plantilla `automation/deploy-cloudflare.yml` compila, prueba y despliega sobre ese mismo
+Worker al hacer push a `master` o `feat/cotizador-publico`. Para activarla se copia a
+`.github/workflows/deploy-cloudflare.yml` con una credencial de GitHub que tenga el alcance
+`workflow`, y se configuran los secretos `CLOUDFLARE_API_TOKEN` y
 `CLOUDFLARE_ACCOUNT_ID`; sus valores nunca se guardan en el código.
 
 Cada build incorpora el commit como versión. `components/AutoUpdate.tsx` consulta
