@@ -14,8 +14,17 @@ export default defineConfig(async () => {
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
   const { cloudflare } = await import("@cloudflare/vite-plugin");
+  // Se incrusta en cliente y servidor. Una pestaña antigua consulta /api/version del
+  // despliegue nuevo, detecta el cambio y se recarga sobre el mismo URL permanente.
+  const buildId = process.env.NEXT_PUBLIC_BUILD_ID
+    ?? process.env.GITHUB_SHA
+    ?? process.env.CF_PAGES_COMMIT_SHA
+    ?? "development";
 
   return {
+    define: {
+      __LUFT_BUILD_ID__: JSON.stringify(buildId),
+    },
     server: {
       host: "0.0.0.0",
       // ".trycloudflare.com" habilita los túneles rápidos de Cloudflare

@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "LUFT PVC · Cotizador",
-  description: "Cotizador técnico de cancelería de PVC para Aluplast y Deceuninck.",
+  description: "Cotizador técnico de cancelería de PVC LUFT con sistemas Aluplast.",
   other: {
     "codex-preview": "development",
   },

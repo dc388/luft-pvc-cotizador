@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AutoUpdate } from "@/components/AutoUpdate";
 import { buildPublicCatalog } from "@/lib/publicCatalog";
 import { QuoteWizard } from "@/components/cotizar/QuoteWizard";
 
@@ -11,5 +12,10 @@ export const metadata: Metadata = {
 // contiene tarifas) y solo su vista pública -- nombres, colores, beneficios y límites de
 // medida -- viaja al navegador como props. Ninguna lista de precios llega al cliente.
 export default function CotizarPage() {
-  return <QuoteWizard catalog={buildPublicCatalog()} />;
+  return (
+    <>
+      <QuoteWizard catalog={buildPublicCatalog()} />
+      <AutoUpdate />
+    </>
+  );
 }

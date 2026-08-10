@@ -35,6 +35,22 @@ test("renders development preview metadata", async () => {
   assert.match(await response.text(), developmentPreviewMeta);
 });
 
+test("exposes a non-cacheable deployment version for open clients", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-version`);
+  const { default: worker } = await import(workerUrl.href);
+  const response = await worker.fetch(
+    new Request("http://localhost/api/version"),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(typeof payload.version, "string");
+  assert.ok(payload.version.length > 0);
+  assert.match(response.headers.get("cache-control") ?? "", /no-store/i);
+});
+
 test("public quote exposes only Aluplast and rejects removed Deceuninck styles", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-public-catalog`);

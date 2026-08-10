@@ -98,6 +98,18 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 - `npm run validate:artifact`: recheck an existing artifact's manifest and ESM `default.fetch` export
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 
+## Enlace permanente y despliegue continuo
+
+El acceso público oficial es `https://luft-pvc-cotizador.luft-pvc.workers.dev/cotizar`.
+El workflow `.github/workflows/deploy-cloudflare.yml` compila, prueba y despliega sobre ese
+mismo Worker al hacer push a `master` o `feat/cotizador-publico`. Para activarlo una sola vez,
+el repositorio de GitHub debe tener los secretos `CLOUDFLARE_API_TOKEN` y
+`CLOUDFLARE_ACCOUNT_ID`; sus valores nunca se guardan en el código.
+
+Cada build incorpora el commit como versión. `components/AutoUpdate.tsx` consulta
+`/api/version` y recarga automáticamente las pestañas que sigan abiertas cuando detecta un
+despliegue nuevo, de modo que no hace falta compartir otro enlace.
+
 Use build and validation commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
 
 The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.
