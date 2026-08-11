@@ -62,7 +62,7 @@ const STYLE_DEFS: StyleDef[] = [
     brand: "Aluplast",
     productId: "ventana",
     name: "Fija",
-    blurb: "No abre. Máxima entrada de luz al menor costo.",
+    blurb: "No abre. Máxima entrada de luz y el mejor sellado.",
     systemIndex: 3,
     rail: 0,
     panels: 1,
@@ -213,8 +213,11 @@ const PUBLIC_GLASS_DEFS = [
   { name: "Laminado 6+6 mm", label: "Laminado antirruido", benefit: "Máxima seguridad y el mejor bloqueo de ruido de la calle." },
 ];
 
+// Lo que se dice de la marca describe el producto, no su precio: el cliente ve esta frase durante
+// la configuración, donde no se maneja dinero. La distinción de tarifa real vs. estimada sigue
+// existiendo en el motor (`isEstimatedSystem`), pero es información interna del cálculo.
 const BRAND_BLURBS: Partial<Record<Brand, string>> = {
-  Aluplast: "Perfil alemán. Es la línea con precio cerrado al momento.",
+  Aluplast: "Perfil alemán, con especificación y herrajes de fábrica.",
 };
 
 // Un sistema está "estimado" cuando sus tarifas no vienen de una lista de precios real del

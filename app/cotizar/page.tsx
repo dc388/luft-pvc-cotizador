@@ -5,7 +5,10 @@ import { QuoteWizard } from "@/components/cotizar/QuoteWizard";
 
 export const metadata: Metadata = {
   title: "Cotiza tu ventana de PVC · LUFT PVC",
-  description: "Arma tu ventana o puerta de PVC y conoce el precio al momento.",
+  // Sin promesa de precio inmediato: el cliente configura y recibe su cotización formal. La
+  // descripción es lo primero que se lee en Google y en WhatsApp, así que tiene que prometer
+  // exactamente lo que el flujo entrega.
+  description: "Arma tu ventana o puerta de PVC con perfil alemán Aluplast y recibe tu cotización formal.",
 };
 
 // Server component: el catálogo público se arma en el servidor a partir de data/*.ts (que
