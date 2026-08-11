@@ -94,7 +94,7 @@ export function PublicQuoteDocument({ folio, client, items, price }: Props) {
       }}
       preliminary
       estimated={price.estimated}
-      paymentTerms={`El depósito estimado de ${price.depositPercentage}% se solicita únicamente después de validar medidas y confirmar el precio final.`}
+      paymentTerms={`El depósito de ${price.depositPercentage}% se solicita únicamente después de validar medidas y confirmar el precio final.`}
     />
   );
 }

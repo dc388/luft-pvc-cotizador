@@ -123,7 +123,7 @@ export function matchBriefToStyle(brief: AssistantBrief, catalog: PublicCatalog)
     else if (isSliding(entry.style)) bits.push(`${entry.movable} de sus ${entry.style.panels} hojas se deslizan sin invadir el interior`);
     else if (isHinged(entry.style)) bits.push(`abre sobre bisagras como una puerta tradicional`);
     if (entry.percent > 0) bits.push(`libera alrededor del ${entry.percent}% del ancho al abrir`);
-    if (entry.style.estimated) bits.push("su precio es aproximado y lo confirma un asesor");
+    if (entry.style.estimated) bits.push("un asesor confirma esta línea antes de firmar");
     return { style: entry.style, reason: bits.join(", "), openingPercent: entry.percent };
   };
 

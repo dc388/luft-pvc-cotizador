@@ -138,7 +138,7 @@ export function CustomerQuoteDocument({
                 <tr className="quoteGrandTotal"><th>Total del proyecto</th><td>{money(totals.total)}</td></tr>
               </tbody>
             </table>
-            {estimated && <p>Precio aproximado sujeto a revisión y confirmación del asesor.</p>}
+            {estimated && <p>Un asesor confirma esta línea antes de firmar.</p>}
           </section>
 
           <section className="quoteStats" aria-label="Estadísticas del presupuesto">

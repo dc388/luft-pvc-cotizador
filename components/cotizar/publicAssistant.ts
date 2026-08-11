@@ -228,7 +228,9 @@ function configurationSummary(context: PublicAssistantContext): string {
     context.glassName && `Vidrio: ${context.glassName}`,
     `Cantidad: ${context.qty}`,
     `Instalación: ${context.installation ? "incluida" : "no incluida"}`,
-    context.total !== null && `Total ${context.estimated ? "estimado" : "preliminar"}: ${money(context.total)}`,
+    // "Preliminar" en todos los casos porque el asesor confirma la medida en sitio, no porque
+    // el importe sea aproximado: lo calcula el motor real con las tarifas del catálogo.
+    context.total !== null && `Total preliminar: ${money(context.total)}`,
   ].filter(Boolean);
   if (context.sizeError) parts.push(`Pendiente: ${context.sizeError}`);
   return parts.length > 2
@@ -349,7 +351,7 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
   if (/por que cambio.*precio|precio cambio|como.*precio|precio/.test(normalized)) {
     return { text: context.total === null
       ? "El precio aparecerá cuando la configuración sea válida. El servidor lo calcula con medidas, estilo, cantidad, color, vidrio e instalación."
-      : `El precio público actual es ${money(context.total)} MXN${context.estimated ? " y está marcado como estimado" : ""}. Puede cambiar al modificar medidas, estilo, cantidad, color, vidrio o instalación. Siempre lo recalcula el servidor.` };
+      : `El precio público actual es ${money(context.total)} MXN, calculado con el catálogo real de perfiles, herrajes y vidrio${context.estimated ? ". Un asesor confirma esta línea antes de firmar" : ""}. Puede cambiar al modificar medidas, estilo, cantidad, color, vidrio o instalación. Siempre lo recalcula el servidor.` };
   }
 
   if (/terminar|finalizar|continuar con la compra/.test(normalized)) {

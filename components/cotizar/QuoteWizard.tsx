@@ -10,9 +10,14 @@ import { QuoteAssistant } from "./QuoteAssistant";
 import type { PublicAssistantAction, PublicAssistantContext } from "./publicAssistant";
 import { WindowPreview } from "./WindowPreview";
 import { PublicQuoteDocument, type PublicQuotePrintableItem } from "./PublicQuoteDocument";
+import { priceStatusLabel, sizeRejection, type PriceStatus } from "./priceStatus";
 
 const WHATSAPP_NUMBER = "529932211158";
-const ESTIMATE_NOTE = "Precio aproximado: esta línea la confirma tu asesor antes de firmar.";
+// Aviso de validación técnica, no de incertidumbre de precio: el número que ve el cliente
+// siempre lo calcula el motor real. Se muestra solo en los sistemas cuyas tarifas todavía no
+// vienen de la lista del proveedor (`sourced` en data/catalog.ts) y desaparece por sí solo
+// cuando esa lista se carga.
+const ADVISOR_CONFIRMS_NOTE = "Un asesor confirma esta línea antes de firmar.";
 
 type Price = {
   unit: number;
@@ -75,6 +80,15 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   const [glassId, setGlassId] = useState(catalog.glass[0].id);
   const [extras, setExtras] = useState<Extras>(DEFAULT_EXTRAS);
 
+  // ¿Las medidas las dio el cliente, o son solo la medida de presentación del estilo? Sin esto
+  // no se puede distinguir "todavía no hay datos para calcular" de "ya hay datos", y las
+  // tarjetas mostrarían un precio construido sobre una medida que nadie pidió.
+  const [sizeConfirmed, setSizeConfirmed] = useState(false);
+  // Solo los resultados que llegaron del servidor, etiquetados con la firma de la configuración
+  // que los produjo. Cuando la firma no coincide con la actual el precio está en camino, así que
+  // un resultado viejo nunca se muestra junto a una medida nueva.
+  const [styleQuotes, setStyleQuotes] = useState<{ sig: string; byStyle: Record<string, PriceStatus> }>({ sig: "", byStyle: {} });
+
   const [quotedPrice, setQuotedPrice] = useState<Price | null>(null);
   const [pricing, setPricing] = useState(false);
   const [priceError, setPriceError] = useState("");
@@ -99,7 +113,10 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   const color = colorsForBrand.find((c) => c.id === colorId) ?? colorsForBrand[0] ?? null;
   const glass = catalog.glass.find((entry) => entry.id === glassId) ?? catalog.glass[0];
   const frameHex = color?.hex ?? "#f3f3ef";
-  const stylesForProduct = catalog.styles.filter((s) => s.productId === productId && s.brandId === brandId);
+  const stylesForProduct = useMemo(
+    () => catalog.styles.filter((s) => s.productId === productId && s.brandId === brandId),
+    [catalog.styles, productId, brandId]
+  );
   const sizeError = useMemo(() => {
     if (!style) return "";
     if (widthMm < catalog.minMm || heightMm < catalog.minMm) return `La medida mínima es de ${catalog.minMm} mm por lado.`;
@@ -146,6 +163,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
           colorId?: string;
           glassId?: string;
           extras?: Extras;
+          sizeConfirmed?: boolean;
           savedConfigs?: QuoteConfig[];
         };
         if (draft.version !== 1) return;
@@ -158,6 +176,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         if (draft.colorId && catalog.colors.some((entry) => entry.id === draft.colorId)) setColorId(draft.colorId);
         if (draft.glassId && catalog.glass.some((entry) => entry.id === draft.glassId)) setGlassId(draft.glassId);
         if (draft.extras && typeof draft.extras.instalacion === "boolean") setExtras({ instalacion: draft.extras.instalacion });
+        if (draft.sizeConfirmed === true) setSizeConfirmed(true);
         if (Number.isFinite(draft.step)) setStep(Math.max(S.PRODUCT, Math.min(S.SUMMARY, Number(draft.step))));
 
         const savedConfigs = Array.isArray(draft.savedConfigs) ? draft.savedConfigs.slice(0, 100) : [];
@@ -197,12 +216,13 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         colorId,
         glassId,
         extras,
+        sizeConfirmed,
         savedConfigs: savedItems.map((item) => item.config),
       }));
     } catch {
       // La cotización continúa aunque el navegador deshabilite el almacenamiento de sesión.
     }
-  }, [draftReady, step, productId, brandId, styleId, widthMm, heightMm, qty, colorId, glassId, extras, savedItems]);
+  }, [draftReady, step, productId, brandId, styleId, widthMm, heightMm, qty, colorId, glassId, extras, sizeConfirmed, savedItems]);
 
   function detailsFor(item: ProjectItem): ItemDetails {
     const itemStyle = catalog.styles.find((entry) => entry.id === item.config.styleId);
@@ -260,6 +280,62 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     };
   }, [style, color, widthMm, heightMm, qty, glassId, extras, sizeError]);
 
+  // Precio real por tarjeta en la pantalla de estilo, SOLO cuando el cliente ya dio medidas
+  // (por el formulario o por LUFT Asesor). Cotiza el lote con el mismo endpoint y el mismo
+  // motor que el resto del flujo: la tarjeta no calcula nada por su cuenta. Sin medidas no se
+  // pide precio, porque una puerta de 800 × 2100 no cuesta lo mismo que una de 1200 × 2600.
+  const quoteSig = `${productId}|${brandId}|${widthMm}|${heightMm}|${qty}|${color?.id ?? ""}|${glassId}|${extras.instalacion}`;
+  useEffect(() => {
+    if (step !== S.STYLE || !sizeConfirmed || !color) return;
+
+    // Los estilos que ya se sabe que no llegan a esa medida NO se mandan: el servidor rechaza el
+    // lote completo al primer elemento inválido, así que uno fuera de rango dejaría sin precio a
+    // todos los demás. Su motivo se resuelve al renderizar, en styleStatus().
+    const priceable = stylesForProduct.filter((entry) => !sizeRejection(entry, widthMm, heightMm, catalog.minMm));
+    if (priceable.length === 0) return;
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      const allFailed = () => Object.fromEntries(priceable.map((entry) => [entry.id, { kind: "error" } as PriceStatus]));
+      try {
+        const res = await fetch("/api/public-quote", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            items: priceable.map((entry) => ({ styleId: entry.id, widthMm, heightMm, qty, colorId: color.id, glassId, extras })),
+          }),
+          signal: controller.signal,
+        });
+        const json = (await res.json()) as { itemPrices?: Price[] };
+        if (!res.ok || json.itemPrices?.length !== priceable.length) {
+          setStyleQuotes({ sig: quoteSig, byStyle: allFailed() });
+          return;
+        }
+        setStyleQuotes({
+          sig: quoteSig,
+          byStyle: Object.fromEntries(priceable.map((entry, index) => [entry.id, { kind: "available", total: json.itemPrices![index].total } as PriceStatus])),
+        });
+      } catch (error) {
+        if ((error as Error).name === "AbortError") return;
+        setStyleQuotes({ sig: quoteSig, byStyle: allFailed() });
+      }
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [step, sizeConfirmed, stylesForProduct, color, widthMm, heightMm, qty, glassId, extras, catalog.minMm, quoteSig]);
+
+  /** Estado de precio de una tarjeta de estilo. Sin medidas del cliente no hay precio que
+   *  mostrar: se muestra la acción para conseguirlo, nunca una cifra de relleno. */
+  function styleStatus(styleEntry: PublicCatalog["styles"][number]): PriceStatus {
+    if (!sizeConfirmed) return { kind: "missing-data" };
+    const rejection = sizeRejection(styleEntry, widthMm, heightMm, catalog.minMm);
+    if (rejection) return { kind: "error", reason: rejection };
+    if (styleQuotes.sig !== quoteSig) return { kind: "calculating" };
+    return styleQuotes.byStyle[styleEntry.id] ?? { kind: "calculating" };
+  }
+
   const canAdvance = (() => {
     if (step === S.PRODUCT) return !!productId;
     if (step === S.BRAND) return !!brandId;
@@ -278,6 +354,8 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     setStyleId("");
     setWidthMm(1500);
     setHeightMm(1200);
+    setSizeConfirmed(false);
+    setStyleQuotes({ sig: "", byStyle: {} });
     setQty(1);
     setColorId("");
     setGlassId(catalog.glass[0].id);
@@ -376,14 +454,17 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     if (action.kind === "dimensions") {
       setWidthMm(action.widthMm);
       setHeightMm(action.heightMm);
+      setSizeConfirmed(true);
       return;
     }
     if (action.kind === "width") {
       setWidthMm(action.widthMm);
+      setSizeConfirmed(true);
       return;
     }
     if (action.kind === "height") {
       setHeightMm(action.heightMm);
+      setSizeConfirmed(true);
       return;
     }
     if (action.kind === "quantity") {
@@ -405,8 +486,11 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       setBrandId(nextStyle.brandId);
       setStyleId(nextStyle.id);
       setColorId(catalog.colors.find((entry) => entry.brandId === nextStyle.brandId)?.id ?? "");
+      // Esta acción trae la medida de presentación del estilo, no una medida del cliente: se
+      // marca como no confirmada para que la interfaz siga pidiéndola en vez de cotizarla.
       setWidthMm(nextStyle.defaultW);
       setHeightMm(nextStyle.defaultH);
+      setSizeConfirmed(false);
       setStep(S.SIZE);
       return;
     }
@@ -423,6 +507,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       // contra los límites de ESE estilo en lib/briefMatch.ts.
       setWidthMm(action.widthMm);
       setHeightMm(action.heightMm);
+      setSizeConfirmed(true);
       setStep(S.SIZE);
       return;
     }
@@ -446,7 +531,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       folio ? `Cotización ${folio}` : "Cotización LUFT PVC",
       ...whatsappLines,
       projectPrice ? `Total del proyecto: ${money(projectPrice.total)}` : "",
-      isEstimated ? `(${ESTIMATE_NOTE})` : "",
+      isEstimated ? `(${ADVISOR_CONFIRMS_NOTE})` : "",
     ].filter(Boolean).join("\n")
   )}`;
   const printableItems: PublicQuotePrintableItem[] = doneItems.map((item) => {
@@ -556,7 +641,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
                   setColorId(catalog.colors.find((c) => c.brandId === b.id)?.id ?? "");
                   setStep(S.STYLE);
                 }}>
-                  <b>{b.name}{b.estimated && <i className="cotBadge">Precio estimado</i>}</b>
+                  <b>{b.name}</b>
                   <small>{b.blurb}</small>
                 </button>
               ))}
@@ -565,19 +650,41 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         )}
 
         {step === S.STYLE && (
-          <Screen title="Elige el estilo" hint="Cada elemento de tu proyecto puede tener un estilo distinto.">
+          <Screen
+            title="Elige el estilo"
+            hint={sizeConfirmed
+              ? `Precios para ${widthMm.toLocaleString("es-MX")} × ${heightMm.toLocaleString("es-MX")} mm en ${color?.name?.toLowerCase() ?? "el color elegido"}.`
+              : "Cada elemento de tu proyecto puede tener un estilo distinto."}
+          >
             <div className="cotCards">
-              {stylesForProduct.map((s) => (
-                <button key={s.id} className={`cotCard cotCardStyle ${styleId === s.id ? "sel" : ""}`} onClick={() => {
-                  setStyleId(s.id);
-                  setWidthMm(s.defaultW);
-                  setHeightMm(s.defaultH);
-                  setStep(S.SIZE);
-                }}>
-                  <WindowPreview wings={s.wings} widthMm={s.defaultW} heightMm={s.defaultH} frameHex={frameHex} label={`Vista previa de ${s.name}`} />
-                  <b>{s.name}{s.estimated && <i className="cotBadge">Precio estimado</i>}</b><small>{s.blurb}</small>
-                </button>
-              ))}
+              {stylesForProduct.map((s) => {
+                const status = styleStatus(s);
+                return (
+                  <button key={s.id} className={`cotCard cotCardStyle ${styleId === s.id ? "sel" : ""}`} onClick={() => {
+                    setStyleId(s.id);
+                    // Las medidas del cliente manda sobre la medida de presentación del estilo.
+                    if (!sizeConfirmed) {
+                      setWidthMm(s.defaultW);
+                      setHeightMm(s.defaultH);
+                    }
+                    setStep(S.SIZE);
+                  }}>
+                    <WindowPreview
+                      wings={s.wings}
+                      widthMm={sizeConfirmed ? widthMm : s.defaultW}
+                      heightMm={sizeConfirmed ? heightMm : s.defaultH}
+                      frameHex={frameHex}
+                      label={`Vista previa de ${s.name}`}
+                    />
+                    <span className="cotCardBody">
+                      <b>{s.name}</b>
+                      <small className="cotCardSystem">Sistema {s.brandId}</small>
+                      <small>{s.blurb}</small>
+                      <span className={`cotCardPrice ${status.kind === "available" ? "isPrice" : ""}`}>{priceStatusLabel(status)}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </Screen>
         )}
@@ -585,8 +692,8 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         {step === S.SIZE && (
           <Screen title="¿De qué medida?" hint="En milímetros. Si no estás seguro, un asesor lo verifica después.">
             {livePreview}
-            <label className="cotField">Ancho (mm)<input type="number" inputMode="numeric" value={widthMm} onChange={(e) => setWidthMm(Number(e.target.value) || 0)} /></label>
-            <label className="cotField">Alto (mm)<input type="number" inputMode="numeric" value={heightMm} onChange={(e) => setHeightMm(Number(e.target.value) || 0)} /></label>
+            <label className="cotField">Ancho (mm)<input type="number" inputMode="numeric" value={widthMm} onChange={(e) => { setWidthMm(Number(e.target.value) || 0); setSizeConfirmed(true); }} /></label>
+            <label className="cotField">Alto (mm)<input type="number" inputMode="numeric" value={heightMm} onChange={(e) => { setHeightMm(Number(e.target.value) || 0); setSizeConfirmed(true); }} /></label>
             <div className="cotField">Cantidad<div className="cotStepper">
               <button onClick={() => setQty((value) => Math.max(1, value - 1))} aria-label="Menos">−</button>
               <b>{qty}</b>
@@ -681,7 +788,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
                 {doneItems.map((item, index) => <ProjectItemCard key={item.id} index={index} item={item} details={detailsFor(item)} />)}
               </div>
               {projectPrice && <p className="cotFinalTotal">Total del proyecto <b>{money(projectPrice.total)}</b></p>}
-              {isEstimated && <p className="cotNote">{ESTIMATE_NOTE}</p>}
+              {isEstimated && <p className="cotNote">{ADVISOR_CONFIRMS_NOTE}</p>}
               <p className="cotFinePrint">Tu cotización ya se agregó como proyecto en LUFT PVC. El precio sigue siendo preliminar hasta que un asesor confirme las medidas en sitio.</p>
             </div>
             <div className="cotDoc procTimelineCard"><h3>¿Qué sigue?</h3><GlassTimeline currentIndex={1} /></div>
@@ -733,16 +840,17 @@ function Toggle({ label, detail, on, onChange }: { label: string; detail: string
 }
 
 function PriceBox({ price, pricing, error, qty }: { price: Price | null; pricing: boolean; error: string; qty: number }) {
+  // Un fallo de cálculo se dice, no se rellena con una cifra aproximada.
   if (error) return <p className="cotWarn">{error}</p>;
   if (!price) return <p className="cotHint">{pricing ? "Calculando tu precio…" : "Completa los pasos anteriores para ver tu precio."}</p>;
   return (
     <>
       <div className="cotPriceBox">
-        <span>{price.estimated ? "Total aproximado" : "Total"}{pricing ? " · actualizando…" : ""}</span>
+        <span>Total{pricing ? " · actualizando…" : ""}</span>
         <strong>{money(price.total)}</strong>
         {qty > 1 && <small>{money(price.unit)} por pieza</small>}
       </div>
-      {price.estimated && <p className="cotNote">{ESTIMATE_NOTE}</p>}
+      {price.estimated && <p className="cotNote">{ADVISOR_CONFIRMS_NOTE}</p>}
     </>
   );
 }

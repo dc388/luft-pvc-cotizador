@@ -12,6 +12,11 @@ function existingModule(path) {
 }
 
 export async function resolve(specifier, context, nextResolve) {
+  // Node no sabe cargar el esquema `cloudflare:`. Se apunta al stub de tests para poder probar
+  // el motor de precios real (lib/publicQuote.ts) en vez de solo sus etiquetas.
+  if (specifier === "cloudflare:workers") {
+    return { url: pathToFileURL(resolvePath(root, "tests", "stubs", "cloudflare-workers.ts")).href, shortCircuit: true };
+  }
   if (specifier.startsWith("@/")) {
     const modulePath = existingModule(resolvePath(root, specifier.slice(2)));
     if (modulePath) return { url: pathToFileURL(modulePath).href, shortCircuit: true };
