@@ -1,5 +1,6 @@
 import type { PublicCatalog } from "@/lib/publicCatalog";
 import { briefRecommendation, briefSummary, nextBriefQuestion, type AssistantBrief } from "@/lib/assistantBrief";
+import { S } from "@/lib/publicSteps";
 
 export type PublicAssistantContext = {
   step: number;
@@ -82,20 +83,21 @@ export type PublicAssistantReply = {
   generic?: true;
 };
 
-const STEP_HELP = [
-  "Puedo ayudarte a decidir entre una ventana y una puerta. Cuéntame si buscas ventilación, iluminación, acceso o ahorrar espacio.",
-  "Aluplast es la línea pública disponible. Las opciones y medidas que ves provienen del catálogo autorizado.",
-  "Puedo explicarte cada apertura o recomendarte una según el espacio disponible.",
-  "Escribe una medida como “1.80 × 1.20 m”, “180 × 120 cm” o “1800 × 1200 mm”. La convertiré y te pediré confirmación antes de aplicarla.",
-  "Puedo cambiar el color entre las opciones disponibles para la línea seleccionada.",
-  "Puedo comparar los vidrios disponibles según seguridad, ruido y aislamiento.",
-  "La instalación es opcional. Si la incluyes, el servidor recalcula automáticamente el precio público.",
-  "El precio es preliminar y se calcula en el servidor con la configuración vigente. No uso precios inventados.",
-  "Puedo revisar medidas, estilo, color, vidrio, cantidad y total antes de continuar.",
-  "Tu cotización seguirá con revisión, medición, confirmación del precio, depósito, fabricación e instalación.",
-  "Ya terminaste la configuración. Completa los datos de contacto y autoriza el seguimiento para registrar el proyecto.",
-  "Tu proyecto quedó registrado. Ahora sí puedes descargarlo o continuar con un asesor humano sin repetir la configuración.",
-];
+// Se indexa por nombre de etapa, no por posición: un arreglo posicional ya se desalineó al
+// fusionar Instalación y Precio, y el desfase solo se notaba leyendo la ayuda equivocada.
+const STEP_HELP: Record<number, string> = {
+  [S.PRODUCT]: "Puedo ayudarte a decidir entre una ventana y una puerta. Cuéntame si buscas ventilación, iluminación, acceso o ahorrar espacio.",
+  [S.BRAND]: "Aluplast es la línea pública disponible. Las opciones y medidas que ves provienen del catálogo autorizado.",
+  [S.STYLE]: "Puedo explicarte cada apertura o recomendarte una según el espacio disponible.",
+  [S.SIZE]: "Escribe una medida como “1.80 × 1.20 m”, “180 × 120 cm” o “1800 × 1200 mm”. La convertiré y te pediré confirmación antes de aplicarla.",
+  [S.COLOR]: "Puedo cambiar el color entre las opciones disponibles para la línea seleccionada.",
+  [S.GLASS]: "Puedo comparar los vidrios disponibles según seguridad, ruido y aislamiento.",
+  [S.CONFIRM]: "La instalación es opcional y, si la incluyes, el servidor recalcula el total en esta misma pantalla. El precio se calcula con la configuración vigente: no uso precios inventados.",
+  [S.SUMMARY]: "Puedo revisar medidas, estilo, color, vidrio, cantidad y total antes de continuar.",
+  [S.PROCESS]: "Tu cotización seguirá con revisión, medición, confirmación del precio, depósito, fabricación e instalación.",
+  [S.CONTACT]: "Ya terminaste la configuración. Completa los datos de contacto y autoriza el seguimiento para registrar el proyecto.",
+  [S.DONE]: "Tu proyecto quedó registrado. Ahora sí puedes descargarlo o continuar con un asesor humano sin repetir la configuración.",
+};
 
 const CONFIDENTIAL_TERMS = /margen|utilidad|costo directo|costo de compra|proveedor|despiece|longitud de corte|optimizaci[oó]n de barras|regla interna|prompt del sistema|credencial/i;
 const QUANTITY_WORDS: Record<string, number> = {
@@ -176,7 +178,7 @@ function dimensionProposal(input: string, context: PublicAssistantContext, brief
     // que validar), pero la medida NO se descarta: ya vive en el brief. Antes esta rama
     // devolvía "primero selecciona el producto y el estilo", que era justo el comportamiento
     // que hacía sentir al cliente que sus datos se ignoraban.
-    if (!context.styleName) return briefLedReply(brief) ?? { text: STEP_HELP[context.step] ?? STEP_HELP[0] };
+    if (!context.styleName) return briefLedReply(brief) ?? { text: STEP_HELP[context.step] ?? STEP_HELP[S.PRODUCT] };
     const first = Number(pair[1].replace(",", "."));
     const second = Number(pair[3].replace(",", "."));
     const shared = (pair[2] || pair[4] || inferSharedUnit(first, second)).toLowerCase();
@@ -268,7 +270,7 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
   const normalized = normalize(text);
   // El brief manda sobre la plantilla del paso: si ya sabemos algo del cliente, la respuesta se
   // construye con esos datos en vez de repetir el texto fijo que ignora lo que ya dijo.
-  if (!text) return briefLedReply(brief) ?? { text: STEP_HELP[context.step] ?? STEP_HELP[0] };
+  if (!text) return briefLedReply(brief) ?? { text: STEP_HELP[context.step] ?? STEP_HELP[S.PRODUCT] };
 
   if (/que llevamos|que tenemos|resumen de lo que|recuerdas/.test(normalized)) {
     const lines = briefSummary(brief ?? {});
@@ -289,8 +291,8 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
     return { text: error ? `${error} Esta configuración todavía necesita corrección.` : `Las medidas ${context.widthMm.toLocaleString("es-MX")} × ${context.heightMm.toLocaleString("es-MX")} mm están dentro de los límites públicos del estilo seleccionado. Son referenciales y se verificarán físicamente antes de fabricar.` };
   }
 
-  if (context.step >= 9 && /(cambia|modifica|selecciona|prefiero|\d+\s*(?:x|×|por)\s*\d+)/.test(normalized)) {
-    return { text: context.step === 11
+  if (context.step >= S.PROCESS && /(cambia|modifica|selecciona|prefiero|\d+\s*(?:x|×|por)\s*\d+)/.test(normalized)) {
+    return { text: context.step === S.DONE
       ? "La cotización ya quedó registrada y no modificaré sus datos. Puedes iniciar una nueva configuración si necesitas otra opción."
       : "Tu proyecto ya está en la etapa final. Regresa al resumen antes de registrar tus datos si deseas modificar la configuración; no aplicaré cambios desde esta etapa." };
   }
@@ -355,19 +357,19 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
   }
 
   if (/terminar|finalizar|continuar con la compra/.test(normalized)) {
-    return { text: context.step < 8
+    return { text: context.step < S.SUMMARY
       ? "Aún faltan decisiones de la configuración. Continúa con el botón inferior; puedo revisar cada etapa sin enviarte todavía con una persona."
-      : context.step < 11
+      : context.step < S.DONE
         ? "La configuración está en su etapa final. Revisa el resumen, conoce el proceso y registra tus datos para generar el folio."
         : `La cotización ${context.folio || ""} ya está registrada. Ahora sí puedes descargarla o continuar con un asesor humano.` };
   }
 
   if (/ayudame a elegir|que me recomiendas|necesito ayuda/.test(normalized)) {
-    return briefLedReply(brief) ?? { text: STEP_HELP[context.step] ?? STEP_HELP[0], generic: true };
+    return briefLedReply(brief) ?? { text: STEP_HELP[context.step] ?? STEP_HELP[S.PRODUCT], generic: true };
   }
 
   // Último recurso. El brief tiene prioridad: la plantilla fija solo aparece cuando de verdad
   // no sabemos nada del cliente todavía.
   return briefLedReply(brief)
-    ?? { text: `${STEP_HELP[context.step] ?? STEP_HELP[0]} También puedes pedirme: “revisa mis medidas”, “explica las aperturas”, “cambia el color a negro” o “revisa mi configuración”.`, generic: true };
+    ?? { text: `${STEP_HELP[context.step] ?? STEP_HELP[S.PRODUCT]} También puedes pedirme: “revisa mis medidas”, “explica las aperturas”, “cambia el color a negro” o “revisa mi configuración”.`, generic: true };
 }

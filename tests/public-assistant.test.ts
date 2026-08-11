@@ -5,14 +5,15 @@ import { buildComponentData, parseConfig, priceConfig } from "@/lib/publicQuote"
 import { buildPublicAssistantReply, type PublicAssistantContext } from "@/components/cotizar/publicAssistant";
 import { publicAssistantRequestContext } from "@/components/cotizar/publicAssistant";
 import { answerPublicAssistant, PUBLIC_ASSISTANT_MODEL } from "@/lib/publicAssistantModel";
+import { S, publicStepName } from "@/lib/publicSteps";
 
 const catalog = buildPublicCatalog();
 const style = catalog.styles.find((entry) => entry.id === "alu-corrediza-2")!;
 
 function context(patch: Partial<PublicAssistantContext> = {}): PublicAssistantContext {
   return {
-    step: 3,
-    stepName: "Medidas",
+    step: S.SIZE,
+    stepName: publicStepName(S.SIZE),
     productId: "ventana",
     brandId: "Aluplast",
     styleId: style.id,
@@ -71,6 +72,40 @@ test("el motor semántico interpreta una necesidad aunque el cliente no nombre e
   assert.equal(reply.source, "model");
   assert.deepEqual(reply.action, { kind: "style", styleId: "alu-corrediza-fija-movil", styleName: "Corrediza fija + móvil" });
   assert.match(reply.text, /Corrediza fija \+ móvil/i);
+});
+
+test("desde Proceso el modelo ya no puede proponer cambios, sea cual sea el índice de la etapa", async () => {
+  // Este límite estaba escrito como `step >= 9`. Al fusionar Instalación y Precio, Proceso pasó a
+  // ser la 8, así que el número suelto habría dejado la etapa Proceso abierta a cambios. Se
+  // recorren todas las etapas cerradas para que el candado siga atado al nombre, no a la posición.
+  const proposal = {
+    response: {
+      text: "Podríamos cambiar la medida.",
+      actionKind: "dimensions",
+      widthMm: 1600,
+      heightMm: 1100,
+      qty: 0,
+      optionId: "",
+      installation: false,
+    },
+  };
+  for (const step of [S.PROCESS, S.CONTACT, S.DONE]) {
+    const reply = await answerPublicAssistant(
+      "Cambia la medida a 1.6 x 1.1 m",
+      publicAssistantRequestContext(context({ step, stepName: publicStepName(step) })),
+      [],
+      async () => proposal
+    );
+    assert.equal(reply.action, undefined, `en ${publicStepName(step)} no debe proponerse ningún cambio`);
+  }
+  // Y antes de Proceso el mismo mensaje sí produce una propuesta: el candado cierra, no rompe.
+  const open = await answerPublicAssistant(
+    "Cambia la medida a 1.6 x 1.1 m",
+    publicAssistantRequestContext(context({ step: S.CONFIRM, stepName: publicStepName(S.CONFIRM) })),
+    [],
+    async () => proposal
+  );
+  assert.equal(open.action?.kind, "dimensions");
 });
 
 test("LUFT Asesor entiende cantidades escritas con palabras antes de consultar el modelo", async () => {
@@ -132,8 +167,10 @@ test("LUFT Asesor rechaza medidas fuera del catálogo", () => {
 
 test("LUFT Asesor espera a conocer el estilo antes de validar medidas", () => {
   const reply = buildPublicAssistantReply("Mide 1.80 x 1.20 m", context({ styleName: "", styleMaxW: null, styleMaxH: null }));
+  // Sin estilo no hay límites reales contra los que validar, así que no puede proponer la medida
+  // ni afirmar que cabe: responde con la ayuda de la etapa y espera.
   assert.equal(reply.action, undefined);
-  assert.match(reply.text, /Primero selecciona el producto y el estilo/i);
+  assert.doesNotMatch(reply.text, /est[áa]n dentro de los l[íi]mites|aplicar[ée]|entend[íi]/i);
 });
 
 test("LUFT Asesor reconoce la configuración y no vuelve a pedir datos capturados", () => {
@@ -154,9 +191,9 @@ test("LUFT Asesor no expone información comercial interna", () => {
 });
 
 test("LUFT Asesor no transfiere prematuramente y bloquea cambios después del registro", () => {
-  const during = buildPublicAssistantReply("Quiero terminar", context({ step: 3 }));
+  const during = buildPublicAssistantReply("Quiero terminar", context({ step: S.SIZE }));
   assert.doesNotMatch(during.text, /WhatsApp|llama|contacta con/i);
-  const completed = buildPublicAssistantReply("Cambia a 2 x 2 m", context({ step: 11, stepName: "Listo", folio: "W-ABC123" }));
+  const completed = buildPublicAssistantReply("Cambia a 2 x 2 m", context({ step: S.DONE, stepName: publicStepName(S.DONE), folio: "W-ABC123" }));
   assert.equal(completed.action, undefined);
   assert.match(completed.text, /ya quedó registrada/i);
 });

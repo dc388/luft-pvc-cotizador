@@ -2,6 +2,7 @@ import { briefSummary, nextBriefQuestion, type AssistantBrief } from "@/lib/assi
 import { matchBriefToStyle } from "@/lib/briefMatch";
 import { buildPublicCatalog } from "@/lib/publicCatalog";
 import { parseConfig, parseProjectConfigs, priceConfig, priceProjectConfigs } from "@/lib/publicQuote";
+import { PUBLIC_STEPS, S, publicStepName } from "@/lib/publicSteps";
 import {
   buildPublicAssistantReply,
   isConfidentialAssistantRequest,
@@ -18,7 +19,6 @@ export type PublicAssistantHistoryMessage = { role: "assistant" | "user"; text: 
 export type PublicAssistantAnswer = PublicAssistantReply & { source: "model" | "rules" };
 export type PublicAssistantModelRunner = (model: string, input: Record<string, unknown>) => Promise<unknown>;
 
-const STEPS = ["Producto", "Línea", "Estilo", "Medidas", "Color", "Vidrio", "Instalación", "Precio", "Resumen", "Proceso", "Contacto", "Listo"];
 const FORBIDDEN_OUTPUT = /margen|utilidad|costo directo|costo de compra|proveedor|prompt del sistema|credencial/i;
 
 const SYSTEM_PROMPT = `Eres LUFT Asesor, el asistente del cotizador público de ventanas y puertas de PVC.
@@ -33,7 +33,7 @@ REGLAS OBLIGATORIAS:
 - Si no hay un cambio inequívoco, usa actionKind="none", números en 0, optionId="" e installation=false.
 - Para product, style, color o glass coloca el ID exacto del catálogo en optionId.
 - Para dimensions, width, height o quantity llena sus campos numéricos; deja los demás números en 0.
-- Desde la etapa Proceso (step 9) no propongas cambios.
+- Desde la etapa Proceso (step ${S.PROCESS}) no propongas cambios.
 - Si el cliente solicita algo fuera del catálogo, explica la limitación y ofrece únicamente opciones del catálogo.
 - No pidas nombre, teléfono ni correo antes de la etapa Contacto.
 - YA_SABEMOS contiene lo que el cliente ya te dijo. NUNCA vuelvas a preguntar nada que aparezca ahi.
@@ -79,7 +79,7 @@ function requestItem(value: unknown): PublicAssistantQuoteItem | null {
 export function canonicalPublicAssistantContext(value: unknown): PublicAssistantContext {
   const raw = record(value) as Partial<PublicAssistantRequestContext>;
   const catalog = buildPublicCatalog();
-  const step = integer(raw.step, 0, 0, STEPS.length - 1);
+  const step = integer(raw.step, 0, 0, PUBLIC_STEPS.length - 1);
   const requestedStyleId = text(raw.styleId, 100);
   const style = catalog.styles.find((entry) => entry.id === requestedStyleId) ?? null;
   const requestedProductId = text(raw.productId, 100);
@@ -124,7 +124,7 @@ export function canonicalPublicAssistantContext(value: unknown): PublicAssistant
 
   return {
     step,
-    stepName: STEPS[step],
+    stepName: publicStepName(step),
     productId: product?.id ?? "",
     brandId: brand?.id ?? "",
     styleId: style?.id ?? "",
@@ -176,7 +176,8 @@ function dimensionsAllowed(widthMm: number, heightMm: number, context: PublicAss
 }
 
 function validatedAction(value: unknown, context: PublicAssistantContext): PublicAssistantAction | undefined {
-  if (context.step >= 9) return undefined;
+  // Desde Proceso en adelante la configuración está cerrada: el modelo no puede proponer cambios.
+  if (context.step >= S.PROCESS) return undefined;
   const action = record(value);
   const kind = text(action.kind, 30);
   if (kind === "dimensions") {

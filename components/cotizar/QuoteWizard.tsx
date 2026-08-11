@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { money } from "@/lib/money";
 import type { PublicCatalog } from "@/lib/publicCatalog";
+import { PUBLIC_STEPS, S, publicStepName } from "@/lib/publicSteps";
 import { ProcessSection } from "./ProcessSection";
 import { GlassTimeline } from "./glass/GlassTimeline";
 import { LiveQuotePreview } from "./LiveQuotePreview";
@@ -51,22 +52,10 @@ type ItemDetails = {
 };
 
 const DEFAULT_EXTRAS: Extras = { instalacion: true };
-const DRAFT_KEY = "luft-public-quote-draft-v1";
-const STEPS = ["Producto", "Línea", "Estilo", "Medidas", "Color", "Vidrio", "Instalación", "Precio", "Resumen", "Proceso", "Contacto", "Listo"];
-const S = {
-  PRODUCT: 0,
-  BRAND: 1,
-  STYLE: 2,
-  SIZE: 3,
-  COLOR: 4,
-  GLASS: 5,
-  EXTRAS: 6,
-  PRICE: 7,
-  SUMMARY: 8,
-  PROCESS: 9,
-  CONTACT: 10,
-  DONE: 11,
-} as const;
+// v2: al fusionar Instalación y Precio los índices de paso cambiaron de significado. Un borrador
+// v1 restaurado sobre el índice nuevo dejaría al cliente en otra pantalla, así que se descarta.
+const DRAFT_KEY = "luft-public-quote-draft-v2";
+const DRAFT_VERSION = 2;
 
 export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   const [step, setStep] = useState<number>(S.PRODUCT);
@@ -166,7 +155,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
           sizeConfirmed?: boolean;
           savedConfigs?: QuoteConfig[];
         };
-        if (draft.version !== 1) return;
+        if (draft.version !== DRAFT_VERSION) return;
         if (draft.productId && catalog.products.some((entry) => entry.id === draft.productId)) setProductId(draft.productId);
         if (draft.brandId && catalog.brands.some((entry) => entry.id === draft.brandId)) setBrandId(draft.brandId);
         if (draft.styleId && catalog.styles.some((entry) => entry.id === draft.styleId)) setStyleId(draft.styleId);
@@ -205,7 +194,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     if (!draftReady || step === S.DONE) return;
     try {
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
-        version: 1,
+        version: DRAFT_VERSION,
         step,
         productId,
         brandId,
@@ -341,7 +330,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     if (step === S.BRAND) return !!brandId;
     if (step === S.STYLE) return !!styleId;
     if (step === S.SIZE) return !sizeError;
-    if (step === S.PRICE) return !!price;
+    if (step === S.CONFIRM) return !!price;
     if (step === S.SUMMARY) return reviewItems.length > 0 && !preparingProject;
     if (step === S.PROCESS) return !!projectPrice;
     return true;
@@ -565,7 +554,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   }));
   const assistantContext: PublicAssistantContext = {
     step,
-    stepName: STEPS[step] ?? STEPS[0],
+    stepName: publicStepName(step),
     productId,
     brandId,
     styleId,
@@ -592,7 +581,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     catalog,
     projectItems: assistantItems,
   };
-  const livePreview = style && color && step >= S.SIZE && step <= S.PRICE ? (
+  const livePreview = style && color && step >= S.SIZE && step <= S.CONFIRM ? (
     <LiveQuotePreview
       styleName={style.name}
       wings={style.wings}
@@ -611,10 +600,10 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         <span className="cotBrand"><span className="cotBrandMark">L</span> LUFT <b>PVC</b></span>
         <span className="cotStepCount">
           {headerItemCount > 0 && <b>{headerItemCount} {headerItemCount === 1 ? "diseño" : "diseños"} · </b>}
-          {step + 1}/{STEPS.length}
+          {step + 1}/{PUBLIC_STEPS.length}
         </span>
       </header>
-      <div className="cotProgress" aria-hidden="true"><span style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} /></div>
+      <div className="cotProgress" aria-hidden="true"><span style={{ width: `${((step + 1) / PUBLIC_STEPS.length) * 100}%` }} /></div>
 
       <main className="cotMain">
         {step === S.PRODUCT && (
@@ -736,16 +725,12 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
           </Screen>
         )}
 
-        {step === S.EXTRAS && (
-          <Screen title="¿Incluimos la instalación?" hint="Elige si deseas que nuestro equipo instale tu proyecto.">
+        {step === S.CONFIRM && (
+          // Diseño, instalación y total en una sola pantalla: el cliente no tiene que avanzar
+          // para descubrir el precio, y cambiar la instalación lo actualiza aquí mismo.
+          <Screen className="cotScreenConfirm" title="Tu diseño y tu precio" hint="Confirma la instalación y revisa el total. Se actualiza solo si cambias algo.">
             {livePreview}
             <Toggle label="Instalación" detail="Nuestro equipo la instala en tu domicilio." on={extras.instalacion} onChange={(value) => setExtras((current) => ({ ...current, instalacion: value }))} />
-          </Screen>
-        )}
-
-        {step === S.PRICE && (
-          <Screen title="Tu precio" hint="Se actualiza solo si cambias algo.">
-            {livePreview}
             <PriceBox price={price} pricing={pricing} error={priceError} qty={qty} />
           </Screen>
         )}
@@ -818,7 +803,8 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       {step < S.DONE && (
         <footer className="cotFoot">
           {step > S.PRODUCT && <button className="cotSecondary" onClick={handleBack}>Atrás</button>}
-          {footPrice && step >= S.SIZE && step !== S.PRICE && step !== S.SUMMARY && (
+          {/* En CONFIRM el total ya está en la tarjeta: repetirlo en la barra lo duplicaría. */}
+          {footPrice && step >= S.SIZE && step !== S.CONFIRM && step !== S.SUMMARY && (
             <span className="cotFootPrice">{pricing ? "Calculando…" : money(footPrice.total)}</span>
           )}
           {step === S.CONTACT ? (
@@ -834,8 +820,8 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   );
 }
 
-function Screen({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
-  return <section className="cotScreen"><h1>{title}</h1>{hint && <p className="cotHint">{hint}</p>}{children}</section>;
+function Screen({ title, hint, className, children }: { title: string; hint?: string; className?: string; children: React.ReactNode }) {
+  return <section className={`cotScreen ${className ?? ""}`.trim()}><h1>{title}</h1>{hint && <p className="cotHint">{hint}</p>}{children}</section>;
 }
 
 function Toggle({ label, detail, on, onChange }: { label: string; detail: string; on: boolean; onChange: (value: boolean) => void }) {

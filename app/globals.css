@@ -890,6 +890,19 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .glassTimelineLabel small{font-size:11px;font-weight:500;color:var(--cg-muted)}
 .glassTimelineItem.is-pending .glassTimelineLabel{color:var(--cg-muted);font-weight:500}
 
+/* Diseño, instalación y total comparten pantalla. En móvil se aprieta lo justo para que los tres
+   quepan sobre el pliegue y el botón Continuar no quede a un scroll de distancia; los radios,
+   sombras y degradados son los mismos, solo cede el espacio en blanco. */
+@media(max-width:619px){
+  .cotScreenConfirm{gap:11px}
+  .cotScreenConfirm h1{font-size:26px}
+  .cotScreenConfirm .cotLivePreview{gap:9px;padding:13px}
+  .cotScreenConfirm .cotLivePreview .cotPreview{height:clamp(126px,30vw,164px)}
+  .cotScreenConfirm .cotToggle{padding:14px 16px}
+  .cotScreenConfirm .cotPriceBox{padding:16px 18px}
+  .cotScreenConfirm .cotPriceBox strong{font-size:32px}
+}
+
 @media(min-width:620px){
   .cotSwatches{grid-template-columns:repeat(3,1fr)}
   .cotProjectItem{grid-template-columns:120px minmax(0,1fr);padding:16px}
