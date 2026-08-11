@@ -62,8 +62,13 @@ async function projectRecord(db: Db, row: ProjectRow): Promise<ProjectRecord> {
 // La lista de carpetas del tab Proyecto. Se resuelve en dos consultas (proyectos + un conteo
 // agrupado) en vez de una por proyecto: con una cotización web por cliente, la lista crece con
 // el negocio y un N+1 aquí se notaría antes que en cualquier otra pantalla.
+// Se ordena por fecha de creación, no de modificación: es una bandeja de cotizaciones que
+// llegan, y ordenar por `updatedAt` hacía que la carpeta que acabas de abandonar saltara al tope
+// (salir de una carpeta guarda lo pendiente, y eso la toca). La lista debe quedarse quieta
+// mientras la recorres. `getMostRecentProject` sigue usando `updatedAt`: con esa la app abre en
+// "tu último trabajo", que es otra pregunta.
 export async function listProjectSummaries(db: Db): Promise<ProjectSummary[]> {
-  const rows = await db.select().from(projects).orderBy(sql`${projects.updatedAt} desc`);
+  const rows = await db.select().from(projects).orderBy(sql`${projects.createdAt} desc`);
   if (rows.length === 0) return [];
 
   const counts = await db
