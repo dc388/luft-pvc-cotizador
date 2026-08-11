@@ -437,6 +437,13 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     }
   }
 
+  function handleNext() {
+    // Avanzar desde la pantalla de medidas es aceptar la medida que está en pantalla, aunque no
+    // se haya escrito nada: desde aquí ya hay con qué cotizar y las tarjetas muestran precio.
+    if (step === S.SIZE) setSizeConfirmed(true);
+    setStep((current) => current + 1);
+  }
+
   function handleBack() {
     if (step === S.SUMMARY && !currentItem && savedItems.length > 0) {
       setStep(S.PRODUCT);
@@ -819,7 +826,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
           ) : step === S.SUMMARY ? (
             <button className="cotPrimary" onClick={prepareProject} disabled={!canAdvance}>{preparingProject ? "Calculando…" : "Continuar"}</button>
           ) : (
-            <button className="cotPrimary" onClick={() => setStep((current) => current + 1)} disabled={!canAdvance}>Continuar</button>
+            <button className="cotPrimary" onClick={handleNext} disabled={!canAdvance}>Continuar</button>
           )}
         </footer>
       )}
