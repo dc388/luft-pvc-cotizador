@@ -21,3 +21,8 @@ COMPANY_WARRANTY=
 
 # Porcentaje de anticipo (0-100). Si se omite, se usa 70.
 COMPANY_DEPOSIT_PERCENTAGE=70
+
+# Contraseña del área interna (ver lib/internalGate.ts). Sin ella, el Worker desplegado NO sirve
+# `/` ni `/api/projects/**` -- falla cerrado a propósito, para que la base de clientes nunca
+# quede abierta por un secreto olvidado. El cotizador público no la necesita.
+INTERNAL_PASSWORD=

@@ -2,10 +2,13 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { buildVersionResponse } from "@/lib/buildVersion";
+import { guardInternal } from "@/lib/internalGate";
 
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  /** Contraseña del área interna. Ver lib/internalGate.ts; se carga con `wrangler secret put`. */
+  INTERNAL_PASSWORD?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -29,6 +32,12 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    // Candado de lo interno ANTES que cualquier otra cosa: éste es el único punto por el que
+    // pasa toda petición, así que ninguna ruta lo esquiva. Lo público (el cotizador y sus
+    // endpoints) sigue de largo -- ver lib/internalGate.ts.
+    const gated = await guardInternal(request, env.INTERNAL_PASSWORD);
+    if (gated) return gated;
 
     // Respuesta directa para que tanto /api/version como /api/version/ funcionen igual en el
     // Worker desplegado. Así incluso una pestaña de una versión anterior puede descubrir el
