@@ -44,7 +44,11 @@ import {
   setActiveComponentApi,
 } from "@/lib/persistence";
 import type { ComponentRecord, ComponentSummary } from "@/types/project";
+import type { LuftAgentState } from "@/types/luft-ai";
+import { emptyLuftAgentState } from "@/types/luft-ai";
+import { normalizeAgentState, type LuftActor } from "@/lib/luft-ai";
 import { Block } from "@/components/Block";
+import { LuftAiPanel } from "@/components/ai/LuftAiPanel";
 import { TopBar, ModuleNav } from "@/components/layout/Nav";
 import { Toolbox } from "@/components/editor/Toolbox";
 import { FrameCanvas } from "@/components/editor/FrameCanvas";
@@ -80,7 +84,7 @@ const PRESETS_3D: ViewPreset3D[] = ["Frente", "Planta", "Perfil", "Isométrica"]
 // por su cuenta: este archivo es "use client" y lib/companySettings.ts solo existe en servidor
 // (ver el comentario de ese archivo sobre por qué la CLABE no puede pasar por el navegador ni
 // por una ruta de API mientras no haya autenticación).
-export function Workspace({ company }: { company: CompanySettings }) {
+export function Workspace({ company, agentActor, agentSignedIn }: { company: CompanySettings; agentActor: LuftActor; agentSignedIn: boolean }) {
   const [brand, setBrand] = useState<Brand>("Aluplast");
   const [systemIndex, setSystemIndex] = useState(0);
   const [rail, setRail] = useState(2);
@@ -249,6 +253,7 @@ export function Workspace({ company }: { company: CompanySettings }) {
   const [componentId, setComponentId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Proyecto sin nombre");
   const [components, setComponents] = useState<ComponentSummary[]>([]);
+  const [luftAi, setLuftAi] = useState<LuftAgentState>(() => emptyLuftAgentState());
 
   // ---------- "Proyecto completo" report scope: Cotización/Optimización de corte/Pedido de
   // vidrio can either describe the active component alone (default) or aggregate every
@@ -301,7 +306,7 @@ export function Workspace({ company }: { company: CompanySettings }) {
   const loadComponentIntoState = (rec: {
     id: string; code: string; designation: string; location: string; qty: number;
     widthMm: number; heightMm: number; brand: "Aluplast" | "Deceuninck"; systemIndex: number; colorIndex: number;
-    data: { rail: number; glassIndex: number; face: string; margin: number; installation: number; transport: number; discount: number; client: string; clientAddress: string; deliveryDate: string; selectedId: string; tree: typeof tree; marco: Marco; termsHeader?: string; paymentTerms?: string; barLengthMm?: number; clientPhone?: string; clientEmail?: string };
+    data: { rail: number; glassIndex: number; face: string; margin: number; installation: number; transport: number; discount: number; client: string; clientAddress: string; deliveryDate: string; selectedId: string; tree: typeof tree; marco: Marco; termsHeader?: string; paymentTerms?: string; barLengthMm?: number; clientPhone?: string; clientEmail?: string; luftAi?: LuftAgentState };
   }) => {
     // A newly loaded component starts with a clean undo/redo history -- the previous
     // component's edits aren't meaningful "past" states for this one's tree/marco.
@@ -334,6 +339,7 @@ export function Workspace({ company }: { company: CompanySettings }) {
     setTermsHeader(rec.data.termsHeader ?? "");
     setPaymentTerms(rec.data.paymentTerms ?? "");
     setBarLengthMm(rec.data.barLengthMm ?? BAR_LENGTH_MM);
+    setLuftAi(normalizeAgentState(rec.data.luftAi));
     const normalizedTree = normalizeTree(rec.data.tree);
     setTree(normalizedTree);
     setMarco(rec.data.marco);
@@ -377,7 +383,7 @@ export function Workspace({ company }: { company: CompanySettings }) {
       saveComponent(pid, cid, {
         code, designation, location, qty, widthMm: width, heightMm: height,
         brand, systemIndex, colorIndex,
-        data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, clientPhone, clientEmail, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId },
+        data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, clientPhone, clientEmail, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId, luftAi },
       }).then(({ savedAt: savedIso, mode }) => {
         setPersistMode(mode);
         if (savedIso) setSavedAt(savedIso);
@@ -388,7 +394,7 @@ export function Workspace({ company }: { company: CompanySettings }) {
   }, [
     hydrated, projectId, componentId, brand, systemIndex, rail, width, height, qty, glassIndex, colorIndex, face,
     margin, installation, transport, discount, code, designation, location,
-    client, clientAddress, clientPhone, clientEmail, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId,
+    client, clientAddress, clientPhone, clientEmail, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId, luftAi,
   ]);
 
   // ---------- Proyecto tab handlers: switch/add/duplicate/delete a component, rename the
@@ -398,7 +404,7 @@ export function Workspace({ company }: { company: CompanySettings }) {
     if (!componentId) return;
     await saveComponent(projectId ?? "offline", componentId, {
       code, designation, location, qty, widthMm: width, heightMm: height, brand, systemIndex, colorIndex,
-      data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, clientPhone, clientEmail, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId },
+      data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, clientPhone, clientEmail, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId, luftAi },
     });
   };
 
@@ -795,6 +801,44 @@ export function Workspace({ company }: { company: CompanySettings }) {
       ? `Haz clic dentro de una hoja para dividirla (${activeTool.axis === "col" ? "vertical" : "horizontal"})`
       : `Haz clic en una hoja para asignarle "${wingDefs.find((w) => w.id === activeTool.wing)?.name}"`;
 
+  const activeSummary = components.find((item) => item.id === componentId);
+  const agentComponent: ComponentRecord = {
+    id: componentId ?? "offline",
+    projectId: projectId ?? "offline",
+    position: activeSummary?.position ?? 0,
+    code,
+    designation,
+    location,
+    qty,
+    widthMm: width,
+    heightMm: height,
+    brand,
+    systemIndex,
+    colorIndex,
+    data: {
+      rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress,
+      clientPhone, clientEmail, deliveryDate, selectedId, tree, marco, termsHeader, paymentTerms,
+      barLengthMm, luftAi,
+    },
+    createdAt: activeSummary?.createdAt ?? savedAt ?? "",
+    updatedAt: savedAt ?? activeSummary?.updatedAt ?? "",
+  };
+
+  const handleAgentApply = (next: ComponentRecord, nextState: LuftAgentState) => {
+    setQty(next.qty);
+    setWidth(next.widthMm);
+    setHeight(next.heightMm);
+    setBrand(next.brand);
+    setSystemIndex(next.systemIndex);
+    setColorIndex(next.colorIndex);
+    setRail(next.data.rail);
+    setGlassIndex(next.data.glassIndex);
+    setTree(normalizeTree(next.data.tree));
+    setMarco(next.data.marco);
+    setSelectedId(next.data.selectedId || firstLeafId(next.data.tree));
+    setLuftAi(nextState);
+  };
+
   return (
     <main className="internalApp">
       <TopBar code={code} designation={designation} location={location} onPrint={handlePrint} selfCheck={selfCheck} savedAt={savedAt} />
@@ -832,6 +876,19 @@ export function Workspace({ company }: { company: CompanySettings }) {
                 {components.length === 0 && <p className="notice">Este componente aún no se ha guardado en un proyecto (modo sin conexión).</p>}
               </div>
               <button className="fullButton" onClick={handleAddComponent} disabled={!projectId}>+ Agregar componente</button>
+              {hydrated && (
+                <LuftAiPanel
+                  actor={agentActor}
+                  projectId={projectId ?? "offline"}
+                  projectName={projectName}
+                  component={agentComponent}
+                  componentSummaries={components}
+                  state={luftAi}
+                  onStateChange={setLuftAi}
+                  onApply={handleAgentApply}
+                  signedIn={agentSignedIn}
+                />
+              )}
             </>
           )}
 

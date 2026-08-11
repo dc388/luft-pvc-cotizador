@@ -365,92 +365,107 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
    Capa visual aislada bajo .internalApp. La jerarquía, controles, canvas, reportes y
    cálculos conservan exactamente el mismo DOM y comportamiento. */
 .internalApp{
-  --paper:rgba(244,246,255,.48);
-  --surface:rgba(255,255,255,.56);
-  --ink:#25233a;
-  --line:rgba(255,255,255,.62);
-  --muted:#68677c;
-  --shadow:rgba(66,57,111,.16);
-  --accent:#6f65e8;
+  --paper:rgba(244,247,255,.56);
+  --surface:rgba(255,255,255,.66);
+  --ink:#242238;
+  --line:rgba(255,255,255,.7);
+  --muted:#66647a;
+  --shadow:rgba(57,45,112,.22);
+  --accent:#6c60ea;
   --warn-bg:rgba(255,241,195,.68);
   --warn-fg:#765b19;
   --warn-line:rgba(224,184,77,.38);
   --ok-bg:rgba(213,245,229,.72);
   --ok-fg:#277158;
-  --ia-glass:rgba(255,255,255,.52);
-  --ia-glass-strong:rgba(255,255,255,.7);
-  --ia-highlight:rgba(255,255,255,.86);
-  --ia-shadow:0 24px 60px -34px rgba(57,45,112,.42),inset 0 1px 0 rgba(255,255,255,.9);
+  --ia-glass:rgba(255,255,255,.54);
+  --ia-glass-strong:rgba(255,255,255,.72);
+  --ia-highlight:rgba(255,255,255,.92);
+  --ia-panel-hi:rgba(255,255,255,.78);
+  --ia-panel-mid:rgba(255,255,255,.54);
+  --ia-panel-low:rgba(236,244,255,.4);
+  --ia-shadow:0 28px 70px -38px rgba(57,45,112,.52),0 8px 24px -20px rgba(40,32,80,.28),inset 0 1px 0 rgba(255,255,255,.96);
   min-height:100dvh;
   color:var(--ink);
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif;
   background:
-    radial-gradient(1000px 650px at 2% -8%,rgba(255,208,231,.82),transparent 58%),
-    radial-gradient(900px 620px at 100% 4%,rgba(202,224,255,.9),transparent 58%),
-    radial-gradient(850px 650px at 70% 100%,rgba(205,246,230,.72),transparent 62%),
-    linear-gradient(145deg,#f4f0ff,#edf4ff 52%,#f4fbf8);
+    radial-gradient(1000px 650px at 0 -8%,rgba(255,198,229,.88),transparent 58%),
+    radial-gradient(900px 620px at 100% 2%,rgba(180,218,255,.94),transparent 58%),
+    radial-gradient(820px 620px at 66% 104%,rgba(181,246,222,.82),transparent 62%),
+    radial-gradient(720px 520px at 34% 72%,rgba(218,201,255,.5),transparent 64%),
+    linear-gradient(145deg,#f7f2ff,#edf6ff 52%,#f4fcf8);
   background-attachment:fixed;
 }
 .internalApp button,.internalApp input,.internalApp select,.internalApp textarea{font-family:inherit}
 .internalApp .topbar{
-  background:rgba(255,255,255,.52);border-bottom:1px solid var(--ia-highlight);
-  box-shadow:0 10px 34px -24px rgba(61,47,120,.45);backdrop-filter:blur(26px) saturate(1.75);
-  -webkit-backdrop-filter:blur(26px) saturate(1.75)
+  top:12px;height:auto;min-height:64px;margin:12px 14px 0;padding:10px 14px 10px 18px;
+  border:1px solid rgba(255,255,255,.76);border-radius:25px;
+  background:radial-gradient(110% 180% at 0 0,rgba(255,255,255,.82),transparent 52%),linear-gradient(145deg,var(--ia-glass-strong),rgba(255,255,255,.38));
+  box-shadow:0 18px 46px -28px rgba(61,47,120,.58),inset 0 1px 0 var(--ia-highlight),inset 0 -1px 0 rgba(120,105,190,.08);
+  backdrop-filter:blur(32px) saturate(1.9);-webkit-backdrop-filter:blur(32px) saturate(1.9)
 }
-.internalApp .brandMark{background:linear-gradient(145deg,#9188f7,#675be1);box-shadow:0 10px 24px -12px rgba(77,63,190,.65),inset 0 1px 0 #ffffffaa}
-.internalApp .primary{border:1px solid #ffffff88;border-radius:999px;background:linear-gradient(145deg,#8f85f5,#6559dd);box-shadow:0 12px 26px -14px rgba(70,54,186,.7),inset 0 1px 0 #ffffff77}
+.internalApp .brandMark{background:linear-gradient(145deg,#a39cff,#7b6ff0 52%,#6155da);box-shadow:0 12px 28px -12px rgba(77,63,190,.72),inset 1px 1px 0 #ffffffcc,inset -2px -3px 7px rgba(55,40,155,.3)}
+.internalApp .primary{position:relative;overflow:hidden;border:1px solid #ffffff99;border-radius:999px;background:linear-gradient(145deg,#988ff9,#7668e9 56%,#5f53d5);box-shadow:0 14px 30px -14px rgba(70,54,186,.76),inset 0 1px 0 #ffffff99}
+.internalApp .primary::before{content:"";position:absolute;inset:-80% 48% -80% -28%;transform:rotate(18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.52),transparent);transition:transform .5s ease}
 .internalApp .primary:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.internalApp .primary:hover::before{transform:translateX(190%) rotate(18deg)}
+.internalApp .selfCheckBadge{border:1px solid rgba(255,255,255,.68);box-shadow:inset 0 1px 0 rgba(255,255,255,.74);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .internalApp .moduleNav{
-  height:48px;top:76px;gap:6px;padding:5px 12px;background:rgba(255,255,255,.38);
-  border-bottom:1px solid rgba(255,255,255,.72);backdrop-filter:blur(22px) saturate(1.65);
-  -webkit-backdrop-filter:blur(22px) saturate(1.65)
+  height:50px;top:86px;width:max-content;max-width:calc(100% - 28px);margin:10px auto 4px;gap:5px;padding:5px;
+  border:1px solid rgba(255,255,255,.74);border-radius:999px;
+  background:linear-gradient(145deg,rgba(255,255,255,.66),rgba(255,255,255,.36));
+  box-shadow:0 16px 38px -26px rgba(61,47,120,.56),inset 0 1px 0 var(--ia-highlight);
+  scrollbar-width:none;-ms-overflow-style:none;
+  backdrop-filter:blur(28px) saturate(1.85);-webkit-backdrop-filter:blur(28px) saturate(1.85)
 }
+.internalApp .moduleNav::-webkit-scrollbar,.internalApp .headerActions::-webkit-scrollbar{display:none}
 .internalApp .moduleNav button{border:0;border-radius:999px;padding:0 20px;transition:background .2s,box-shadow .2s,color .2s,transform .2s}
 .internalApp .moduleNav button:hover{background:rgba(255,255,255,.48);color:var(--ink)}
-.internalApp .moduleNav button.active{color:#5146c9;background:rgba(255,255,255,.74);box-shadow:0 8px 22px -14px rgba(69,55,160,.6),inset 0 1px 0 #fff;border:0}
-.internalApp .workspace{gap:14px;padding:14px;min-height:calc(100vh - 124px)}
+.internalApp .moduleNav button.active{color:#4e43c7;background:radial-gradient(120% 160% at 12% 0,#fff,rgba(255,255,255,.7) 50%,rgba(235,232,255,.7));box-shadow:0 9px 24px -14px rgba(69,55,160,.68),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(98,82,190,.1);border:0}
+.internalApp .workspace{gap:14px;padding:10px 14px 14px;min-height:calc(100vh - 140px)}
 .internalApp .configPanel,.internalApp .quotePanel,.internalApp .visualPanel{
-  border:1px solid rgba(255,255,255,.7);border-radius:28px;background:var(--ia-glass);
-  box-shadow:var(--ia-shadow);backdrop-filter:blur(22px) saturate(1.55);
-  -webkit-backdrop-filter:blur(22px) saturate(1.55)
+  border:1px solid rgba(255,255,255,.78);border-radius:30px;
+  background:radial-gradient(150% 105% at 0 0,var(--ia-panel-hi),transparent 44%),linear-gradient(145deg,var(--ia-panel-mid),var(--ia-panel-low));
+  box-shadow:var(--ia-shadow);backdrop-filter:blur(34px) saturate(1.78);
+  -webkit-backdrop-filter:blur(34px) saturate(1.78)
 }
 .internalApp .configPanel,.internalApp .quotePanel{padding:26px}
 .internalApp .quotePanel{border:1px solid rgba(255,255,255,.72)}
 .internalApp .visualPanel{overflow:hidden}
-.internalApp .configPanel h1{font-family:inherit;font-weight:720;font-size:38px;letter-spacing:-.045em}
+.internalApp .configPanel h1{font-family:inherit;font-weight:760;font-size:40px;letter-spacing:-.05em;text-shadow:0 1px 0 rgba(255,255,255,.7)}
 .internalApp .eyebrow{letter-spacing:.16em}
 .internalApp .step{border-color:rgba(92,81,151,.13)}
+.internalApp .step>span{width:25px;height:25px;flex:0 0 auto;display:grid;place-items:center;border:1px solid rgba(255,255,255,.76);border-radius:999px;background:rgba(255,255,255,.48);box-shadow:inset 0 1px 0 #fff,0 8px 16px -14px rgba(69,55,160,.7)}
 .internalApp select,.internalApp input[type=number],.internalApp input[type=text],.internalApp input[type=date],.internalApp textarea{
-  border:1px solid rgba(255,255,255,.82);border-radius:13px;background:rgba(255,255,255,.5);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.92),0 8px 20px -18px rgba(54,40,122,.55);
+  border:1px solid rgba(255,255,255,.88);border-radius:14px;background:rgba(255,255,255,.62);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.98),0 9px 22px -18px rgba(54,40,122,.62);
   transition:border-color .2s,background .2s,box-shadow .2s
 }
 .internalApp select:focus,.internalApp input:focus,.internalApp textarea:focus{background:rgba(255,255,255,.78);border-color:rgba(111,101,232,.5);box-shadow:0 0 0 4px rgba(111,101,232,.11),inset 0 1px 0 #fff}
-.internalApp .segmented{border:1px solid rgba(255,255,255,.76);border-radius:16px;padding:4px;background:rgba(255,255,255,.25)}
+.internalApp .segmented{border:1px solid rgba(255,255,255,.8);border-radius:17px;padding:4px;background:rgba(255,255,255,.34);box-shadow:inset 0 1px 0 rgba(255,255,255,.76)}
 .internalApp .segmented button{border-radius:12px}
 .internalApp .segmented button.selected{background:rgba(255,255,255,.82);color:#5146c9;box-shadow:0 8px 18px -13px rgba(70,55,160,.7),inset 0 1px 0 #fff}
 .internalApp .summaryCard,.internalApp .componentEditor,.internalApp .optimization,.internalApp .reportPreview,.internalApp .reportDoc,.internalApp .docItem{
-  border:1px solid rgba(255,255,255,.7);border-radius:18px;background:rgba(255,255,255,.38);box-shadow:inset 0 1px 0 rgba(255,255,255,.8);overflow:hidden
+  border:1px solid rgba(255,255,255,.76);border-radius:19px;background:linear-gradient(145deg,rgba(255,255,255,.55),rgba(255,255,255,.3));box-shadow:inset 0 1px 0 rgba(255,255,255,.92),0 12px 24px -22px rgba(51,38,112,.52);overflow:hidden
 }
 .internalApp .summaryCard span,.internalApp .prop span,.internalApp .docDiagramBox,.internalApp .reportPreview>header{background:rgba(240,242,255,.42)}
-.internalApp .visualHeader{height:58px;border-color:rgba(255,255,255,.64);background:rgba(255,255,255,.25)}
+.internalApp .visualHeader{height:58px;border-color:rgba(255,255,255,.72);background:linear-gradient(90deg,rgba(255,255,255,.42),rgba(255,255,255,.18))}
 .internalApp .viewSwitch{padding:3px;border:1px solid rgba(255,255,255,.7);border-radius:12px;background:rgba(255,255,255,.28)}
 .internalApp .viewSwitch button{border-radius:9px}
 .internalApp .viewSwitch .active{background:rgba(255,255,255,.82);box-shadow:0 7px 16px -12px rgba(59,47,128,.7)}
 .internalApp .presetRow{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.2)}
 .internalApp .presetRow button{border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.46);box-shadow:inset 0 1px 0 #ffffffaa}
 .internalApp .presetRow button.active{border-color:#ffffff88;background:linear-gradient(145deg,#8d83f3,#6559dd);box-shadow:0 9px 20px -13px rgba(69,55,175,.7)}
-.internalApp .canvas{margin:12px;border:1px solid rgba(255,255,255,.58);border-radius:22px;background:rgba(240,244,255,.3);overflow:hidden}
+.internalApp .canvas{margin:12px;border:1px solid rgba(255,255,255,.72);border-radius:24px;background:radial-gradient(100% 90% at 70% 100%,rgba(199,245,229,.26),transparent 56%),linear-gradient(145deg,rgba(245,247,255,.45),rgba(225,239,255,.28));box-shadow:inset 0 1px 0 rgba(255,255,255,.8);overflow:hidden}
 .internalApp .canvasStage{border-radius:20px}
 .internalApp .canvas.view-2D .canvasStage{background-image:linear-gradient(rgba(69,59,115,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(69,59,115,.055) 1px,transparent 1px)}
 .internalApp .viewportControls,.internalApp .scene3dHint,.internalApp .viewportHint{
-  border:1px solid rgba(255,255,255,.78);background:rgba(255,255,255,.55);box-shadow:0 12px 28px -18px rgba(61,48,130,.55),inset 0 1px 0 #fff;
+  border:1px solid rgba(255,255,255,.84);background:linear-gradient(145deg,rgba(255,255,255,.72),rgba(255,255,255,.44));box-shadow:0 14px 30px -18px rgba(61,48,130,.62),inset 0 1px 0 #fff;
   backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5)
 }
 .internalApp .viewportControls{border-radius:14px}
 .internalApp .toolbox{
-  border:1px solid rgba(255,255,255,.75);border-radius:20px;background:rgba(255,255,255,.55);
-  box-shadow:0 20px 40px -28px rgba(51,38,112,.65),inset 0 1px 0 #fff;
+  border:1px solid rgba(255,255,255,.84);border-radius:21px;background:radial-gradient(140% 100% at 0 0,rgba(255,255,255,.82),transparent 52%),rgba(255,255,255,.55);
+  box-shadow:0 22px 44px -28px rgba(51,38,112,.72),inset 0 1px 0 #fff;
   backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6)
 }
 .internalApp .toolboxGrid button,.internalApp .toolboxAction,.internalApp .explorerLeaf,.internalApp .explorerMarco,.internalApp .explorerGancho,.internalApp .explorerSide,.internalApp .explorerSplitHeader{
@@ -458,15 +473,16 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 }
 .internalApp .toolboxGrid button,.internalApp .toolboxAction{border-radius:10px}
 .internalApp .explorerTree{border-color:rgba(255,255,255,.72);border-radius:14px}
-.internalApp .fullButton{border:1px solid rgba(111,101,232,.42);border-radius:14px;background:rgba(255,255,255,.28)}
+.internalApp .fullButton{border:1px solid rgba(111,101,232,.36);border-radius:15px;background:linear-gradient(145deg,rgba(255,255,255,.55),rgba(255,255,255,.28));box-shadow:inset 0 1px 0 rgba(255,255,255,.86)}
 .internalApp .fullButton:hover{background:linear-gradient(145deg,#8d83f3,#6559dd);border-color:transparent;box-shadow:0 12px 28px -16px rgba(74,57,181,.65)}
 .internalApp .propertyGroup h2,.internalApp .costSummary h2{border-radius:11px;background:rgba(255,255,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
 .internalApp .componentRow,.internalApp .reportList button,.internalApp .profileCatalog>div{
-  border:1px solid rgba(255,255,255,.7);border-radius:14px;background:rgba(255,255,255,.38);box-shadow:inset 0 1px 0 rgba(255,255,255,.76)
+  border:1px solid rgba(255,255,255,.76);border-radius:15px;background:linear-gradient(145deg,rgba(255,255,255,.55),rgba(255,255,255,.3));box-shadow:inset 0 1px 0 rgba(255,255,255,.9)
 }
 .internalApp .componentRow.active,.internalApp .reportList button.selected{background:rgba(235,232,255,.7);border-color:rgba(111,101,232,.38);box-shadow:0 10px 22px -17px rgba(67,53,157,.65),inset 0 1px 0 #fff}
 .internalApp .componentTitle{background:linear-gradient(145deg,rgba(143,133,245,.95),rgba(101,89,221,.96))}
-.internalApp .totalBox{border:1px solid rgba(255,255,255,.52);border-radius:20px;background:linear-gradient(145deg,rgba(143,133,245,.94),rgba(94,82,213,.96));box-shadow:0 20px 42px -24px rgba(63,45,172,.75),inset 0 1px 0 rgba(255,255,255,.55)}
+.internalApp .totalBox{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.62);border-radius:22px;background:linear-gradient(145deg,rgba(158,149,255,.96),rgba(112,98,229,.96) 55%,rgba(89,75,205,.97));box-shadow:0 22px 46px -24px rgba(63,45,172,.82),inset 0 1px 0 rgba(255,255,255,.68)}
+.internalApp .totalBox::after{content:"";position:absolute;inset:-70% -20%;transform:rotate(16deg);background:linear-gradient(90deg,transparent 36%,rgba(255,255,255,.25) 50%,transparent 64%);pointer-events:none}
 .internalApp .totalBox>strong{font-family:inherit;font-weight:720}
 .internalApp .notice{border:1px solid rgba(255,255,255,.62);border-radius:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.72)}
 .internalApp button{transition:transform .18s ease,filter .18s ease,background .18s ease,box-shadow .18s ease}
@@ -475,15 +491,16 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 @media(prefers-color-scheme:dark){
   .internalApp{
     --paper:rgba(35,32,57,.5);--surface:rgba(43,39,68,.56);--ink:#f0eff9;--line:rgba(255,255,255,.13);--muted:#aaa8bd;--shadow:rgba(0,0,0,.35);
-    --ia-glass:rgba(43,39,68,.58);--ia-glass-strong:rgba(50,46,76,.76);--ia-highlight:rgba(255,255,255,.16);
+    --ia-glass:rgba(43,39,68,.6);--ia-glass-strong:rgba(50,46,76,.78);--ia-highlight:rgba(255,255,255,.18);
+    --ia-panel-hi:rgba(102,94,142,.34);--ia-panel-mid:rgba(43,39,68,.66);--ia-panel-low:rgba(29,35,55,.52);
     background:radial-gradient(950px 600px at 0 -5%,rgba(102,49,92,.52),transparent 58%),radial-gradient(900px 650px at 100% 0,rgba(46,80,130,.6),transparent 60%),radial-gradient(800px 600px at 70% 100%,rgba(35,100,82,.4),transparent 62%),linear-gradient(145deg,#191526,#171d2e 55%,#152720)
   }
-  .internalApp .topbar,.internalApp .moduleNav{background:rgba(30,27,48,.54)}
+  .internalApp .topbar,.internalApp .moduleNav{background:linear-gradient(145deg,rgba(67,61,98,.72),rgba(28,27,47,.54))}
   .internalApp select,.internalApp input[type=number],.internalApp input[type=text],.internalApp input[type=date],.internalApp textarea{background:rgba(28,26,45,.5)}
   .internalApp .segmented button.selected,.internalApp .moduleNav button.active,.internalApp .viewSwitch .active{background:rgba(91,83,132,.7);color:#fff}
 }
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .internalApp{--ia-glass:rgba(250,250,255,.95);--surface:rgba(255,255,255,.96)}
+  .internalApp{--ia-glass:rgba(250,250,255,.95);--surface:rgba(255,255,255,.96);--ia-panel-hi:rgba(255,255,255,.98);--ia-panel-mid:rgba(249,249,255,.96);--ia-panel-low:rgba(240,245,255,.96)}
   .internalApp .topbar,.internalApp .moduleNav{background:rgba(250,250,255,.96)}
 }
 @media(prefers-reduced-motion:reduce){.internalApp *{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
@@ -492,8 +509,9 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
   .internalApp .quotePanel{grid-column:1/3;border:1px solid rgba(255,255,255,.7)}
 }
 @media(max-width:760px){
-  .internalApp .topbar{border-radius:0}
-  .internalApp .moduleNav{top:auto}
+  .internalApp .topbar{position:relative;top:auto;margin:8px 8px 0;min-height:0;border-radius:22px;padding:11px 12px}
+  .internalApp .headerActions{width:100%;justify-content:flex-end;overflow-x:auto;padding-top:2px;scrollbar-width:none;-ms-overflow-style:none}
+  .internalApp .moduleNav{top:8px;margin:8px auto 4px;max-width:calc(100% - 16px);justify-content:flex-start;overflow-x:auto}
   .internalApp .workspace{padding:8px;display:block}
   .internalApp .configPanel,.internalApp .quotePanel,.internalApp .visualPanel{border-radius:22px;margin-bottom:10px;border:1px solid rgba(255,255,255,.68)}
   .internalApp .configPanel,.internalApp .quotePanel{padding:20px}
@@ -519,12 +537,13 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
    de 10 tarjetas con blur pesado es justo donde se nota. Ver el @supports del final para el
    respaldo en navegadores sin backdrop-filter. */
 .cotShell{
-  --cg-tint:rgba(255,255,255,.52);
+  --cg-tint:rgba(255,255,255,.56);
   --cg-tint-strong:rgba(255,255,255,.7);
   --cg-tint-soft:rgba(255,255,255,.38);
+  --cg-flare:rgba(255,255,255,.76);
   --cg-edge:rgba(255,255,255,.85);
   --cg-line:rgba(122,110,170,.18);
-  --cg-shadow:rgba(88,74,140,.16);
+  --cg-shadow:rgba(88,74,140,.22);
   --cg-ink:#2f2b41;
   --cg-muted:#6d6889;
   --cg-accent:#8b7cf0;
@@ -540,24 +559,26 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
   /* Malla pastel fija: es lo que el vidrio refracta. Sin un fondo con color detrás, el
      backdrop-filter no tiene nada que difuminar y las piezas se ven planas. */
   background:
-    radial-gradient(1150px 720px at 6% -10%, #ffd7ec 0%, transparent 58%),
-    radial-gradient(950px 640px at 98% 2%, #cfe3ff 0%, transparent 56%),
-    radial-gradient(900px 720px at 46% 112%, #c9f4e6 0%, transparent 60%),
+    radial-gradient(1150px 720px at 2% -10%, #ffcde7 0%, transparent 58%),
+    radial-gradient(950px 640px at 100% 0%, #c4ddff 0%, transparent 56%),
+    radial-gradient(900px 720px at 46% 112%, #bdf3e2 0%, transparent 60%),
+    radial-gradient(660px 520px at 64% 64%,rgba(216,202,255,.54),transparent 66%),
     linear-gradient(168deg,#f8f5ff 0%,#eff6ff 48%,#fff5fa 100%);
   background-attachment:fixed;
 }
 .cotTop{
-  position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
-  padding:14px 20px;background:var(--cg-tint);border-bottom:1px solid var(--cg-line);
-  backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);
-  box-shadow:inset 0 1px 0 var(--cg-edge);
+  position:sticky;top:10px;z-index:5;display:flex;align-items:center;justify-content:space-between;
+  min-height:58px;margin:10px 14px 0;padding:11px 14px;border:1px solid rgba(255,255,255,.76);border-radius:24px;
+  background:radial-gradient(115% 180% at 0 0,var(--cg-flare),transparent 52%),linear-gradient(145deg,var(--cg-tint-strong),var(--cg-tint-soft));
+  backdrop-filter:blur(30px) saturate(190%);-webkit-backdrop-filter:blur(30px) saturate(190%);
+  box-shadow:inset 0 1px 0 var(--cg-edge),0 16px 38px -26px var(--cg-shadow);
 }
 .cotBrand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;letter-spacing:.06em}
 .cotBrand b{background:linear-gradient(120deg,var(--cg-accent-deep),var(--cg-blush));-webkit-background-clip:text;background-clip:text;color:transparent}
 .cotBrandMark{width:32px;height:32px;border-radius:50%;background:linear-gradient(145deg,var(--cg-accent),var(--cg-blush));color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 6px 14px -6px var(--cg-accent)}
 .cotStepCount{font-size:11.5px;font-weight:600;color:var(--cg-muted);font-variant-numeric:tabular-nums}
-.cotProgress{position:sticky;top:61px;z-index:5;height:4px;background:rgba(255,255,255,.4)}
-.cotProgress span{display:block;height:100%;border-radius:0 999px 999px 0;background:linear-gradient(90deg,var(--cg-sky),var(--cg-accent) 55%,var(--cg-blush));transition:width .35s cubic-bezier(.4,0,.2,1)}
+.cotProgress{position:sticky;top:77px;z-index:5;width:min(560px,calc(100% - 36px));height:5px;margin:8px auto 0;overflow:hidden;border:1px solid rgba(255,255,255,.62);border-radius:999px;background:rgba(255,255,255,.4);box-shadow:inset 0 1px 2px rgba(80,66,130,.1)}
+.cotProgress span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--cg-sky),var(--cg-accent) 55%,var(--cg-blush));box-shadow:0 0 12px color-mix(in srgb,var(--cg-accent) 48%,transparent);transition:width .35s cubic-bezier(.4,0,.2,1)}
 .cotMain{flex:1;display:flex;justify-content:center;padding:26px 18px 132px}
 .cotScreen{width:100%;max-width:560px;display:flex;flex-direction:column;gap:13px}
 .cotScreen h1{font-size:30px;font-weight:700;line-height:1.12;margin:2px 0 0;letter-spacing:-.028em}
@@ -565,12 +586,14 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 
 .cotCards{display:flex;flex-direction:column;gap:11px}
 .cotCard{
-  display:flex;flex-direction:column;gap:5px;text-align:left;padding:17px 18px;color:var(--cg-ink);
-  border:1px solid var(--cg-line);border-radius:22px;background:var(--cg-tint);
-  backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);
-  box-shadow:inset 0 1px 0 var(--cg-edge),0 10px 26px -14px var(--cg-shadow);
+  position:relative;overflow:hidden;display:flex;flex-direction:column;gap:5px;text-align:left;padding:18px 19px;color:var(--cg-ink);
+  border:1px solid rgba(255,255,255,.74);border-radius:23px;
+  background:radial-gradient(130% 180% at 0 0,var(--cg-flare),transparent 48%),linear-gradient(145deg,var(--cg-tint),var(--cg-tint-soft));
+  backdrop-filter:blur(18px) saturate(175%);-webkit-backdrop-filter:blur(18px) saturate(175%);
+  box-shadow:inset 0 1px 0 var(--cg-edge),inset 0 -1px 0 rgba(100,82,170,.07),0 14px 30px -20px var(--cg-shadow);
   transition:transform .22s cubic-bezier(.4,0,.2,1),box-shadow .22s,background .22s,border-color .22s;
 }
+.cotCard::before{content:"";position:absolute;top:-1px;right:12%;left:12%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.96),transparent);pointer-events:none}
 .cotCard:active{transform:scale(.985)}
 .cotCard b{font-size:16.5px;font-weight:650}
 .cotCard small{font-size:12.5px;color:var(--cg-muted);line-height:1.45}
@@ -587,7 +610,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .cotField{display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--cg-muted);font-weight:600;letter-spacing:.01em}
 .cotField input{
   height:54px;font-size:17px;font-weight:500;border-radius:17px;padding:0 16px;color:var(--cg-ink);
-  border:1px solid var(--cg-line);background:var(--cg-tint-strong);
+  overflow:hidden;border:1px solid rgba(255,255,255,.72);background:radial-gradient(120% 180% at 0 0,var(--cg-flare),transparent 52%),linear-gradient(145deg,var(--cg-tint-strong),var(--cg-tint-soft));
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   box-shadow:inset 0 1px 0 var(--cg-edge);transition:box-shadow .2s,border-color .2s;
 }
@@ -765,17 +788,18 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .cotFoot{
   position:fixed;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:6;
   display:flex;align-items:center;gap:10px;padding:12px;border-radius:30px;
-  border:1px solid var(--cg-line);background:var(--cg-tint-strong);
+  overflow:hidden;border:1px solid rgba(255,255,255,.72);background:radial-gradient(120% 180% at 0 0,var(--cg-flare),transparent 52%),linear-gradient(145deg,var(--cg-tint-strong),var(--cg-tint-soft));
   backdrop-filter:blur(26px) saturate(190%);-webkit-backdrop-filter:blur(26px) saturate(190%);
   box-shadow:inset 0 1px 0 var(--cg-edge),0 16px 38px -18px var(--cg-shadow)
 }
 .cotFootPrice{flex:1;text-align:center;font-size:14.5px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
 .cotPrimary{
-  flex:1;min-height:52px;border-radius:999px;padding:0 22px;font-size:16px;font-weight:650;color:#fff;border:1px solid transparent;
+  position:relative;overflow:hidden;flex:1;min-height:52px;border-radius:999px;padding:0 22px;font-size:16px;font-weight:650;color:#fff;border:1px solid rgba(255,255,255,.24);
   background:linear-gradient(140deg,var(--cg-accent),var(--cg-accent-deep));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 12px 26px -12px var(--cg-accent-deep);
   transition:transform .18s cubic-bezier(.4,0,.2,1),box-shadow .2s,opacity .2s
 }
+.cotPrimary::before{content:"";position:absolute;inset:-80% 50% -80% -30%;transform:rotate(18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.46),transparent);transition:transform .5s ease;pointer-events:none}
 .cotPrimary:active:not(:disabled){transform:scale(.96)}
 .cotPrimary:disabled{opacity:.42;box-shadow:none}
 .cotSecondary{
@@ -786,6 +810,11 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 }
 .cotSecondary:active{transform:scale(.96)}
 .cotFinalActions .cotSecondary,.cotFinalActions .cotPrimary{width:100%;flex:none}
+
+@media(hover:hover){
+  .cotCard:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.92);box-shadow:inset 0 1px 0 #fff,0 20px 38px -24px var(--cg-shadow)}
+  .cotPrimary:hover::before{transform:translateX(210%) rotate(18deg)}
+}
 
 /* ---------- Proceso post-cotización (components/cotizar/glass + ProcessSection) ----------
    Reutiliza los tokens --cg-* de .cotShell; ningún color se declara aquí de nuevo. */
@@ -871,6 +900,8 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
   .cotShell{
     --cg-tint:rgba(60,56,90,.5);
     --cg-tint-strong:rgba(64,60,96,.68);
+    --cg-tint-soft:rgba(43,40,70,.42);
+    --cg-flare:rgba(255,255,255,.13);
     --cg-edge:rgba(255,255,255,.13);
     --cg-line:rgba(255,255,255,.13);
     --cg-shadow:rgba(0,0,0,.55);
@@ -1136,3 +1167,26 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
   .quoteDiagram .cotPreviewGlass{background:linear-gradient(145deg,#bfe0f5,#eaf6fb 52%,#cfeae4)!important}
   .internalApp .quoteDocument,.internalApp .quotePage,.internalApp .quoteItem{background:#fff!important;color:#14171b!important;border-radius:0!important}
 }
+
+/* LUFT AI · Phase 1. A deliberately isolated liquid-glass surface: agent states and
+   approval controls never inherit the printable report palette. */
+.luftAiPanel{position:relative;isolation:isolate;margin:22px 0 4px;padding:18px;border:1px solid color-mix(in srgb,var(--accent) 24%,rgba(255,255,255,.34));border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.7),rgba(232,246,255,.46) 54%,rgba(255,255,255,.28));box-shadow:0 18px 45px rgba(22,52,78,.12),inset 0 1px 0 rgba(255,255,255,.9);backdrop-filter:blur(24px) saturate(155%);overflow:hidden}
+.luftAiPanel::before{content:"";position:absolute;z-index:-1;inset:-90px auto auto -70px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(71,180,255,.24),transparent 68%);pointer-events:none}
+.luftAiPanel::after{content:"";position:absolute;z-index:-1;right:-90px;bottom:-110px;width:250px;height:250px;border-radius:50%;background:radial-gradient(circle,rgba(115,230,202,.18),transparent 68%);pointer-events:none}
+.luftAiHeader,.luftAiHeader>div,.luftAiComposer>div,.luftAiRun>header,.luftAiProposals article>div,.luftAiProposals footer{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.luftAiHeader>div:first-child{align-items:flex-start;flex-direction:column;gap:2px}
+.luftAiKicker{font-size:9px;font-weight:800;letter-spacing:.18em;color:var(--muted)}
+.luftAiHeader h2{margin:0;font-size:23px;letter-spacing:-.04em}.luftAiHeader h2 i{display:inline-grid;width:29px;height:29px;margin-right:5px;place-items:center;border-radius:11px;color:#fff;font-style:normal;font-size:15px;background:linear-gradient(145deg,#168be8,#36c6bc);box-shadow:0 7px 17px rgba(21,135,215,.25)}
+.luftAiStatus{align-items:flex-end!important;flex-direction:column}.luftAiStatus span{padding:5px 10px;border-radius:999px;font-size:10px;font-weight:800}.luftAiStatus .ready{color:#08765f;background:rgba(26,194,151,.14)}.luftAiStatus .blocked{color:#a12d3b;background:rgba(224,69,88,.13)}.luftAiStatus small{font-size:9px;color:var(--muted)}
+.luftAiReply{margin:14px 0 10px;padding:12px 14px;border:1px solid rgba(255,255,255,.78);border-radius:16px;background:rgba(255,255,255,.42);color:var(--text);font-size:12px;line-height:1.55;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+.luftAiAuth{padding:9px 11px;border-radius:12px;background:rgba(255,188,68,.13);font-size:10px;line-height:1.45}.luftAiAuth a{font-weight:800;color:var(--accent)}
+.luftAiComposer textarea{width:100%;min-height:72px;resize:vertical;margin:0;border-color:rgba(127,165,190,.28);border-radius:16px;background:rgba(255,255,255,.54);box-shadow:inset 0 1px 0 rgba(255,255,255,.92)}
+.luftAiComposer>div{margin-top:8px;justify-content:flex-end}.luftAiComposer button,.luftAiProposals button{min-height:34px;padding:8px 12px;border:1px solid rgba(112,148,173,.26);border-radius:12px;background:rgba(255,255,255,.58);font-size:10px;font-weight:800}.luftAiComposer button.primary,.luftAiProposals button.primary{color:#fff;border-color:transparent;background:linear-gradient(135deg,#147edf,#20b7af);box-shadow:0 8px 18px rgba(18,130,195,.2)}
+.luftAiAgents{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}.luftAiAgents span{display:flex;align-items:center;gap:5px;padding:5px 8px;border:1px solid rgba(122,157,181,.2);border-radius:999px;background:rgba(255,255,255,.42);font-size:9px;color:var(--muted)}.luftAiAgents b{color:#58a8cc;font-size:7px}.luftAiAgents .director{color:#116d9c;border-color:rgba(34,142,201,.3);background:rgba(77,182,236,.1)}.luftAiAgents .director b{font-size:10px}
+.luftAiRun,.luftAiProposals,.luftAiAudit{margin-top:12px;padding:12px;border:1px solid rgba(129,164,187,.22);border-radius:18px;background:rgba(255,255,255,.4)}.luftAiRun>header{align-items:flex-start}.luftAiRun>header strong{font-size:11px;line-height:1.45}.confidence{flex:none;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.confidence.high{color:#08765f;background:rgba(32,194,149,.14)}.confidence.medium{color:#8a6010;background:rgba(233,171,46,.15)}.confidence.low,.confidence.blocked{color:#a12d3b;background:rgba(224,69,88,.13)}
+.luftAiFindings{display:grid;gap:7px;margin:11px 0 0;padding:0;list-style:none}.luftAiFindings li{padding:10px;border-left:3px solid #62a9cc;border-radius:11px;background:rgba(245,251,255,.68)}.luftAiFindings li.warning{border-left-color:#e5a92f}.luftAiFindings li.blocking{border-left-color:#dc4558;background:rgba(255,242,244,.68)}.luftAiFindings li>b{display:inline-block;margin-right:6px;font-size:8px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}.luftAiFindings li>span{font-size:10px;font-weight:850}.luftAiFindings p{margin:4px 0;font-size:10px;line-height:1.45}.luftAiFindings small,.luftAiSources p,.luftAiProposals small,.luftAiAudit small{display:block;color:var(--muted);font-size:8px;line-height:1.4}
+.luftAiSources,.luftAiAudit{font-size:9px}.luftAiSources summary,.luftAiAudit summary{cursor:pointer;font-weight:850;color:var(--muted)}.luftAiSources p{margin:7px 0 0}.luftAiSources p b{text-transform:uppercase}
+.luftAiProposals h3{margin:0 0 8px;font-size:11px}.luftAiProposals article{padding:10px 0;border-top:1px solid rgba(126,160,182,.2)}.luftAiProposals article:first-of-type{border-top:0}.luftAiProposals article>div b{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:9px}.luftAiProposals article>div small{font-weight:800}.luftAiProposals article>p{display:flex;align-items:center;gap:8px;margin:8px 0}.luftAiProposals del,.luftAiProposals ins{padding:4px 7px;border-radius:8px;font-size:10px;text-decoration:none}.luftAiProposals del{color:#9b3c4b;background:rgba(219,69,88,.1)}.luftAiProposals ins{color:#08765f;background:rgba(27,188,146,.12)}.luftAiProposals footer{justify-content:flex-end;margin-top:9px}
+.luftAiAudit p{margin:8px 0 0;padding-top:8px;border-top:1px solid rgba(126,160,182,.18);font-size:9px;line-height:1.4}.luftAiAudit p small{margin-top:2px}
+@media(max-width:760px){.luftAiPanel{padding:14px;border-radius:21px}.luftAiHeader{align-items:flex-start}.luftAiComposer>div{display:grid;grid-template-columns:1fr 1fr}.luftAiComposer button{width:100%}}
+@media print{.luftAiPanel{display:none!important}}

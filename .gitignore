@@ -51,3 +51,8 @@ tsconfig.tsbuildinfo
 
 # graphify knowledge graph (regenerated locally)
 /graphify-out/
+
+# artefactos locales: copia de despliegue del repo, PDFs generados y scratch de edición
+/.codex-deploy-*/
+/output/
+/tmp/

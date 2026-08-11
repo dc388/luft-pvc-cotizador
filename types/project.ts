@@ -1,4 +1,5 @@
 import type { Brand, FrameNode, Marco } from "./domain";
+import type { LuftAgentState } from "./luft-ai";
 
 // Everything about a component that isn't promoted to its own normalized DB column --
 // still shaped exactly like the fields lib/persistence.ts used to keep flat before the
@@ -29,6 +30,9 @@ export type ComponentData = {
   /** Commercial stock bar length (mm) used for this component's cut-list optimization --
    * see lib/calc.ts's BAR_LENGTH_MM for the historical default and Consumo tab's selector. */
   barLengthMm: number;
+  /** Phase-1 LUFT AI review/proposal state. Optional for backwards compatibility with every
+   * component persisted before the agent layer existed. Domain calculations never read it. */
+  luftAi?: LuftAgentState;
 };
 
 export type ComponentRecord = {
