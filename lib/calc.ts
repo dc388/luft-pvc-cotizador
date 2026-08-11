@@ -1,5 +1,5 @@
 import type { ColorItem, FrameNode, GlassItem, PaneSpec, System, WingType } from "@/types/domain";
-import { flattenToRects } from "./tree";
+import { flattenToLeafFrames, hasSashWing, isOperableWing } from "./tree";
 
 // Representative rate for the Mallorquina louvre-shutter accessory (avg. of the 5
 // Mallorquina families' base EUR/m prices * EUR_MXN) — modeled as a per-leaf add-on, not a
@@ -31,6 +31,7 @@ export type QuoteCalc = {
   reinforce: number;
   seals: number;
   accessories: number;
+  hardwareCount: number;
   addons: number;
   consumables: number;
   direct: number;
@@ -76,29 +77,35 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
   const w = width / 1000, h = height / 1000;
   const area = w * h, perimeter = 2 * (w + h);
 
-  const rects = flattenToRects(tree, width, height);
-  const leaves: LeafCalc[] = rects.map((r) => {
-    const wM = r.w / 1000, hM = r.h / 1000;
+  // Real fabrication size per leaf: for sliding leaves this differs from a plain marco/n
+  // split -- each hoja seats sys.frameSeatMm into the outer marco on the sides that touch
+  // it, and extends sys.centerOverlapMm/2 past the nominal centerline on the side where it
+  // traslapes a sliding sibling, so the two closed leaves actually overlap instead of just
+  // butting edge to edge. See flattenToLeafFrames.
+  const frames = flattenToLeafFrames(tree, width, height, sys.frameSeatMm, sys.centerOverlapMm);
+  const leaves: LeafCalc[] = frames.map((r) => {
+    const wM = r.fabW / 1000, hM = r.fabH / 1000;
     return {
       id: r.id,
       wing: r.wing,
       spec: r.spec,
-      wMm: r.w,
-      hMm: r.h,
+      wMm: r.fabW,
+      hMm: r.fabH,
       glassArea: Math.max(0, (wM - 0.12) * (hM - 0.12)),
-      sashPerimeter: 2 * (wM + hM),
+      sashPerimeter: hasSashWing(r.wing) ? 2 * (wM + hM) : 0,
     };
   });
 
   const frameM = perimeter + splitterLengthM(tree, width, height);
   const sashM = leaves.reduce((a, l) => a + l.sashPerimeter, 0);
   const glassArea = leaves.reduce((a, l) => a + l.glassArea, 0);
+  const hardwareCount = leaves.filter((l) => isOperableWing(l.wing)).length;
 
   const profileCost = (frameM * sys.frame + sashM * sys.sash) * color.factor;
   const glassCost = glassArea * glass.price;
   const reinforce = (frameM + sashM) * 78;
   const seals = (frameM + sashM) * 24;
-  const accessories = sys.hardware + leaves.length * 110 + rail * 165;
+  const accessories = sys.hardware + hardwareCount * 110 + rail * 165;
   const addons = leaves.reduce((a, l) => a + (l.spec.mallorquina ? (l.wMm / 1000) * MALLORQUINA_RATE_MXN_PER_M * 2 : 0), 0);
   const consumables = (profileCost + glassCost) * 0.045;
   const direct = profileCost + glassCost + reinforce + seals + accessories + addons + consumables + installation + transport;
@@ -108,7 +115,7 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
 
   return {
     w, h, area, perimeter, leaves, frameM, sashM, glassArea,
-    profileCost, glassCost, reinforce, seals, accessories, addons, consumables,
+    profileCost, glassCost, reinforce, seals, accessories, hardwareCount, addons, consumables,
     direct, sale, total: sale * qty, utility: (sale - direct) * qty, bars, waste,
   };
 }
@@ -146,12 +153,12 @@ export function packBars(pieces: CutPiece[], barLength: number, kerf: number): P
 // travesaño per internal divider (its own actual cross-axis length), 4 hoja pieces per
 // non-fixed/inactive leaf (fixed/inactive leaves glaze straight into marco/travesaño, no
 // sash), and 4 junquillo (glazing bead) pieces per leaf.
-export function buildCutList(tree: FrameNode, width: number, height: number): CutList {
+export function buildCutList(tree: FrameNode, width: number, height: number, sys: System): CutList {
   const marco: CutPiece[] = [
-    { label: "Marco: Abajo", length: width, angle: "45°" },
-    { label: "Marco: Arriba", length: width, angle: "45°" },
-    { label: "Marco: Izquierda", length: height, angle: "45°" },
-    { label: "Marco: Derecha", length: height, angle: "45°" },
+    { label: "Marco: Abajo", length: Math.round(width), angle: "45°" },
+    { label: "Marco: Arriba", length: Math.round(width), angle: "45°" },
+    { label: "Marco: Izquierda", length: Math.round(height), angle: "45°" },
+    { label: "Marco: Derecha", length: Math.round(height), angle: "45°" },
   ];
   const travesanos: CutPiece[] = [];
   (function walk(node: FrameNode, w: number, h: number) {
@@ -166,9 +173,12 @@ export function buildCutList(tree: FrameNode, width: number, height: number): Cu
   })(tree, width, height);
   const hojas: CutPiece[] = [];
   const junquillos: CutPiece[] = [];
-  flattenToRects(tree, width, height).forEach((r, i) => {
+  // Real hoja/junquillo cut length: fabW/fabH already fold in each sliding leaf's marco-seat
+  // inset and center-traslape extension (flattenToLeafFrames), so two correderas meeting
+  // mid-run are cut to actually overlap there instead of butting edge to edge at width/2.
+  flattenToLeafFrames(tree, width, height, sys.frameSeatMm, sys.centerOverlapMm).forEach((r, i) => {
     const label = `Hoja ${String.fromCharCode(65 + i)}`;
-    const w = Math.round(r.w), h = Math.round(r.h);
+    const w = Math.round(r.fabW), h = Math.round(r.fabH);
     if (r.wing !== "fixed" && r.wing !== "inactive") {
       hojas.push(
         { label: `${label}: Arriba`, length: w, angle: "45°" },

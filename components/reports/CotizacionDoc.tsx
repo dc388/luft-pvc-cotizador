@@ -90,7 +90,7 @@ export function CotizacionDoc({ calc, sys, glass, color, brand, tree, width, hei
               </tbody>
             </table>
             <div className="docDiagramBox">
-              <WindowDiagram tree={tree} width={width} height={height} color={color} />
+              <WindowDiagram tree={tree} width={width} height={height} color={color} system={sys} />
             </div>
           </div>
         </div>

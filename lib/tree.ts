@@ -47,6 +47,18 @@ export const SLIDING_WINGS: WingType[] = ["sliding", "lift-slide", "folding-slid
 
 export const SIDE_LABEL: Record<keyof Sides, string> = { top: "Arriba", bottom: "Abajo", left: "Izquierda", right: "Derecha" };
 
+// A "fixed"/"inactive" leaf glazes straight into the frame/mullion -- no hoja (sash) profile of
+// its own, matching the shapes drawn by FrameNodeView and cut by buildCutList in lib/calc.ts.
+export function hasSashWing(wing: WingType): boolean {
+  return wing !== "fixed" && wing !== "inactive";
+}
+
+// A wing with hardware/handle of its own -- excludes "fixed"/"inactive" (no sash at all) and
+// "sliding-fixed" (has a sash but no rollers/handle, see MOVABLE_SLIDING_WINGS above).
+export function isOperableWing(wing: WingType): boolean {
+  return hasSashWing(wing) && wing !== "sliding-fixed";
+}
+
 export function defaultSpecFor(wing: WingType): Partial<PaneSpec> {
   const fixed = wing === "fixed" || wing === "inactive" || wing === "sliding-fixed";
   const movableSliding = MOVABLE_SLIDING_WINGS.includes(wing);
@@ -94,10 +106,10 @@ export function defaultMarco(): Marco {
   };
 }
 
-export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>): LeafNode {
+export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>, id: string = crypto.randomUUID()): LeafNode {
   return {
     kind: "leaf",
-    id: crypto.randomUUID(),
+    id,
     wing,
     spec: {
       glass: "Heredar vidrio general",
@@ -113,13 +125,20 @@ export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>): 
 
 // Default starting shape for a new item: a 2-panel sliding window, the most
 // common opening — the same idea as the app's old "slide2" preset default.
+//
+// Uses fixed ids instead of crypto.randomUUID() so this tree is identical
+// between server and client renders (no React hydration mismatch). Every
+// mutation made after mount (split, add, reset, etc.) still gets a random id.
 export function createDefaultTree(): FrameNode {
   return {
     kind: "split",
-    id: crypto.randomUUID(),
+    id: "root",
     axis: "col",
     ratios: [0.5, 0.5],
-    children: [createLeaf("sliding"), createLeaf("sliding", { direction: "Izquierda" })],
+    children: [
+      createLeaf("sliding", undefined, "leaf-a"),
+      createLeaf("sliding", { direction: "Izquierda" }, "leaf-b"),
+    ],
   };
 }
 
@@ -225,6 +244,85 @@ export function removeSplit(tree: FrameNode, splitId: string): FrameNode {
 }
 
 export type Rect = { id: string; wing: WingType; spec: PaneSpec; x: number; y: number; w: number; h: number };
+
+// Shared with components/editor/frameTypes.ts (re-exported from there for the editor's
+// hit-testing UI) -- "overlap" marks a shared boundary between two sliding leaves that
+// meet mid-run, `true` marks a boundary against the real outer marco, `false` an internal
+// structural mullion/travesaño between non-sliding neighbors.
+export type EdgeValue = boolean | "overlap";
+export type Edges = { top: EdgeValue; right: EdgeValue; bottom: EdgeValue; left: EdgeValue };
+const OUTER_EDGES: Edges = { top: true, right: true, bottom: true, left: true };
+
+export type LeafFrame = Rect & {
+  edges: Edges;
+  // Real fabrication rect: for sliding leaves, inset by `seatMm` on every side that seats
+  // into the outer marco, and extended by half of `overlapMm` on every side that overlaps a
+  // sliding sibling at a shared track boundary -- see System.frameSeatMm/centerOverlapMm.
+  // Equal to x/y/w/h for any non-sliding leaf (fixed, casement, etc.), unchanged from today.
+  fabX: number;
+  fabY: number;
+  fabW: number;
+  fabH: number;
+};
+
+// Resolves the tree into absolute mm rectangles like flattenToRects, but also carries each
+// leaf's real fabrication size once sliding leaves' marco-seat and center-traslape are
+// accounted for -- used by the cut list, the quote's sash measurements, and the editor's
+// drawing (which renders fabX/fabY/fabW/fabH so overlapping sliding leaves visually overlap).
+export function flattenToLeafFrames(
+  tree: FrameNode,
+  width: number,
+  height: number,
+  seatMm: number,
+  overlapMm: number,
+  edges: Edges = OUTER_EDGES,
+  x = 0,
+  y = 0
+): LeafFrame[] {
+  if (tree.kind === "leaf") {
+    const sliding = isSlidingLeaf(tree);
+    const leftD = !sliding ? 0 : edges.left === true ? seatMm : edges.left === "overlap" ? -overlapMm / 2 : 0;
+    const rightD = !sliding ? 0 : edges.right === true ? -seatMm : edges.right === "overlap" ? overlapMm / 2 : 0;
+    const topD = !sliding ? 0 : edges.top === true ? seatMm : edges.top === "overlap" ? -overlapMm / 2 : 0;
+    const bottomD = !sliding ? 0 : edges.bottom === true ? -seatMm : edges.bottom === "overlap" ? overlapMm / 2 : 0;
+    const fabX = x + leftD, fabRight = x + width + rightD;
+    const fabY = y + topD, fabBottom = y + height + bottomD;
+    return [{ id: tree.id, wing: tree.wing, spec: tree.spec, x, y, w: width, h: height, edges, fabX, fabY, fabW: fabRight - fabX, fabH: fabBottom - fabY }];
+  }
+  const n = tree.children.length;
+  const frames: LeafFrame[] = [];
+  let offset = 0;
+  tree.children.forEach((child, i) => {
+    // Same "sliding leaves meeting mid-run share an 'overlap' edge, not a structural
+    // travesaño" rule as FrameNodeView's rendering (this is now its single source of truth).
+    const slideNeighbor = (j: number) => j >= 0 && j < n && isSlidingLeaf(child) && isSlidingLeaf(tree.children[j]);
+    const childEdges: Edges =
+      tree.axis === "col"
+        ? {
+            top: edges.top,
+            bottom: edges.bottom,
+            left: i === 0 ? edges.left : slideNeighbor(i - 1) ? "overlap" : false,
+            right: i === n - 1 ? edges.right : slideNeighbor(i + 1) ? "overlap" : false,
+          }
+        : {
+            top: i === 0 ? edges.top : slideNeighbor(i - 1) ? "overlap" : false,
+            bottom: i === n - 1 ? edges.bottom : slideNeighbor(i + 1) ? "overlap" : false,
+            left: edges.left,
+            right: edges.right,
+          };
+    const ratio = tree.ratios[i];
+    if (tree.axis === "col") {
+      const w = width * ratio;
+      frames.push(...flattenToLeafFrames(child, w, height, seatMm, overlapMm, childEdges, x + offset, y));
+      offset += w;
+    } else {
+      const h = height * ratio;
+      frames.push(...flattenToLeafFrames(child, width, h, seatMm, overlapMm, childEdges, x, y + offset));
+      offset += h;
+    }
+  });
+  return frames;
+}
 
 // Resolves the tree's ratios into absolute mm rectangles for a given overall
 // width/height — used by the calc engine and by report tables.

@@ -1,5 +1,6 @@
 import type { FrameNode } from "@/types/domain";
 import { flattenToRects, SLIDING_WINGS } from "@/lib/tree";
+import { LockIcon } from "./icons";
 
 type Props = {
   tree: FrameNode;
@@ -32,7 +33,7 @@ export function CentralLocks({ tree, widthMm, heightMm, onCentralLockClick }: Pr
           style={{ left: `${((centerX / widthMm) * 100).toFixed(3)}%` }}
           onClick={() => onCentralLockClick(run[2].id)}
         >
-          ⚿
+          <LockIcon size={12} />
         </button>
       );
     }
