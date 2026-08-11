@@ -103,6 +103,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
 
   const [contact, setContact] = useState<Contact>(EMPTY_CONTACT);
   const [consentToContact, setConsentToContact] = useState(false);
+  const [consentError, setConsentError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [contactErrors, setContactErrors] = useState<Partial<Record<keyof Contact, string>>>({});
@@ -430,7 +431,13 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   }
 
   async function submit() {
-    if (lockedItems.length === 0 || !validateContact()) return;
+    if (lockedItems.length === 0) return;
+    // El permiso de contacto se valida aquí y no apagando el botón: un CTA deshabilitado sin
+    // explicación deja al cliente sin saber qué le falta, y éste es el último clic del cotizador.
+    // Los dos avisos se calculan antes de salir para que se vean juntos, no de uno en uno.
+    const contactOk = validateContact();
+    setConsentError(consentToContact ? "" : "Marca esta casilla para que podamos darte seguimiento.");
+    if (!contactOk || !consentToContact) return;
     setSubmitting(true);
     setSubmitError("");
     try {
@@ -773,8 +780,17 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
             </label>
             <label className="cotToggle cotConsent">
               <span><b>Autorizo el seguimiento</b><small>LUFT PVC puede contactarme para continuar con esta cotización.</small></span>
-              <input type="checkbox" checked={consentToContact} onChange={(event) => setConsentToContact(event.target.checked)} aria-label="Autorizar contacto de LUFT PVC" />
+              <input
+                type="checkbox"
+                checked={consentToContact}
+                onChange={(event) => {
+                  setConsentToContact(event.target.checked);
+                  if (event.target.checked) setConsentError("");
+                }}
+                aria-label="Autorizar contacto de LUFT PVC"
+              />
             </label>
+            {consentError && <small className="cotFieldError">{consentError}</small>}
             <p className="cotFinePrint">Al continuar aceptas que LUFT PVC utilice estos datos para preparar y dar seguimiento a tu cotización.</p>
             {submitError && <p className="cotWarn">{submitError}</p>}
           </Screen>
@@ -808,7 +824,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         <footer className="cotFoot">
           {step > S.PRODUCT && <button className="cotSecondary" onClick={handleBack}>Atrás</button>}
           {step === S.CONTACT ? (
-            <button className="cotPrimary" onClick={submit} disabled={submitting || !consentToContact}>{submitting ? "Generando…" : "Generar mi cotización"}</button>
+            <button className="cotPrimary" onClick={submit} disabled={submitting}>{submitting ? "Generando…" : "Generar mi cotización"}</button>
           ) : step === S.SUMMARY ? (
             <button className="cotPrimary" onClick={prepareProject} disabled={!canAdvance}>{preparingProject ? "Revisando…" : "Continuar"}</button>
           ) : (
