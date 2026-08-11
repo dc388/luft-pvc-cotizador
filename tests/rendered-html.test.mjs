@@ -7,6 +7,25 @@ register(new URL("./cloudflare-workers-loader.mjs", import.meta.url));
 const developmentPreviewMeta =
   /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
 
+// La app interna vive detrás del candado de lib/internalGate.ts, así que pedir "/" sin
+// credenciales devuelve 503 ("falta configurar INTERNAL_PASSWORD") y nunca llega a renderizar.
+// Estas pruebas usan una contraseña de prueba propia -- nada de la real -- y fabrican la cookie
+// igual que el candado: un HMAC del mensaje constante, nunca la contraseña en claro.
+const TEST_INTERNAL_PASSWORD = "contrasena-de-prueba";
+
+async function internalCookie(password) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode("luft-internal-v1"));
+  const token = [...new Uint8Array(signature)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `luft_internal=${token}`;
+}
+
 test("renders development preview metadata", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
@@ -14,12 +33,13 @@ test("renders development preview metadata", async () => {
 
   const response = await worker.fetch(
     new Request("http://localhost/", {
-      headers: { accept: "text/html" },
+      headers: { accept: "text/html", cookie: await internalCookie(TEST_INTERNAL_PASSWORD) },
     }),
     {
       ASSETS: {
         fetch: async () => new Response("Not found", { status: 404 }),
       },
+      INTERNAL_PASSWORD: TEST_INTERNAL_PASSWORD,
     },
     {
       waitUntil() {},
@@ -34,6 +54,44 @@ test("renders development preview metadata", async () => {
   );
   assert.match(await response.text(), developmentPreviewMeta);
 });
+
+test("el candado interno no deja pasar sin cookie válida", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-gate`);
+  const { default: worker } = await import(workerUrl.href);
+  const env = {
+    ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+    INTERNAL_PASSWORD: TEST_INTERNAL_PASSWORD,
+  };
+  const ctx = { waitUntil() {}, passThroughOnException() {} };
+
+  // Sin cookie: la app interna redirige al formulario, no se sirve.
+  const anonymous = await worker.fetch(
+    new Request("http://localhost/", { headers: { accept: "text/html" } }),
+    env,
+    ctx,
+  );
+  assert.equal(anonymous.status, 302);
+
+  // Con una cookie firmada con otra contraseña tampoco pasa.
+  const forged = await worker.fetch(
+    new Request("http://localhost/", {
+      headers: { accept: "text/html", cookie: await internalCookie("otra-contrasena") },
+    }),
+    env,
+    ctx,
+  );
+  assert.equal(forged.status, 302);
+
+  // El CRUD de proyectos, que expone datos de clientes, responde 401 y no un formulario.
+  const api = await worker.fetch(new Request("http://localhost/api/projects"), env, ctx);
+  assert.equal(api.status, 401);
+});
+
+// NOTA: el selector de carpetas no se puede afirmar desde aquí. El HTML que rinde el servidor
+// abre en el tab "Diseño", y el bloque de Carpetas vive en el tab "Proyecto", que solo existe
+// tras la hidratación. Una aserción sobre este HTML pasaría o fallaría por el tab activo, no por
+// el selector, así que la lista se verifica contra el API (GET /api/projects) y en el navegador.
 
 test("exposes a non-cacheable deployment version for open clients", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);

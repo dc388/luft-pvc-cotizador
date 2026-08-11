@@ -2,7 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { components, projects } from "@/db/schema";
 import { defaultComponentData } from "@/lib/componentDefaults";
-import type { ComponentData, ComponentPatch, ComponentRecord, ComponentSummary, ProjectRecord } from "@/types/project";
+import type { ComponentData, ComponentPatch, ComponentRecord, ComponentSummary, ProjectRecord, ProjectSummary } from "@/types/project";
 
 type Db = DrizzleD1Database<Record<string, unknown>>;
 
@@ -50,10 +50,46 @@ async function projectRecord(db: Db, row: ProjectRow): Promise<ProjectRecord> {
     id: row.id,
     name: row.name,
     activeComponentId: row.activeComponentId,
+    source: row.source === "web" ? "web" : "interno",
+    folio: row.folio,
+    client: row.client,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     components: rows.map(toSummary),
   };
+}
+
+// La lista de carpetas del tab Proyecto. Se resuelve en dos consultas (proyectos + un conteo
+// agrupado) en vez de una por proyecto: con una cotización web por cliente, la lista crece con
+// el negocio y un N+1 aquí se notaría antes que en cualquier otra pantalla.
+export async function listProjectSummaries(db: Db): Promise<ProjectSummary[]> {
+  const rows = await db.select().from(projects).orderBy(sql`${projects.updatedAt} desc`);
+  if (rows.length === 0) return [];
+
+  const counts = await db
+    .select({
+      projectId: components.projectId,
+      componentCount: sql<number>`count(*)`,
+      pieceCount: sql<number>`coalesce(sum(${components.qty}), 0)`,
+    })
+    .from(components)
+    .groupBy(components.projectId);
+  const byProject = new Map(counts.map((c) => [c.projectId, c]));
+
+  return rows.map((row) => {
+    const count = byProject.get(row.id);
+    return {
+      id: row.id,
+      name: row.name,
+      source: row.source === "web" ? "web" : "interno",
+      folio: row.folio,
+      client: row.client,
+      componentCount: Number(count?.componentCount ?? 0),
+      pieceCount: Number(count?.pieceCount ?? 0),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  });
 }
 
 export async function getMostRecentProject(db: Db): Promise<ProjectRecord | null> {
@@ -93,10 +129,23 @@ export async function createProject(db: Db, name = "Proyecto sin nombre"): Promi
 
 // Crea un proyecto vacío para flujos que ya traen todos sus componentes, como el cotizador
 // público. Evita sembrar la ventana genérica que createProject() necesita en el editor.
-export async function createEmptyProject(db: Db, name: string): Promise<ProjectRecord> {
+export async function createEmptyProject(
+  db: Db,
+  name: string,
+  origin: { source?: ProjectRecord["source"]; folio?: string; client?: string } = {}
+): Promise<ProjectRecord> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  await db.insert(projects).values({ id, name, activeComponentId: null, createdAt: now, updatedAt: now });
+  await db.insert(projects).values({
+    id,
+    name,
+    activeComponentId: null,
+    source: origin.source ?? "interno",
+    folio: origin.folio ?? "",
+    client: origin.client ?? "",
+    createdAt: now,
+    updatedAt: now,
+  });
   const [row] = await db.select().from(projects).where(eq(projects.id, id));
   return projectRecord(db, row);
 }

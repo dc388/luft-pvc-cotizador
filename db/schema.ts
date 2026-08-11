@@ -8,6 +8,15 @@ export const projects = sqliteTable("projects", {
   id: text("id").primaryKey(),
   name: text("name").notNull().default("Proyecto sin nombre"),
   activeComponentId: text("active_component_id"),
+  // Procedencia del proyecto: "web" cuando lo creó un cliente en /cotizar, "interno" cuando lo
+  // abrió alguien del equipo. Son columnas y no un prefijo en `name` a propósito: la lista de
+  // proyectos necesita distinguir el origen, el folio y el cliente aunque después se renombre
+  // la carpeta -- y renombrar es justo lo primero que se hace con una cotización que avanza.
+  source: text("source").notNull().default("interno"),
+  /** Folio público (W-XXXXXX) del envío que originó el proyecto. Vacío en los internos. */
+  folio: text("folio").notNull().default(""),
+  /** Nombre del cliente tal como lo capturó el cotizador público. Vacío en los internos. */
+  client: text("client").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

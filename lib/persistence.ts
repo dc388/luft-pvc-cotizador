@@ -1,4 +1,4 @@
-import type { ComponentData, ComponentPatch, ComponentRecord, ProjectRecord } from "@/types/project";
+import type { ComponentData, ComponentPatch, ComponentRecord, ProjectRecord, ProjectSummary } from "@/types/project";
 import { defaultComponentData } from "@/lib/componentDefaults";
 
 // Fallback used only when the API/D1 is unreachable (offline, or D1 not yet provisioned in
@@ -70,28 +70,59 @@ async function api<T>(url: string, init?: RequestInit, retriesLeft = 2): Promise
   return body;
 }
 
-export type BootstrapResult = { project: ProjectRecord | null; component: ComponentRecord; mode: "db" | "offline" };
+export type BootstrapResult = {
+  project: ProjectRecord | null;
+  component: ComponentRecord;
+  projects: ProjectSummary[];
+  mode: "db" | "offline";
+};
 
 // Runs once on mount: loads the most recently touched project + its active component from
 // the DB, creating a brand-new project if none exists yet, or transparently falls back to
 // the last offline-saved component if the DB isn't reachable in this environment.
+// También trae la lista de carpetas para el selector de proyectos, en la misma respuesta.
 export async function bootstrap(): Promise<BootstrapResult> {
   try {
-    let { project } = await api<{ project: ProjectRecord | null }>("/api/projects");
+    let { project, projects } = await api<{ project: ProjectRecord | null; projects?: ProjectSummary[] }>("/api/projects");
     if (!project) {
       ({ project } = await api<{ project: ProjectRecord }>("/api/projects", { method: "POST", body: JSON.stringify({}) }));
+      projects = undefined;
     }
     const activeId = project.activeComponentId ?? project.components[0]?.id;
     if (!activeId) throw new Error("El proyecto no tiene ningún componente.");
     const { component } = await api<{ component: ComponentRecord }>(`/api/projects/${project.id}/components/${activeId}`);
-    return { project, component, mode: "db" };
+    return { project, component, projects: projects ?? (await listProjects().catch(() => [])), mode: "db" };
   } catch {
     const offline = readOffline();
     const component = offline
       ? offlineToComponentRecord(offline)
       : { id: "offline", projectId: "offline", position: 0, code: "001", designation: "V01", location: "", qty: 1, widthMm: 4000, heightMm: 2200, brand: "Aluplast" as const, systemIndex: 0, colorIndex: 1, data: defaultComponentData(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    return { project: null, component, mode: "offline" };
+    return { project: null, component, projects: [], mode: "offline" };
   }
+}
+
+/** Crea una carpeta nueva (con su ventana genérica) y la devuelve lista para abrirse. */
+export async function createProjectApi(name?: string): Promise<ProjectRecord> {
+  const { project } = await api<{ project: ProjectRecord }>("/api/projects", {
+    method: "POST",
+    body: JSON.stringify(name ? { name } : {}),
+  });
+  return project;
+}
+
+/** La lista de carpetas del selector de proyectos, ordenada de la más reciente a la más vieja. */
+export async function listProjects(): Promise<ProjectSummary[]> {
+  const { projects } = await api<{ projects?: ProjectSummary[] }>("/api/projects");
+  return projects ?? [];
+}
+
+/** Abre otra carpeta: su proyecto completo y el componente que quedó activo dentro de ella. */
+export async function openProject(projectId: string): Promise<{ project: ProjectRecord; component: ComponentRecord }> {
+  const project = await refetchProject(projectId);
+  const activeId = project.activeComponentId ?? project.components[0]?.id;
+  if (!activeId) throw new Error("Esa carpeta no tiene ningún componente.");
+  const component = await fetchComponent(projectId, activeId);
+  return { project, component };
 }
 
 export async function saveComponent(

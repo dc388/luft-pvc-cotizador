@@ -48,7 +48,11 @@ export async function POST(request: Request) {
     const folio = `W-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
     // Se guarda en la misma tabla `projects` que abre LUFT PVC. El prefijo y el cliente
     // permiten reconocer de inmediato que llegó desde el cotizador público.
-    const project = await createEmptyProject(db, `Cotización WEB ${folio} · ${contact.name}`);
+    const project = await createEmptyProject(db, `Cotización WEB ${folio} · ${contact.name}`, {
+      source: "web",
+      folio,
+      client: contact.name,
+    });
     let firstComponentId = "";
 
     for (const [index, config] of configs.entries()) {

@@ -291,6 +291,19 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .componentActions button:hover:not(:disabled){color:var(--accent)}
 .componentActions button:disabled{opacity:.35}
 
+/* Selector de carpetas. Reusa la escala tipográfica y los radios del outliner de componentes:
+   es la misma clase de lista, un nivel más arriba. Las que llegaron del cotizador público se
+   marcan con acento e insignia WEB para reconocerlas sin leer el nombre. */
+.projectFolders{display:grid;gap:6px;margin:10px 0;max-height:236px;overflow-y:auto}
+.projectFolder{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;text-align:left;padding:9px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface)}
+.projectFolder i{font-style:normal;font-size:13px;line-height:1}
+.projectFolder span{display:grid;gap:3px;min-width:0}
+.projectFolder b{font-size:10px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.projectFolder small{font-size:8.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.projectFolder em{font-style:normal;font-size:7.5px;font-weight:700;letter-spacing:.08em;color:var(--accent);border:1px solid color-mix(in srgb, var(--accent) 42%, transparent);border-radius:999px;padding:2px 6px}
+.projectFolder.active{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 10%, var(--surface))}
+.projectFolder:disabled{opacity:.55}
+
 .reportList{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}
 .reportList button{display:flex;justify-content:space-between;border:1px solid var(--line);background:var(--surface);padding:11px;border-radius:7px;font-size:9px;color:var(--ink)}
 .reportList button.selected{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 12%, var(--surface));color:var(--accent);font-weight:bold}
@@ -476,10 +489,10 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .internalApp .fullButton{border:1px solid rgba(111,101,232,.36);border-radius:15px;background:linear-gradient(145deg,rgba(255,255,255,.55),rgba(255,255,255,.28));box-shadow:inset 0 1px 0 rgba(255,255,255,.86)}
 .internalApp .fullButton:hover{background:linear-gradient(145deg,#8d83f3,#6559dd);border-color:transparent;box-shadow:0 12px 28px -16px rgba(74,57,181,.65)}
 .internalApp .propertyGroup h2,.internalApp .costSummary h2{border-radius:11px;background:rgba(255,255,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
-.internalApp .componentRow,.internalApp .reportList button,.internalApp .profileCatalog>div{
+.internalApp .componentRow,.internalApp .reportList button,.internalApp .profileCatalog>div,.internalApp .projectFolder{
   border:1px solid rgba(255,255,255,.76);border-radius:15px;background:linear-gradient(145deg,rgba(255,255,255,.55),rgba(255,255,255,.3));box-shadow:inset 0 1px 0 rgba(255,255,255,.9)
 }
-.internalApp .componentRow.active,.internalApp .reportList button.selected{background:rgba(235,232,255,.7);border-color:rgba(111,101,232,.38);box-shadow:0 10px 22px -17px rgba(67,53,157,.65),inset 0 1px 0 #fff}
+.internalApp .componentRow.active,.internalApp .reportList button.selected,.internalApp .projectFolder.active{background:rgba(235,232,255,.7);border-color:rgba(111,101,232,.38);box-shadow:0 10px 22px -17px rgba(67,53,157,.65),inset 0 1px 0 #fff}
 .internalApp .componentTitle{background:linear-gradient(145deg,rgba(143,133,245,.95),rgba(101,89,221,.96))}
 .internalApp .totalBox{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.62);border-radius:22px;background:linear-gradient(145deg,rgba(158,149,255,.96),rgba(112,98,229,.96) 55%,rgba(89,75,205,.97));box-shadow:0 22px 46px -24px rgba(63,45,172,.82),inset 0 1px 0 rgba(255,255,255,.68)}
 .internalApp .totalBox::after{content:"";position:absolute;inset:-70% -20%;transform:rotate(16deg);background:linear-gradient(90deg,transparent 36%,rgba(255,255,255,.25) 50%,transparent 64%);pointer-events:none}

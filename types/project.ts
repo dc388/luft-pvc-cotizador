@@ -57,13 +57,35 @@ export type ComponentRecord = {
 // switching a large project's list around doesn't drag every component's full JSON along.
 export type ComponentSummary = Omit<ComponentRecord, "data">;
 
+/** De dónde salió el proyecto: lo capturó un cliente en /cotizar, o lo abrió el equipo. */
+export type ProjectSource = "web" | "interno";
+
 export type ProjectRecord = {
   id: string;
   name: string;
   activeComponentId: string | null;
+  source: ProjectSource;
+  /** Folio público (W-XXXXXX) cuando `source` es "web"; cadena vacía en los internos. */
+  folio: string;
+  /** Cliente capturado por el cotizador público; cadena vacía en los internos. */
+  client: string;
   createdAt: string;
   updatedAt: string;
   components: ComponentSummary[];
+};
+
+// Una fila de la lista de proyectos ("carpetas") del tab Proyecto. No arrastra los componentes:
+// solo cuánto hay dentro y su total de piezas, que es lo que se alcanza a leer en la lista.
+export type ProjectSummary = {
+  id: string;
+  name: string;
+  source: ProjectSource;
+  folio: string;
+  client: string;
+  componentCount: number;
+  pieceCount: number;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ComponentPatch = Partial<{

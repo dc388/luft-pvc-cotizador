@@ -36,14 +36,17 @@ import { runSelfCheck, type SelfCheckResult } from "@/lib/selfCheck";
 import {
   bootstrap,
   createComponent,
+  createProjectApi,
   deleteComponentApi,
   fetchComponent,
+  listProjects,
+  openProject,
   refetchProject,
   renameProjectApi,
   saveComponent,
   setActiveComponentApi,
 } from "@/lib/persistence";
-import type { ComponentRecord, ComponentSummary } from "@/types/project";
+import type { ComponentRecord, ComponentSummary, ProjectRecord, ProjectSummary } from "@/types/project";
 import type { LuftAgentState } from "@/types/luft-ai";
 import { emptyLuftAgentState } from "@/types/luft-ai";
 import { normalizeAgentState, type LuftActor } from "@/lib/luft-ai";
@@ -253,6 +256,17 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
   const [componentId, setComponentId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Proyecto sin nombre");
   const [components, setComponents] = useState<ComponentSummary[]>([]);
+  // ---------- Carpetas: cada proyecto es una carpeta, y cada cotización enviada desde /cotizar
+  // crea la suya. Antes la app abría siempre la más reciente y no había pantalla desde la que
+  // llegar a las anteriores: quedaban escritas en la base pero invisibles. ----------
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [projectOrigin, setProjectOrigin] = useState<{ source: ProjectRecord["source"]; folio: string; client: string }>({
+    source: "interno",
+    folio: "",
+    client: "",
+  });
+  const [switchingProject, setSwitchingProject] = useState(false);
+  const [projectsError, setProjectsError] = useState("");
   const [luftAi, setLuftAi] = useState<LuftAgentState>(() => emptyLuftAgentState());
 
   // ---------- "Proyecto completo" report scope: Cotización/Optimización de corte/Pedido de
@@ -291,11 +305,29 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
   const projectComponentsLoading =
     projectComponentsKey !== "" && projectComponentsResult.key !== projectComponentsKey;
 
+  // Aplica un proyecto recién cargado al estado de la carpeta abierta (nombre y procedencia).
+  const applyProjectMeta = (project: ProjectRecord) => {
+    setProjectId(project.id);
+    setProjectName(project.name);
+    setComponents(project.components);
+    setProjectOrigin({ source: project.source, folio: project.folio, client: project.client });
+  };
+
+  const refreshProjectList = async () => {
+    try {
+      setProjects(await listProjects());
+    } catch {
+      // La lista de carpetas es de navegación, no de trabajo: si falla, la carpeta abierta
+      // sigue funcionando y autoguardando igual.
+    }
+  };
+
   const refreshComponentList = async (pid: string) => {
     try {
       const project = await refetchProject(pid);
       setComponents(project.components);
       setProjectName(project.name);
+      setProjectOrigin({ source: project.source, folio: project.folio, client: project.client });
     } catch {
       // offline / DB unreachable -- the outliner just won't reflect other components until
       // connectivity is back; the active component itself still autosaves via saveComponent's
@@ -358,13 +390,10 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
   // reachable (see lib/persistence.ts's bootstrap()). ----------
   useEffect(() => {
     (async () => {
-      const { project, component, mode } = await bootstrap();
+      const { project, component, projects: folders, mode } = await bootstrap();
       setPersistMode(mode);
-      if (project) {
-        setProjectId(project.id);
-        setProjectName(project.name);
-        setComponents(project.components);
-      }
+      setProjects(folders);
+      if (project) applyProjectMeta(project);
       loadComponentIntoState(component);
       setSavedAt(component.updatedAt);
       setHydrated(true);
@@ -483,8 +512,57 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
     if (!projectId) return;
     try {
       await renameProjectApi(projectId, name);
+      // La carpeta abierta se renombra en la lista sin volver a pedirla: renombrar es escribir
+      // letra por letra y cada pulsación no puede costar una consulta.
+      setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, name } : p)));
     } catch {
       // offline -- name only lives in local state until connectivity is back
+    }
+  };
+
+  // ---------- Cambiar de carpeta. Sigue la misma disciplina que handleSwitchComponent: primero
+  // se vacía lo pendiente del componente que se abandona (el autoguardado tiene 400 ms de
+  // retraso), y si la carga falla no se aplica un cambio a medias. ----------
+  const handleOpenProject = async (id: string) => {
+    if (id === projectId || switchingProject) return;
+    setSwitchingProject(true);
+    setProjectsError("");
+    try {
+      await flushActiveComponent();
+      const { project, component } = await openProject(id);
+      applyProjectMeta(project);
+      loadComponentIntoState(component);
+      setSavedAt(component.updatedAt);
+      setReportScope("vano");
+      setProjectComponentsResult({ key: "", records: null });
+      await refreshProjectList();
+    } catch {
+      setProjectsError("No pudimos abrir esa carpeta. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setSwitchingProject(false);
+    }
+  };
+
+  const handleNewProject = async () => {
+    if (switchingProject) return;
+    setSwitchingProject(true);
+    setProjectsError("");
+    try {
+      await flushActiveComponent();
+      const project = await createProjectApi();
+      const activeId = project.activeComponentId ?? project.components[0]?.id;
+      if (!activeId) throw new Error("El proyecto nuevo no trae componente.");
+      const rec = await fetchComponent(project.id, activeId);
+      applyProjectMeta(project);
+      loadComponentIntoState(rec);
+      setSavedAt(rec.updatedAt);
+      setReportScope("vano");
+      setProjectComponentsResult({ key: "", records: null });
+      await refreshProjectList();
+    } catch {
+      setProjectsError("No pudimos crear la carpeta. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setSwitchingProject(false);
     }
   };
 
@@ -852,14 +930,54 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
 
           {tab === "Proyecto" && (
             <>
-              <Block n="01" title="Proyecto" sub="Un proyecto agrupa varias ventanas/puertas (componentes) que se cotizan y fabrican juntas." />
+              <Block n="01" title="Carpetas" sub="Cada proyecto es una carpeta. Las cotizaciones que tus clientes envían desde el cotizador público entran aquí solas." />
+              <div className="projectFolders">
+                {projects.map((p) => (
+                  <button
+                    key={p.id}
+                    className={`projectFolder ${p.id === projectId ? "active" : ""} ${p.source === "web" ? "isWeb" : ""}`}
+                    onClick={() => handleOpenProject(p.id)}
+                    disabled={switchingProject}
+                  >
+                    <i aria-hidden="true">{p.source === "web" ? "🌐" : "📁"}</i>
+                    <span>
+                      <b>{p.name}</b>
+                      <small>
+                        {p.source === "web" ? `${p.folio || "Sin folio"} · ${p.client || "Sin cliente"} · ` : ""}
+                        {p.componentCount} {p.componentCount === 1 ? "componente" : "componentes"}
+                        {p.pieceCount !== p.componentCount ? ` · ${p.pieceCount} piezas` : ""}
+                      </small>
+                    </span>
+                    {p.source === "web" && <em>WEB</em>}
+                  </button>
+                ))}
+                {projects.length === 0 && (
+                  <p className="notice">
+                    {persistMode === "offline"
+                      ? "Sin conexión con la base de datos: la lista de carpetas no está disponible."
+                      : "Todavía no hay carpetas guardadas."}
+                  </p>
+                )}
+              </div>
+              {projectsError && <p className="sourceNote">⚠ {projectsError}</p>}
+              <button className="fullButton" onClick={handleNewProject} disabled={switchingProject || persistMode === "offline"}>
+                + Nueva carpeta
+              </button>
+
+              <Block n="02" title="Proyecto abierto" sub="Un proyecto agrupa varias ventanas/puertas (componentes) que se cotizan y fabrican juntas." />
+              {projectOrigin.source === "web" && (
+                <p className="sourceNote">
+                  🌐 Llegó del cotizador público · Folio {projectOrigin.folio || "—"}
+                  {projectOrigin.client ? ` · ${projectOrigin.client}` : ""}
+                </p>
+              )}
               <label>Nombre del proyecto
                 <input value={projectName} onChange={(e) => handleRenameProject(e.target.value)} />
               </label>
               {persistMode === "offline" && (
                 <p className="sourceNote">⚠ Sin conexión con la base de datos — guardando solo en este navegador. Los componentes de otros dispositivos no aparecerán hasta reconectar.</p>
               )}
-              <Block n="02" title="Componentes" sub="Cada uno es una ventana o puerta independiente dentro del proyecto." />
+              <Block n="03" title="Componentes" sub="Cada uno es una ventana o puerta independiente dentro del proyecto." />
               <div className="componentOutliner">
                 {components.map((c) => (
                   <div key={c.id} className={`componentRow ${c.id === componentId ? "active" : ""}`}>
