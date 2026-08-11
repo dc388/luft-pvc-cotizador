@@ -66,11 +66,20 @@ export type PublicAssistantAction =
   | { kind: "style"; styleId: string; styleName: string }
   | { kind: "color"; colorId: string; colorName: string }
   | { kind: "glass"; glassId: string; glassName: string }
-  | { kind: "installation"; value: boolean };
+  | { kind: "installation"; value: boolean }
+  // Configura de una sola vez producto, línea, estilo y medidas a partir del brief. Existe porque
+  // la acción "style" aplica las medidas por defecto del estilo y borraba las que el cliente ya
+  // había dado: proponer estilo y medidas por separado obligaba a dos confirmaciones y perdía el
+  // dato en medio.
+  | { kind: "configure"; styleId: string; styleName: string; widthMm: number; heightMm: number; colorId?: string };
 
 export type PublicAssistantReply = {
   text: string;
   action?: PublicAssistantAction;
+  /** true cuando la respuesta solo orienta (brief o plantilla de paso) y no contestó algo
+   * concreto. Es lo que autoriza al asistente a sustituirla por una propuesta de configuración:
+   * sin esta marca, la propuesta pisaba incluso el resumen de "¿qué llevamos?". */
+  generic?: true;
 };
 
 const STEP_HELP = [
@@ -247,7 +256,7 @@ export function briefLedReply(brief: AssistantBrief | undefined): PublicAssistan
   // quedó anotado y ofrecer el siguiente paso concreto.
   if (!question) {
     const lines = briefSummary(brief);
-    return { text: `Anotado. Voy con ${lines.join("; ").toLowerCase()}. Cuando elijas el estilo valido estas medidas contra sus límites reales y te muestro el precio.` };
+    return { text: `Anotado. Voy con ${lines.join("; ").toLowerCase()}. Cuando elijas el estilo valido estas medidas contra sus límites reales y te muestro el precio.`, generic: true };
   }
   return { text: `${recommendation} ${question.question}` };
 }
@@ -352,11 +361,11 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
   }
 
   if (/ayudame a elegir|que me recomiendas|necesito ayuda/.test(normalized)) {
-    return briefLedReply(brief) ?? { text: STEP_HELP[context.step] ?? STEP_HELP[0] };
+    return briefLedReply(brief) ?? { text: STEP_HELP[context.step] ?? STEP_HELP[0], generic: true };
   }
 
   // Último recurso. El brief tiene prioridad: la plantilla fija solo aparece cuando de verdad
   // no sabemos nada del cliente todavía.
   return briefLedReply(brief)
-    ?? { text: `${STEP_HELP[context.step] ?? STEP_HELP[0]} También puedes pedirme: “revisa mis medidas”, “explica las aperturas”, “cambia el color a negro” o “revisa mi configuración”.` };
+    ?? { text: `${STEP_HELP[context.step] ?? STEP_HELP[0]} También puedes pedirme: “revisa mis medidas”, “explica las aperturas”, “cambia el color a negro” o “revisa mi configuración”.`, generic: true };
 }

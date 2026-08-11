@@ -3,6 +3,6 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 const loader = pathToFileURL(resolve("tests", "register-ts-loader.mjs")).href;
-const entry = resolve("tests", "luft-ai.test.ts");
-const tests = spawnSync(process.execPath, ["--experimental-strip-types", "--import", loader, "--test", entry], { stdio: "inherit" });
+const entries = ["luft-ai.test.ts", "assistantBrief.test.ts", "briefMatch.test.ts"].map((file) => resolve("tests", file));
+const tests = spawnSync(process.execPath, ["--experimental-strip-types", "--import", loader, "--test", ...entries], { stdio: "inherit" });
 process.exitCode = tests.status ?? 1;

@@ -34,6 +34,9 @@ export type AssistantBrief = {
   priorities?: string[];
   /** De dónde salió cada campo. Una inferencia nunca se presenta como hecho (§19). */
   provenance?: Record<string, BriefProvenance>;
+  /** Última configuración ya ofrecida ("estilo@ancho×alto"). Evita repetir la misma propuesta
+   * turno tras turno, que es el ciclo conversacional que el brief prohíbe (§96). */
+  offered?: string;
 };
 
 export type BriefPatch = Omit<AssistantBrief, "provenance">;

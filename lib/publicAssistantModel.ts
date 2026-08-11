@@ -1,4 +1,5 @@
 import { briefSummary, nextBriefQuestion, type AssistantBrief } from "@/lib/assistantBrief";
+import { matchBriefToStyle } from "@/lib/briefMatch";
 import { buildPublicCatalog } from "@/lib/publicCatalog";
 import { parseConfig, parseProjectConfigs, priceConfig, priceProjectConfigs } from "@/lib/publicQuote";
 import {
@@ -152,6 +153,17 @@ export function canonicalPublicAssistantContext(value: unknown): PublicAssistant
   };
 }
 
+// El color del brief es una palabra del cliente ("negro"); aquí se resuelve contra la paleta
+// real de la marca del estilo propuesto. Si no existe en esa línea, no se fuerza nada.
+function resolveBriefColor(brief: AssistantBrief, brandId: string, context: PublicAssistantContext): string | undefined {
+  if (!brief.colorWord) return undefined;
+  const wanted = brief.colorWord.replace(/a$/, "");
+  const match = context.catalog.colors.find(
+    (entry) => entry.brandId === brandId && entry.name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().startsWith(wanted),
+  );
+  return match?.id;
+}
+
 function dimensionsAllowed(widthMm: number, heightMm: number, context: PublicAssistantContext): boolean {
   return !!context.styleId
     && Number.isInteger(widthMm)
@@ -214,6 +226,9 @@ function confirmation(action: PublicAssistantAction): string {
   if (action.kind === "style") return `Entendí que prefieres “${action.styleName}”. ¿Deseas aplicar este estilo con sus medidas iniciales?`;
   if (action.kind === "color") return `Cambiaré únicamente el color a ${action.colorName}. ¿Deseas aplicarlo y recalcular?`;
   if (action.kind === "glass") return `Cambiaré únicamente el vidrio a ${action.glassName}. ¿Deseas aplicarlo y recalcular?`;
+  if (action.kind === "configure") {
+    return `Voy a armarlo como “${action.styleName}” con tus ${action.widthMm.toLocaleString("es-MX")} × ${action.heightMm.toLocaleString("es-MX")} mm. ¿Lo aplico para que lo veas dibujado?`;
+  }
   return `${action.value ? "Incluiré" : "Quitaré"} la instalación profesional. ¿Deseas aplicarlo y recalcular?`;
 }
 
@@ -274,6 +289,31 @@ export async function answerPublicAssistant(
   if (!question || !runModel || isConfidentialAssistantRequest(question) || /(?:precio|cu[aá]nto cuesta|total|dep[oó]sito|saldo)/i.test(question)) return fallback();
   const direct = buildPublicAssistantReply(question, context, brief);
   if (direct.action) return { ...direct, source: "rules" };
+
+  // El asistente configura por el cliente (§62): con medidas y función ya definidas, resuelve el
+  // estilo contra el catálogo real y lo propone junto con las medidas del cliente, para que el
+  // dibujo del configurador refleje la conversación. Solo si todavía no hay estilo aplicado.
+  // Solo cuando la respuesta era genérica: si el asistente ya contestó algo concreto (el
+  // resumen, los colores, una apertura) la propuesta no debe pisarlo.
+  const proposal = direct.generic && !context.styleId && brief.accessRequired !== undefined
+    ? matchBriefToStyle(brief, context.catalog)
+    : null;
+  const signature = proposal ? `${proposal.best.style.id}@${proposal.widthMm}x${proposal.heightMm}` : "";
+  // Y solo si no es la misma propuesta que ya se ofreció: repetirla cada turno es el ciclo que
+  // el brief prohíbe (§96).
+  if (proposal && context.step < 9 && brief.offered !== signature) {
+    brief.offered = signature;
+    const colorId = resolveBriefColor(brief, proposal.best.style.brandId, context);
+    const alternatives = proposal.alternatives.length
+      ? ` También podría servirte “${proposal.alternatives.map((entry) => entry.style.name).join("” o “")}”.`
+      : "";
+    const notes = proposal.notes.length ? ` ${proposal.notes.join(" ")}` : "";
+    return {
+      text: `Con lo que me contaste te propongo “${proposal.best.style.name}”: ${proposal.best.reason}.${alternatives}${notes} ¿Lo aplico con tus ${proposal.widthMm.toLocaleString("es-MX")} × ${proposal.heightMm.toLocaleString("es-MX")} mm para que lo veas dibujado?`,
+      action: { kind: "configure", styleId: proposal.best.style.id, styleName: proposal.best.style.name, widthMm: proposal.widthMm, heightMm: proposal.heightMm, colorId },
+      source: "rules",
+    };
+  }
 
   const safeHistory = history.slice(-8).map((entry) => ({
     role: entry.role === "assistant" ? "assistant" : "user",

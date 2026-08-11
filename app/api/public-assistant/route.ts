@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
-import { applyBriefPatch, parseBriefPatch, type AssistantBrief } from "@/lib/assistantBrief";
+import { applyBriefPatch, parseBriefPatch } from "@/lib/assistantBrief";
+import { loadBrief, newSessionToken, readSessionToken, sanitizeBrief, saveBrief, sessionCookie } from "@/lib/assistantSession";
 import { getDb } from "@/db";
 import { toRouteErrorMessage } from "@/lib/apiError";
 import { answerPublicAssistant, type PublicAssistantHistoryMessage, type PublicAssistantModelRunner } from "@/lib/publicAssistantModel";
@@ -16,39 +17,6 @@ function history(value: unknown): PublicAssistantHistoryMessage[] {
     const text = typeof item.text === "string" ? item.text.trim().slice(0, 500) : "";
     return role && text ? [{ role, text }] : [];
   });
-}
-
-// El brief llega del navegador, se fusiona con lo que trae el mensaje nuevo y se devuelve
-// actualizado. Se valida campo por campo: nada de confiar en el JSON del cliente tal cual.
-function incomingBrief(value: unknown): AssistantBrief {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  const raw = value as Record<string, unknown>;
-  const mm = (input: unknown): number | undefined =>
-    Number.isInteger(input) && (input as number) >= 1 && (input as number) <= 20_000 ? (input as number) : undefined;
-  const word = (input: unknown, max = 40): string | undefined =>
-    typeof input === "string" && input.trim() ? input.trim().slice(0, max) : undefined;
-  const goal = raw.openingGoal === "maximum" || raw.openingGoal === "view" || raw.openingGoal === "balanced" ? raw.openingGoal : undefined;
-  const leaves = raw.movingLeaves === "center" || raw.movingLeaves === "left" || raw.movingLeaves === "right" || raw.movingLeaves === "all" ? raw.movingLeaves : undefined;
-  const provenance: Record<string, "confirmed" | "inferred"> = {};
-  if (raw.provenance && typeof raw.provenance === "object" && !Array.isArray(raw.provenance)) {
-    for (const [key, mark] of Object.entries(raw.provenance as Record<string, unknown>).slice(0, 40)) {
-      if (mark === "confirmed" || mark === "inferred") provenance[key.slice(0, 40)] = mark;
-    }
-  }
-  return {
-    widthMm: mm(raw.widthMm),
-    heightMm: mm(raw.heightMm),
-    location: word(raw.location),
-    accessRequired: typeof raw.accessRequired === "boolean" ? raw.accessRequired : undefined,
-    openingGoal: goal,
-    leafCount: Number.isInteger(raw.leafCount) && (raw.leafCount as number) >= 1 && (raw.leafCount as number) <= 12 ? (raw.leafCount as number) : undefined,
-    movingLeaves: leaves,
-    colorWord: word(raw.colorWord),
-    priorities: Array.isArray(raw.priorities)
-      ? raw.priorities.filter((item): item is string => typeof item === "string").slice(0, 12).map((item) => item.slice(0, 30))
-      : undefined,
-    provenance,
-  };
 }
 
 export async function POST(request: Request) {
@@ -69,10 +37,23 @@ export async function POST(request: Request) {
     const runModel: PublicAssistantModelRunner | undefined = ai
       ? (model, input) => ai.run(model, input)
       : undefined;
+    // El brief vive en el servidor, indexado por un token opaco en cookie: recargar la página ya
+    // no borra la conversación. Lo que manda el navegador solo se usa para arrancar la sesión.
+    const db = getDb();
+    const existingToken = readSessionToken(request);
+    const token = existingToken || newSessionToken();
+    const stored = existingToken ? await loadBrief(db, token) : sanitizeBrief(body.brief);
     // Patch parcial sobre el estado acumulado: un campo que el mensaje no menciona no se toca.
-    const brief = applyBriefPatch(incomingBrief(body.brief), parseBriefPatch(message));
+    const brief = applyBriefPatch(stored, parseBriefPatch(message));
     const answer = await answerPublicAssistant(message, body.context, history(body.history), runModel, brief);
-    return Response.json({ ...answer, brief }, { headers: { "Cache-Control": "no-store" } });
+    await saveBrief(db, token, brief);
+
+    return Response.json({ ...answer, brief }, {
+      headers: {
+        "Cache-Control": "no-store",
+        "Set-Cookie": sessionCookie(token, new URL(request.url).protocol === "https:"),
+      },
+    });
   } catch (error) {
     console.error("public-assistant", toRouteErrorMessage(error));
     return Response.json({ error: "LUFT Asesor no pudo responder en este momento. Intenta de nuevo." }, { status: 500 });

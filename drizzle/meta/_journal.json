@@ -15,6 +15,13 @@
       "when": 1786246473500,
       "tag": "0001_useful_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786476077217,
+      "tag": "0002_silky_slyde",
+      "breakpoints": true
     }
   ]
 }

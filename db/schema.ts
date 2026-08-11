@@ -57,3 +57,21 @@ export const rateLimitHits = sqliteTable(
     index("rate_limit_hits_created_idx").on(table.createdAt),
   ]
 );
+
+// El brief acumulado de LUFT Asesor, para que recargar la página no borre la conversación
+// (§90 del brief del asesor). La clave es un token opaco guardado en cookie, no un id
+// consecutivo: el contenido incluye ubicación y preferencias del cliente, así que no debe ser
+// adivinable. `brief` es JSON validado campo por campo al leerse -- ver lib/assistantSession.ts.
+export const assistantSessions = sqliteTable(
+  "assistant_sessions",
+  {
+    token: text("token").primaryKey(),
+    brief: text("brief").notNull(),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    // Sirve al barrido de sesiones viejas (updated_at < ?).
+    index("assistant_sessions_updated_idx").on(table.updatedAt),
+  ]
+);

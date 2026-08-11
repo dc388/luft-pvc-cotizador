@@ -410,6 +410,22 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       setStep(S.SIZE);
       return;
     }
+    if (action.kind === "configure") {
+      const nextStyle = catalog.styles.find((entry) => entry.id === action.styleId);
+      if (!nextStyle) return;
+      setProductId(nextStyle.productId);
+      setBrandId(nextStyle.brandId);
+      setStyleId(nextStyle.id);
+      const brandColors = catalog.colors.filter((entry) => entry.brandId === nextStyle.brandId);
+      const wanted = action.colorId ? brandColors.find((entry) => entry.id === action.colorId) : undefined;
+      setColorId((wanted ?? brandColors[0])?.id ?? "");
+      // Se conservan las medidas del cliente en vez de las del estilo: ya vienen validadas
+      // contra los límites de ESE estilo en lib/briefMatch.ts.
+      setWidthMm(action.widthMm);
+      setHeightMm(action.heightMm);
+      setStep(S.SIZE);
+      return;
+    }
     if (action.kind === "color") {
       if (catalog.colors.some((entry) => entry.id === action.colorId && entry.brandId === brandId)) setColorId(action.colorId);
       return;
