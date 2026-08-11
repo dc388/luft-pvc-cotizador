@@ -1,4 +1,5 @@
 import type { PublicCatalog } from "@/lib/publicCatalog";
+import { briefRecommendation, briefSummary, nextBriefQuestion, type AssistantBrief } from "@/lib/assistantBrief";
 
 export type PublicAssistantContext = {
   step: number;
@@ -159,10 +160,14 @@ function validateDimensions(widthMm: number, heightMm: number, context: PublicAs
   return "";
 }
 
-function dimensionProposal(input: string, context: PublicAssistantContext): PublicAssistantReply | null {
+function dimensionProposal(input: string, context: PublicAssistantContext, brief?: AssistantBrief): PublicAssistantReply | null {
   const pair = input.match(/(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?\s*(?:x|×|por)\s*(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?/i);
   if (pair) {
-    if (!context.styleName) return { text: "Primero selecciona el producto y el estilo. Así podré validar la medida contra sus límites reales antes de proponerte un cambio." };
+    // Sin estilo todavía no se puede PROPONER un cambio de medidas (no hay límites contra los
+    // que validar), pero la medida NO se descarta: ya vive en el brief. Antes esta rama
+    // devolvía "primero selecciona el producto y el estilo", que era justo el comportamiento
+    // que hacía sentir al cliente que sus datos se ignoraban.
+    if (!context.styleName) return briefLedReply(brief) ?? { text: STEP_HELP[context.step] ?? STEP_HELP[0] };
     const first = Number(pair[1].replace(",", "."));
     const second = Number(pair[3].replace(",", "."));
     const shared = (pair[2] || pair[4] || inferSharedUnit(first, second)).toLowerCase();
@@ -178,7 +183,7 @@ function dimensionProposal(input: string, context: PublicAssistantContext): Publ
 
   const width = input.match(/ancho\s*(?:a|de|es)?\s*(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?/i);
   if (width) {
-    if (!context.styleName) return { text: "Primero selecciona un estilo para validar su ancho permitido." };
+    if (!context.styleName) return briefLedReply(brief) ?? { text: "Registré ese ancho. Cuando elijas el estilo lo valido contra sus límites reales." };
     const raw = Number(width[1].replace(",", "."));
     const widthMm = measurementToMm(width[1], (width[2] || inferSharedUnit(raw)).toLowerCase());
     const error = validateDimensions(widthMm, context.heightMm, context);
@@ -191,7 +196,7 @@ function dimensionProposal(input: string, context: PublicAssistantContext): Publ
 
   const height = input.match(/alto\s*(?:a|de|es)?\s*(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?/i);
   if (height) {
-    if (!context.styleName) return { text: "Primero selecciona un estilo para validar su alto permitido." };
+    if (!context.styleName) return briefLedReply(brief) ?? { text: "Registré ese alto. Cuando elijas el estilo lo valido contra sus límites reales." };
     const raw = Number(height[1].replace(",", "."));
     const heightMm = measurementToMm(height[1], (height[2] || inferSharedUnit(raw)).toLowerCase());
     const error = validateDimensions(context.widthMm, heightMm, context);
@@ -227,10 +232,37 @@ function findNamedOption<T extends { name: string }>(input: string, entries: T[]
   return entries.find((entry) => normalizedInput.includes(normalize(entry.name))) ?? null;
 }
 
-export function buildPublicAssistantReply(input: string, context: PublicAssistantContext): PublicAssistantReply {
+/**
+ * Respuesta construida desde el estado acumulado: reconoce las medidas reales, plantea enfoques
+ * y hace UNA pregunta. Es lo que sustituye a las plantillas fijas de STEP_HELP cuando ya se sabe
+ * algo del cliente. Devuelve null cuando el brief todavía está vacío.
+ */
+export function briefLedReply(brief: AssistantBrief | undefined): PublicAssistantReply | null {
+  if (!brief) return null;
+  const recommendation = briefRecommendation(brief);
+  if (!recommendation) return null;
+  const question = nextBriefQuestion(brief);
+  // Con una pregunta pendiente vale la pena situar al cliente antes de preguntar. Sin ella,
+  // repetir el párrafo entero cada turno se siente robótico (§112): basta confirmar lo que ya
+  // quedó anotado y ofrecer el siguiente paso concreto.
+  if (!question) {
+    const lines = briefSummary(brief);
+    return { text: `Anotado. Voy con ${lines.join("; ").toLowerCase()}. Cuando elijas el estilo valido estas medidas contra sus límites reales y te muestro el precio.` };
+  }
+  return { text: `${recommendation} ${question.question}` };
+}
+
+export function buildPublicAssistantReply(input: string, context: PublicAssistantContext, brief?: AssistantBrief): PublicAssistantReply {
   const text = input.trim().slice(0, 500);
   const normalized = normalize(text);
-  if (!text) return { text: STEP_HELP[context.step] ?? STEP_HELP[0] };
+  // El brief manda sobre la plantilla del paso: si ya sabemos algo del cliente, la respuesta se
+  // construye con esos datos en vez de repetir el texto fijo que ignora lo que ya dijo.
+  if (!text) return briefLedReply(brief) ?? { text: STEP_HELP[context.step] ?? STEP_HELP[0] };
+
+  if (/que llevamos|que tenemos|resumen de lo que|recuerdas/.test(normalized)) {
+    const lines = briefSummary(brief ?? {});
+    if (lines.length) return { text: `Esto es lo que llevo de tu proyecto: ${lines.join("; ")}.` };
+  }
 
   if (CONFIDENTIAL_TERMS.test(text)) {
     return { text: "Esa información es interna y no está disponible en el cotizador público. Sí puedo ayudarte con las opciones visibles, validar tu configuración y mostrar el precio público calculado por el servidor." };
@@ -252,7 +284,7 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
       : "Tu proyecto ya está en la etapa final. Regresa al resumen antes de registrar tus datos si deseas modificar la configuración; no aplicaré cambios desde esta etapa." };
   }
 
-  const dimensions = dimensionProposal(text, context);
+  const dimensions = dimensionProposal(text, context, brief);
   if (dimensions) return dimensions;
 
   const quantity = normalized.match(/(?:cantidad|quiero|necesito|serian|son)\s*(?:de\s*)?(\d{1,3}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte)\b/i);
@@ -320,8 +352,11 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
   }
 
   if (/ayudame a elegir|que me recomiendas|necesito ayuda/.test(normalized)) {
-    return { text: STEP_HELP[context.step] ?? STEP_HELP[0] };
+    return briefLedReply(brief) ?? { text: STEP_HELP[context.step] ?? STEP_HELP[0] };
   }
 
-  return { text: `${STEP_HELP[context.step] ?? STEP_HELP[0]} También puedes pedirme: “revisa mis medidas”, “explica las aperturas”, “cambia el color a negro” o “revisa mi configuración”.` };
+  // Último recurso. El brief tiene prioridad: la plantilla fija solo aparece cuando de verdad
+  // no sabemos nada del cliente todavía.
+  return briefLedReply(brief)
+    ?? { text: `${STEP_HELP[context.step] ?? STEP_HELP[0]} También puedes pedirme: “revisa mis medidas”, “explica las aperturas”, “cambia el color a negro” o “revisa mi configuración”.` };
 }

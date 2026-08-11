@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import type { AssistantBrief } from "@/lib/assistantBrief";
 import { buildPublicAssistantReply, publicAssistantRequestContext, type PublicAssistantAction, type PublicAssistantContext } from "./publicAssistant";
 import styles from "./QuoteAssistant.module.css";
 
@@ -33,6 +34,11 @@ export function QuoteAssistant({
   const [pending, setPending] = useState<PublicAssistantAction | null>(null);
   const [memoryReady, setMemoryReady] = useState(false);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
+  // Estado acumulado de lo que el cliente ha dicho (medidas, ubicación, prioridades). Viaja al
+  // servidor en cada turno y vuelve fusionado, así que sobrevive a los re-render y es lo que
+  // evita volver a preguntar lo ya contestado. En un ref, no en estado: cambiarlo no debe
+  // repintar el chat, solo acompañar la siguiente petición.
+  const briefRef = useRef<AssistantBrief>({});
 
   useEffect(() => {
     const restoreTimer = window.setTimeout(() => {
@@ -62,6 +68,8 @@ export function QuoteAssistant({
     messageEndRef.current?.scrollIntoView({ block: "nearest" });
   }, [memoryReady, messages, typing]);
 
+  // Estado acumulado de lo que el cliente ha dicho. Viaja al servidor en cada turno y vuelve
+  // fusionado; es lo que evita que el asistente vuelva a preguntar lo ya contestado.
   async function ask(raw: string) {
     const question = raw.trim().slice(0, 500);
     if (!question || typing) return;
@@ -74,17 +82,18 @@ export function QuoteAssistant({
       const response = await fetch("/api/public-assistant", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: question, history: conversation, context: publicAssistantRequestContext(context) }),
+        body: JSON.stringify({ message: question, history: conversation, context: publicAssistantRequestContext(context), brief: briefRef.current }),
       });
-      const payload = (await response.json()) as { text?: string; action?: PublicAssistantAction; error?: string };
+      const payload = (await response.json()) as { text?: string; action?: PublicAssistantAction; brief?: AssistantBrief; error?: string };
       if (!response.ok || !payload.text) throw new Error(payload.error ?? "No pudimos consultar LUFT Asesor.");
+      if (payload.brief) briefRef.current = payload.brief;
       setMessages((current) => [...current, message("assistant", payload.text!)]);
       setPending(payload.action ?? null);
     } catch (error) {
       if (error instanceof Error && error.message.includes("demasiadas solicitudes")) {
         setMessages((current) => [...current, message("assistant", error.message)]);
       } else {
-        const reply = buildPublicAssistantReply(question, context);
+        const reply = buildPublicAssistantReply(question, context, briefRef.current);
         setMessages((current) => [...current, message("assistant", reply.text)]);
         setPending(reply.action ?? null);
       }

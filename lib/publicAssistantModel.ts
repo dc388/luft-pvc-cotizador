@@ -1,3 +1,4 @@
+import { briefSummary, nextBriefQuestion, type AssistantBrief } from "@/lib/assistantBrief";
 import { buildPublicCatalog } from "@/lib/publicCatalog";
 import { parseConfig, parseProjectConfigs, priceConfig, priceProjectConfigs } from "@/lib/publicQuote";
 import {
@@ -34,6 +35,9 @@ REGLAS OBLIGATORIAS:
 - Desde la etapa Proceso (step 9) no propongas cambios.
 - Si el cliente solicita algo fuera del catálogo, explica la limitación y ofrece únicamente opciones del catálogo.
 - No pidas nombre, teléfono ni correo antes de la etapa Contacto.
+- YA_SABEMOS contiene lo que el cliente ya te dijo. NUNCA vuelvas a preguntar nada que aparezca ahi.
+- Empieza reconociendo los datos concretos que ya tienes (medidas reales, ubicacion, prioridad) antes de proponer.
+- Haz como maximo UNA pregunta, la de SIGUIENTE_DATO_FALTANTE si existe.
 - Si falta información para comprender una medida o una preferencia, formula una sola pregunta concreta.
 - No uses markdown, tablas ni listas largas.
 
@@ -262,12 +266,13 @@ export async function answerPublicAssistant(
   rawContext: unknown,
   history: PublicAssistantHistoryMessage[],
   runModel?: PublicAssistantModelRunner,
+  brief: AssistantBrief = {},
 ): Promise<PublicAssistantAnswer> {
   const question = text(message, 500);
   const context = canonicalPublicAssistantContext(rawContext);
-  const fallback = (): PublicAssistantAnswer => ({ ...buildPublicAssistantReply(question, context), source: "rules" });
+  const fallback = (): PublicAssistantAnswer => ({ ...buildPublicAssistantReply(question, context, brief), source: "rules" });
   if (!question || !runModel || isConfidentialAssistantRequest(question) || /(?:precio|cu[aá]nto cuesta|total|dep[oó]sito|saldo)/i.test(question)) return fallback();
-  const direct = buildPublicAssistantReply(question, context);
+  const direct = buildPublicAssistantReply(question, context, brief);
   if (direct.action) return { ...direct, source: "rules" };
 
   const safeHistory = history.slice(-8).map((entry) => ({
@@ -279,7 +284,15 @@ export async function answerPublicAssistant(
     const result = await runModel(PUBLIC_ASSISTANT_MODEL, {
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: JSON.stringify({ HISTORIAL: safeHistory, MENSAJE_ACTUAL: question, CONTEXTO_PUBLICO: modelContext(context) }) },
+        { role: "user", content: JSON.stringify({
+          HISTORIAL: safeHistory,
+          MENSAJE_ACTUAL: question,
+          // Lo que el cliente ya dijo, acumulado y estructurado. Es la razón por la que el
+          // modelo no debe volver a preguntar medidas, ubicación ni preferencias.
+          YA_SABEMOS: briefSummary(brief),
+          SIGUIENTE_DATO_FALTANTE: nextBriefQuestion(brief)?.field ?? "",
+          CONTEXTO_PUBLICO: modelContext(context),
+        }) },
       ],
       response_format: { type: "json_object" },
       max_tokens: 300,
