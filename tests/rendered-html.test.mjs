@@ -86,6 +86,23 @@ test("el candado interno no deja pasar sin cookie válida", async () => {
   // El CRUD de proyectos, que expone datos de clientes, responde 401 y no un formulario.
   const api = await worker.fetch(new Request("http://localhost/api/projects"), env, ctx);
   assert.equal(api.status, 401);
+
+  // La libreta de clientes trae nombre, teléfono, correo e importes de cada cotización: es lo más
+  // sensible del panel, y por eso NO se llama `public-*`. Debe quedar cerrada por omisión.
+  const book = await worker.fetch(new Request("http://localhost/api/quotes"), env, ctx);
+  assert.equal(book.status, 401);
+
+  // El documento del cliente sí es público: su credencial es el token de la URL, no la contraseña
+  // interna. Con un token inexistente contesta la página de "no encontramos esta cotización"
+  // (200), nunca una redirección al formulario de acceso. Si esto empezara a redirigir, todos los
+  // enlaces que ya se enviaron a clientes dejarían de abrir.
+  const document = await worker.fetch(
+    new Request(`http://localhost/cotizacion/${"a".repeat(48)}`, { headers: { accept: "text/html" } }),
+    env,
+    ctx,
+  );
+  assert.notEqual(document.status, 302, "el documento del cliente no puede pedir la contraseña interna");
+  assert.notEqual(document.status, 401);
 });
 
 // NOTA: el selector de carpetas no se puede afirmar desde aquí. El HTML que rinde el servidor
@@ -175,43 +192,66 @@ test("public assistant keeps confidential pricing fields out of the rendered cli
   assert.doesNotMatch(html, /Hablar con un asesor/i);
 });
 
-test("public quote prices the existing Aluplast hinged-door typologies", async () => {
+test("la ruta publica de cotizacion no devuelve ningun importe", async () => {
+  // El contrato nuevo: /api/public-quote contesta si la configuracion se puede fabricar, no
+  // cuanto cuesta. El motor corre igual -- una medida imposible se rechaza -- pero la respuesta
+  // no lleva unit, total, deposit ni nada con forma de dinero.
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-hinged-doors`);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-no-prices`);
   const { default: worker } = await import(workerUrl.href);
   const env = { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } };
   const ctx = { waitUntil() {}, passThroughOnException() {} };
-  const quote = async (styleId, widthMm, ip) => {
+  const ask = async (body, ip) => {
     const response = await worker.fetch(
       new Request("http://localhost/api/public-quote", {
         method: "POST",
         headers: { "content-type": "application/json", "x-forwarded-for": ip },
-        body: JSON.stringify({
-          styleId,
-          widthMm,
-          heightMm: 2200,
-          qty: 1,
-          colorId: "bl",
-          glassId: "Cristal templado claro 6 mm",
-          extras: { instalacion: true },
-        }),
+        body: JSON.stringify(body),
       }),
       env,
       ctx,
     );
-    assert.equal(response.status, 200);
-    return response.json();
+    return { status: response.status, text: await response.text() };
+  };
+  const base = {
+    heightMm: 2200,
+    qty: 1,
+    colorId: "bl",
+    glassId: "Cristal templado claro 6 mm",
+    extras: { instalacion: true },
   };
 
-  const single = await quote("alu-puerta-abatible-1", 1000, "203.0.113.40");
-  const double = await quote("alu-puerta-abatible-2", 1800, "203.0.113.41");
-  assert.ok(single.price.total > 0);
-  assert.ok(double.price.total > single.price.total);
-  assert.equal(single.price.estimated, true);
-  assert.equal(double.price.estimated, true);
+  const single = await ask({ ...base, styleId: "alu-puerta-abatible-1", widthMm: 1000 }, "203.0.113.40");
+  assert.equal(single.status, 200);
+  assert.equal(single.text, JSON.stringify({ available: true }), "la respuesta no puede traer ni un campo mas");
+
+  const batch = await ask(
+    {
+      items: [
+        { ...base, styleId: "alu-puerta-abatible-1", widthMm: 1000 },
+        { ...base, styleId: "alu-puerta-abatible-2", widthMm: 1800 },
+        { ...base, styleId: "alu-puerta-abatible-1", widthMm: 9000 },
+      ],
+    },
+    "203.0.113.41",
+  );
+  assert.equal(batch.status, 200);
+  const items = JSON.parse(batch.text).items;
+  assert.equal(items.length, 3);
+  assert.equal(items[0].available, true);
+  assert.equal(items[1].available, true);
+  assert.equal(items[2].available, false, "9000 mm excede el maximo de la puerta abatible");
+  assert.ok(items[2].reason, "un rechazo se explica");
+
+  for (const payload of [single.text, batch.text]) {
+    assert.doesNotMatch(payload, /"unit"|"total"|deposit|remaining|estimated|margin|utility/i);
+    assert.doesNotMatch(payload, /\$\s*\d|MXN/i);
+  }
 });
 
-test("public quote ignores removed curtain and mosquito-screen fields from old clients", async () => {
+test("una configuracion de un cliente viejo sigue aceptandose y sigue sin precio", async () => {
+  // Una pestaña abierta desde antes del cambio puede mandar cortina exterior y mosquitero, que
+  // ya no existen en el cotizador. Se ignoran, como siempre, y la respuesta es la misma.
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-removed-extras`);
   const { default: worker } = await import(workerUrl.href);
@@ -225,8 +265,7 @@ test("public quote ignores removed curtain and mosquito-screen fields from old c
     colorId: "bl",
     glassId: "Cristal recocido claro 6 mm",
   };
-
-  const quote = async (extras, ip) => {
+  const ask = async (extras, ip) => {
     const response = await worker.fetch(
       new Request("http://localhost/api/public-quote", {
         method: "POST",
@@ -237,51 +276,12 @@ test("public quote ignores removed curtain and mosquito-screen fields from old c
       ctx,
     );
     assert.equal(response.status, 200);
-    return response.json();
+    return response.text();
   };
 
-  const clean = await quote({ instalacion: true }, "203.0.113.30");
-  const legacy = await quote(
-    { instalacion: true, persianaExterior: true, mosquitero: true },
-    "203.0.113.31",
-  );
-  assert.deepEqual(legacy.price, clean.price);
-  assert.equal(legacy.price.hasQuoteOnRequestItems, false);
-});
-
-test("public quote prices multiple window configurations as one project", async () => {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-multi-item`);
-  const { default: worker } = await import(workerUrl.href);
-  const env = { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } };
-  const ctx = { waitUntil() {}, passThroughOnException() {} };
-  const base = {
-    widthMm: 1200,
-    heightMm: 1200,
-    colorId: "bl",
-    glassId: "Cristal recocido claro 6 mm",
-    extras: { instalacion: true },
-  };
-
-  const response = await worker.fetch(
-    new Request("http://localhost/api/public-quote", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.20" },
-      body: JSON.stringify({
-        items: [
-          { ...base, styleId: "alu-fija", qty: 1 },
-          { ...base, styleId: "alu-corrediza-2", widthMm: 1800, qty: 2 },
-        ],
-      }),
-    }),
-    env,
-    ctx,
-  );
-  const json = await response.json();
-  assert.equal(response.status, 200);
-  assert.equal(json.itemPrices.length, 2);
-  assert.equal(json.price.total, json.itemPrices[0].total + json.itemPrices[1].total);
-  assert.equal(json.price.deposit + json.price.remaining, json.price.total);
+  const clean = await ask({ instalacion: true }, "203.0.113.30");
+  const legacy = await ask({ instalacion: true, persianaExterior: true, mosquitero: true }, "203.0.113.31");
+  assert.equal(legacy, clean);
 });
 
 test("public quote rejects abusive project payload sizes", async () => {

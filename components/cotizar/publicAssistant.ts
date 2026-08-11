@@ -20,8 +20,10 @@ export type PublicAssistantContext = {
   glassName: string;
   installation: boolean;
   sizeError: string;
-  total: number | null;
-  estimated: boolean;
+  // NO hay `total` ni `estimated`. El asesor no conoce importes: si los tuviera en su contexto los
+  // acabaría diciendo, y el precio solo debe aparecer en el documento definitivo. Lo que sí sabe
+  // es esto: que el motor pudo cotizar la configuración, sin saber en cuánto.
+  quotable: boolean;
   designCount: number;
   folio: string;
   minMm: number;
@@ -93,8 +95,8 @@ const STEP_HELP: Record<number, string> = {
   [S.SIZE]: "Escribe una medida como “1.80 × 1.20 m”, “180 × 120 cm” o “1800 × 1200 mm”. La convertiré y te pediré confirmación antes de aplicarla.",
   [S.COLOR]: "Puedo cambiar el color entre las opciones disponibles para tu sistema.",
   [S.GLASS]: "Puedo comparar los vidrios disponibles según seguridad, ruido y aislamiento.",
-  [S.CONFIRM]: "La instalación es opcional y, si la incluyes, el servidor recalcula el total en esta misma pantalla. El precio se calcula con la configuración vigente: no uso precios inventados.",
-  [S.SUMMARY]: "Puedo revisar medidas, estilo, color, vidrio, cantidad y total antes de continuar.",
+  [S.CONFIRM]: "La instalación es opcional: puedes incluirla o quitarla aquí. Cuando la configuración queda completa, ya se puede generar tu cotización.",
+  [S.SUMMARY]: "Puedo revisar medidas, estilo, color, vidrio y cantidad de cada diseño antes de continuar.",
   [S.PROCESS]: "Tu cotización seguirá con revisión, medición, confirmación del precio, depósito, fabricación e instalación.",
   [S.CONTACT]: "Ya terminaste la configuración. Completa los datos de contacto y autoriza el seguimiento para registrar el proyecto.",
   [S.DONE]: "Tu proyecto quedó registrado. Ahora sí puedes descargarlo o continuar con un asesor humano sin repetir la configuración.",
@@ -134,9 +136,11 @@ function normalize(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
-function money(value: number): string {
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(value);
-}
+/** Lo que el asesor contesta cuando le preguntan por el precio. Es una sola frase y vive en una
+ *  constante porque la dicen dos ramas distintas: si divergieran, una de ellas acabaría
+ *  insinuando que el precio se puede consultar antes. */
+export const PRICE_ANSWER =
+  "El precio se calcula con el catálogo real de perfiles, herrajes y vidrio, y aparece en tu cotización al terminar: la generas con el botón de la última pantalla y se abre como documento para consultar o descargar. Durante la configuración no manejo importes.";
 
 function measurementToMm(value: string, unit?: string): number {
   const amount = Number(value.replace(",", "."));
@@ -188,7 +192,7 @@ function dimensionProposal(input: string, context: PublicAssistantContext, brief
     const error = validateDimensions(widthMm, heightMm, context);
     if (error) return { text: `${error} No aplicaré ningún cambio.` };
     return {
-      text: `Entendí ${widthMm.toLocaleString("es-MX")} mm de ancho por ${heightMm.toLocaleString("es-MX")} mm de alto. ¿Deseas aplicar estas medidas y recalcular el precio?`,
+      text: `Entendí ${widthMm.toLocaleString("es-MX")} mm de ancho por ${heightMm.toLocaleString("es-MX")} mm de alto. ¿Deseas aplicar estas medidas?`,
       action: { kind: "dimensions", widthMm, heightMm },
     };
   }
@@ -231,9 +235,6 @@ function configurationSummary(context: PublicAssistantContext): string {
     context.glassName && `Vidrio: ${context.glassName}`,
     `Cantidad: ${context.qty}`,
     `Instalación: ${context.installation ? "incluida" : "no incluida"}`,
-    // "Preliminar" en todos los casos porque el asesor confirma la medida en sitio, no porque
-    // el importe sea aproximado: lo calcula el motor real con las tarifas del catálogo.
-    context.total !== null && `Total preliminar: ${money(context.total)}`,
   ].filter(Boolean);
   if (context.sizeError) parts.push(`Pendiente: ${context.sizeError}`);
   return parts.length > 2
@@ -261,7 +262,7 @@ export function briefLedReply(brief: AssistantBrief | undefined): PublicAssistan
   // quedó anotado y ofrecer el siguiente paso concreto.
   if (!question) {
     const lines = briefSummary(brief);
-    return { text: `Anotado. Voy con ${lines.join("; ").toLowerCase()}. Cuando elijas el estilo valido estas medidas contra sus límites reales y te muestro el precio.`, generic: true };
+    return { text: `Anotado. Voy con ${lines.join("; ").toLowerCase()}. Cuando elijas el estilo valido estas medidas contra sus límites reales y lo ves dibujado.`, generic: true };
   }
   return { text: `${recommendation} ${question.question}` };
 }
@@ -279,7 +280,7 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
   }
 
   if (CONFIDENTIAL_TERMS.test(text)) {
-    return { text: "Esa información es interna y no está disponible en el cotizador público. Sí puedo ayudarte con las opciones visibles, validar tu configuración y mostrar el precio público calculado por el servidor." };
+    return { text: "Esa información es interna y no está disponible en el cotizador público. Sí puedo ayudarte con las opciones visibles y validar tu configuración." };
   }
 
   if (/revisa (mi|la) configuracion|resumen|que (he|ya) elegi|todo esta correcto/.test(normalized)) {
@@ -307,7 +308,7 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
     if (qty < 1 || qty > context.catalog.maxQty) {
       return { text: `La cantidad permitida por diseño es de 1 a ${context.catalog.maxQty} piezas. No aplicaré ningún cambio.` };
     }
-    return { text: `Cambiaré la cantidad de este diseño a ${qty} ${qty === 1 ? "pieza" : "piezas"}. ¿Deseas aplicarlo y recalcular?`, action: { kind: "quantity", qty } };
+    return { text: `Cambiaré la cantidad de este diseño a ${qty} ${qty === 1 ? "pieza" : "piezas"}. ¿Deseas aplicarlo?`, action: { kind: "quantity", qty } };
   }
 
   const product = findNamedOption(text, context.catalog.products);
@@ -324,19 +325,19 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
   const availableColors = context.catalog.colors.filter((entry) => !context.brandName || entry.brandId === context.catalog.brands.find((brand) => brand.name === context.brandName)?.id);
   const color = findNamedOption(text, availableColors);
   if (color && /(color|cambia|prefiero|quiero)/.test(normalized)) {
-    return { text: `Cambiaré únicamente el color a ${color.name}. ¿Deseas aplicarlo y recalcular?`, action: { kind: "color", colorId: color.id, colorName: color.name } };
+    return { text: `Cambiaré únicamente el color a ${color.name}. ¿Deseas aplicarlo?`, action: { kind: "color", colorId: color.id, colorName: color.name } };
   }
 
   const glass = findNamedOption(text, context.catalog.glass);
   if (glass && /(vidrio|cristal|cambia|prefiero|quiero)/.test(normalized)) {
-    return { text: `Cambiaré únicamente el vidrio a ${glass.name}. ¿Deseas aplicarlo y recalcular?`, action: { kind: "glass", glassId: glass.id, glassName: glass.name } };
+    return { text: `Cambiaré únicamente el vidrio a ${glass.name}. ¿Deseas aplicarlo?`, action: { kind: "glass", glassId: glass.id, glassName: glass.name } };
   }
 
   if (/sin instalacion|quita.*instalacion|no.*instalacion/.test(normalized)) {
-    return { text: "Quitaré la instalación y solicitaré al servidor el nuevo precio. ¿Deseas continuar?", action: { kind: "installation", value: false } };
+    return { text: "Quitaré la instalación de este diseño. ¿Deseas continuar?", action: { kind: "installation", value: false } };
   }
   if (/incluye.*instalacion|con instalacion|agrega.*instalacion/.test(normalized)) {
-    return { text: "Incluiré la instalación profesional y solicitaré al servidor el nuevo precio. ¿Deseas continuar?", action: { kind: "installation", value: true } };
+    return { text: "Incluiré la instalación profesional en este diseño. ¿Deseas continuar?", action: { kind: "installation", value: true } };
   }
 
   if (/explica.*apertura|tipos? de apertura|abatible.*corrediza|corrediza.*abatible/.test(normalized)) {
@@ -351,10 +352,8 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
     return { text: `Opciones confirmadas: ${context.catalog.glass.map((entry) => `${entry.name} — ${entry.benefit}`).join(" ")}` };
   }
 
-  if (/por que cambio.*precio|precio cambio|como.*precio|precio/.test(normalized)) {
-    return { text: context.total === null
-      ? "El precio aparecerá cuando la configuración sea válida. El servidor lo calcula con medidas, estilo, cantidad, color, vidrio e instalación."
-      : `El precio público actual es ${money(context.total)} MXN, calculado con el catálogo real de perfiles, herrajes y vidrio${context.estimated ? ". Un asesor confirma esta línea antes de firmar" : ""}. Puede cambiar al modificar medidas, estilo, cantidad, color, vidrio o instalación. Siempre lo recalcula el servidor.` };
+  if (/cuanto (cuesta|sale|vale)|precio|costo|cotizacion definitiva|presupuesto/.test(normalized)) {
+    return { text: PRICE_ANSWER };
   }
 
   if (/terminar|finalizar|continuar con la compra/.test(normalized)) {

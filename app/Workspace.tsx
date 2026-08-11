@@ -74,8 +74,11 @@ import { VidrioDoc } from "@/components/reports/VidrioDoc";
 import { ProjectCotizacionDoc } from "@/components/reports/ProjectCotizacionDoc";
 import { ProjectCorteDoc } from "@/components/reports/ProjectCorteDoc";
 import { ProjectVidrioDoc } from "@/components/reports/ProjectVidrioDoc";
+import { CustomerBook } from "@/components/admin/CustomerBook";
 
-const TABS: Tab[] = ["Proyecto", "Resumen", "Diseño", "Consumo", "Servicios", "Informes"];
+// "Clientes" va junto a "Proyecto" y no al final: son las dos pestañas de navegación (a quién le
+// cotizamos, qué le cotizamos) y las demás son de trabajo sobre el componente abierto.
+const TABS: Tab[] = ["Proyecto", "Clientes", "Resumen", "Diseño", "Consumo", "Servicios", "Informes"];
 const REPORTS: Report[] = ["Cotización", "Optimización de corte", "Pedido de vidrio", "Producción", "Herrajes", "Costos"];
 // Reports that can aggregate every component in the project instead of just the active one --
 // same three the static prototype grouped (Producción/Herrajes/Costos stay per-component only).
@@ -1007,6 +1010,13 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
                   signedIn={agentSignedIn}
                 />
               )}
+            </>
+          )}
+
+          {tab === "Clientes" && (
+            <>
+              <Block n="01" title="Expediente de clientes" sub="Cada cotización enviada desde el cotizador público queda registrada aquí con los datos de su cliente, su documento y la etapa en que va." />
+              <CustomerBook />
             </>
           )}
 

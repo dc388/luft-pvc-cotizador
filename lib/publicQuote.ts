@@ -199,6 +199,38 @@ export function priceConfig(config: PublicQuoteConfig): PublicPrice {
   };
 }
 
+// Lo único que el cotizador público le puede preguntar al motor sin recibir dinero de vuelta:
+// "¿esta configuración se puede fabricar y cotizar?". El cálculo se ejecuta completo -- incluida
+// la comprobación de política comercial de priceConfig -- y el importe se descarta aquí, en el
+// servidor. Es la pieza que permite que la interfaz sepa qué estilos ofrecer sin que ninguna
+// cifra cruce al navegador.
+export type PublicConfigAvailability = { available: true } | { available: false; reason: string };
+
+export function checkConfig(raw: unknown): PublicConfigAvailability {
+  try {
+    priceConfig(parseConfig(raw));
+    return { available: true };
+  } catch (error) {
+    if (error instanceof PublicQuoteError) return { available: false, reason: error.message };
+    // Un fallo que no sea de validación (motor, política comercial) no se le explica al cliente
+    // con detalles técnicos, pero tampoco se disfraza de "disponible".
+    console.error("public-quote/check", error instanceof Error ? error.message : "error");
+    return { available: false, reason: "No disponible en esta medida." };
+  }
+}
+
+// Cada configuración se resuelve por separado a propósito. El lote de precios sí falla completo
+// al primer elemento inválido (parseProjectConfigs lanza), y eso está bien cuando se cotiza un
+// proyecto real; pero la pantalla de estilos pregunta por siete a la vez y uno fuera de rango
+// dejaría a los otros seis sin respuesta.
+export function checkConfigs(raw: unknown): PublicConfigAvailability[] {
+  if (!Array.isArray(raw)) throw new PublicQuoteError("Agrega al menos una ventana a tu proyecto.");
+  if (raw.length > MAX_PROJECT_ITEMS) {
+    throw new PublicQuoteError(`Un proyecto puede incluir hasta ${MAX_PROJECT_ITEMS} configuraciones. Un asesor puede ayudarte con proyectos mayores.`);
+  }
+  return raw.map(checkConfig);
+}
+
 export function priceProjectConfigs(configs: PublicQuoteConfig[]): { price: PublicPrice; itemPrices: PublicPrice[] } {
   if (configs.length === 0) throw new PublicQuoteError("Agrega al menos una ventana a tu proyecto.");
   const itemPrices = configs.map(priceConfig);

@@ -7,7 +7,8 @@ const entries = [
   "luft-ai.test.ts",
   "assistantBrief.test.ts",
   "briefMatch.test.ts",
-  "priceStatus.test.ts",
+  "availability.test.ts",
+  "quoteRepo.test.ts",
   "publicSteps.test.ts",
   "public-assistant.test.ts",
 ].map((file) => resolve("tests", file));

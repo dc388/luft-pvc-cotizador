@@ -4,7 +4,8 @@ import { buildPublicCatalog } from "@/lib/publicCatalog";
 import { buildComponentData, parseConfig, priceConfig } from "@/lib/publicQuote";
 import { buildPublicAssistantReply, type PublicAssistantContext } from "@/components/cotizar/publicAssistant";
 import { publicAssistantRequestContext } from "@/components/cotizar/publicAssistant";
-import { answerPublicAssistant, PUBLIC_ASSISTANT_MODEL } from "@/lib/publicAssistantModel";
+import { answerPublicAssistant, containsMoney, PUBLIC_ASSISTANT_MODEL } from "@/lib/publicAssistantModel";
+import { PRICE_ANSWER } from "@/components/cotizar/publicAssistant";
 import { S, publicStepName } from "@/lib/publicSteps";
 
 const catalog = buildPublicCatalog();
@@ -29,8 +30,7 @@ function context(patch: Partial<PublicAssistantContext> = {}): PublicAssistantCo
     glassName: "Sencillo",
     installation: true,
     sizeError: "",
-    total: 18000,
-    estimated: false,
+    quotable: true,
     designCount: 1,
     folio: "",
     minMm: catalog.minMm,
@@ -167,7 +167,7 @@ test("el servidor rechaza acciones que el modelo invente fuera del catálogo", a
   assert.doesNotMatch(reply.text, /Ya elegí el producto inventado/i);
 });
 
-test("el contexto enviado al modelo se recalcula y no acepta un total del navegador", async () => {
+test("un total inyectado por el navegador se descarta al canonizar el contexto", async () => {
   let captured = "";
   const runner = async (_model: string, input: Record<string, unknown>) => {
     captured = JSON.stringify(input);
@@ -184,8 +184,11 @@ test("el contexto enviado al modelo se recalcula y no acepta un total del navega
     };
   };
   const request = publicAssistantRequestContext(context());
-  await answerPublicAssistant("¿Esta opción sirve para una recámara?", { ...request, total: 1 }, [], runner);
-  assert.doesNotMatch(captured, /"total":1(?:\D|$)/);
+  // El campo ya no existe en el contexto del asesor, así que una pestaña vieja (o manipulada) que
+  // lo mande no puede reintroducir un importe en el prompt del modelo por la puerta de atrás.
+  await answerPublicAssistant("¿Esta opción sirve para una recámara?", { ...request, total: 18500 }, [], runner);
+  assert.doesNotMatch(captured, /18500/);
+  assert.doesNotMatch(captured, /"total"/);
   assert.doesNotMatch(captured, /"margin"|"utility"|"directCost"/i);
 });
 
@@ -209,6 +212,56 @@ test("LUFT Asesor reconoce la configuración y no vuelve a pedir datos capturado
   assert.match(reply.text, /1,800 × 1,200 mm/i);
   assert.match(reply.text, /Blanco/i);
   assert.doesNotMatch(reply.text, /cuánto mide|elige un color/i);
+});
+
+test("LUFT Asesor nunca dice un importe, ni cuando el cliente insiste", () => {
+  // Ninguna de estas preguntas puede producir una cifra. El asesor conoce la configuración pero no
+  // su precio: el importe solo existe en el documento definitivo.
+  for (const prompt of ["¿Cuánto cuesta?", "Dame el precio", "¿Cuál es el total del proyecto?", "¿Cuánto sale con instalación?", "Dame un precio aproximado"]) {
+    const reply = buildPublicAssistantReply(prompt, context());
+    assert.ok(!containsMoney(reply.text), `“${prompt}” produjo un importe: ${reply.text}`);
+    assert.doesNotMatch(reply.text, /\$/);
+  }
+  // Y el resumen de la configuración tampoco cierra con un total, aunque lo tenga todo.
+  const summary = buildPublicAssistantReply("Revisa mi configuración", context());
+  assert.ok(!containsMoney(summary.text));
+  assert.doesNotMatch(summary.text, /total/i);
+});
+
+test("una cifra inventada por el modelo se sustituye por la explicación, no se muestra", async () => {
+  // El contexto del modelo ya no lleva importes, pero un modelo puede inventarse uno plausible. Una
+  // cifra inventada en un cotizador es peor que ninguna cifra.
+  const invented = async () => ({
+    response: { text: "Tu proyecto queda en $18,500 MXN aproximadamente.", actionKind: "none", widthMm: 0, heightMm: 0, qty: 0, optionId: "", installation: false },
+  });
+  const reply = await answerPublicAssistant("¿Me recomiendas algo para una recámara?", publicAssistantRequestContext(context()), [], invented);
+  assert.doesNotMatch(reply.text, /18,500|\$/);
+  assert.ok(!containsMoney(reply.text));
+});
+
+test("preguntar por el precio explica dónde aparece, sin adelantarlo", () => {
+  const reply = buildPublicAssistantReply("¿Cuánto cuesta?", context());
+  assert.equal(reply.text, PRICE_ANSWER);
+  assert.match(reply.text, /cotizaci[óo]n al terminar/i, "debe decirle dónde SÍ va a ver el precio");
+  assert.equal(reply.action, undefined);
+});
+
+test("el contexto que viaja al modelo no contiene ningún importe", async () => {
+  // Se inspecciona el mensaje de usuario, no la petición completa: el prompt de sistema SÍ dice la
+  // palabra "precio", porque es justo la regla que le prohíbe mencionarlo.
+  let payload = "";
+  const runner = async (_model: string, input: Record<string, unknown>) => {
+    const messages = input.messages as Array<{ role: string; content: string }>;
+    payload = messages.find((entry) => entry.role === "user")?.content ?? "";
+    return { response: { text: "Una corrediza aprovecha mejor el espacio.", actionKind: "none", widthMm: 0, heightMm: 0, qty: 0, optionId: "", installation: false } };
+  };
+  await answerPublicAssistant("¿Qué apertura me conviene?", publicAssistantRequestContext(context()), [], runner);
+  assert.ok(payload, "el modelo debe haber recibido el contexto");
+  for (const field of ["publicTotal", '"total"', '"unit"', "deposit", "anticipo", "margin", "utility"]) {
+    assert.ok(!payload.includes(field), `el contexto del modelo no puede llevar “${field}”`);
+  }
+  assert.ok(!containsMoney(payload), "el contexto del modelo no puede llevar nada con forma de dinero");
+  assert.match(payload, /readyToQuote/, "sí recibe si la configuración ya es cotizable");
 });
 
 test("LUFT Asesor no expone información comercial interna", () => {

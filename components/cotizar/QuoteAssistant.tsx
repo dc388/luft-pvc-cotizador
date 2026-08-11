@@ -10,7 +10,9 @@ type Message = { id: string; role: "assistant" | "user"; text: string };
 
 const MEMORY_KEY = "luft-public-advisor-v1";
 const GREETING = "Hola, soy LUFT Asesor. Puedo ayudarte a elegir, configurar y cotizar tu ventana o puerta. ¿En qué parte necesitas ayuda?";
-const QUICK_REPLIES = ["Ayúdame a elegir", "Explícame las aperturas", "Revisa mis medidas", "Revisa mi configuración", "¿Por qué cambió el precio?"];
+// "¿Por qué cambió el precio?" salió de esta lista: ya no hay un precio en pantalla que pudiera
+// cambiar, y ofrecerlo como atajo invitaba a buscar una cifra que solo existe en el documento.
+const QUICK_REPLIES = ["Ayúdame a elegir", "Explícame las aperturas", "Revisa mis medidas", "Revisa mi configuración", "¿Cómo recibo mi cotización?"];
 
 function message(role: Message["role"], text: string): Message {
   return { id: crypto.randomUUID(), role, text };
@@ -110,7 +112,7 @@ export function QuoteAssistant({
   function applyPending() {
     if (!pending) return;
     onApply(pending);
-    setMessages((current) => [...current, message("assistant", "Listo. Apliqué únicamente el cambio autorizado y el precio se recalculará con el motor del servidor.")]);
+    setMessages((current) => [...current, message("assistant", "Listo. Apliqué únicamente el cambio autorizado; el servidor volverá a revisar que la configuración se pueda fabricar.")]);
     setPending(null);
   }
 

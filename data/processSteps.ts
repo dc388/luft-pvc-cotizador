@@ -58,7 +58,10 @@ export const processSteps: ProcessStep[] = [
     title: "Depósito inicial",
     body: "Con el precio confirmado, realizas el anticipo para iniciar la fabricación.",
     chips: ["Pago seguro", "Transparencia total", "Iniciamos tu proyecto"],
-    note: "Este importe es informativo. No realices ningún depósito hasta que nuestro equipo haya realizado la medición y confirmado tu cotización.",
+    // "Este importe" ya no tiene a qué referirse: el desglose del anticipo salió del recorrido
+    // público junto con el resto de los precios. La advertencia sí se queda, porque su función es
+    // impedir que alguien pague sobre la cifra preliminar del documento.
+    note: "El anticipo que aparece en tu cotización es informativo. No realices ningún depósito hasta que nuestro equipo haya realizado la medición y confirmado tu cotización.",
   },
   {
     id: "fabricacion",

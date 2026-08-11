@@ -161,6 +161,16 @@ export async function getProject(db: Db, projectId: string): Promise<ProjectReco
   return projectRecord(db, row);
 }
 
+// Etiqueta una carpeta con el folio de la cotización que la originó. Es un paso aparte de
+// createEmptyProject porque el folio se reserva escribiendo la cotización (ver lib/quoteRepo.ts),
+// y la carpeta tiene que existir antes para poder guardar su id en el expediente.
+export async function labelProjectWithFolio(db: Db, projectId: string, folio: string, name: string): Promise<void> {
+  await db
+    .update(projects)
+    .set({ name, folio, updatedAt: new Date().toISOString() })
+    .where(eq(projects.id, projectId));
+}
+
 export async function renameProject(db: Db, projectId: string, name: string): Promise<void> {
   await db.update(projects).set({ name, updatedAt: new Date().toISOString() }).where(eq(projects.id, projectId));
 }

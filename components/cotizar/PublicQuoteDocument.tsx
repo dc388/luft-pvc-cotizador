@@ -1,63 +1,35 @@
 import { CustomerQuoteDocument, type QuoteDocumentItem } from "@/components/reports/CustomerQuoteDocument";
-import type { WingType } from "@/types/domain";
+import type { QuoteSnapshot } from "@/types/quote";
 import { WindowPreview } from "./WindowPreview";
 
-export type PublicQuotePrintableItem = {
-  id: string;
-  productName: string;
-  styleName: string;
-  brandName: string;
-  panels: number;
-  wings: WingType[];
-  widthMm: number;
-  heightMm: number;
-  quantity: number;
-  colorName: string;
-  frameHex: string;
-  glassName: string;
-  extras: { instalacion: boolean };
-  price: {
-    unit: number;
-    total: number;
-    estimated: boolean;
-    hasQuoteOnRequestItems: boolean;
-  };
-};
+// El documento definitivo del cotizador público. Se arma desde el snapshot congelado
+// (lib/quoteDocument.ts) y es el ÚNICO lugar donde el cliente ve un importe.
+//
+// Antes recibía los renglones y el precio como props desde el navegador, que era lo que obligaba
+// al cotizador a conocer los importes durante toda la configuración. Ahora recibe una estructura
+// que solo existe después de registrar la cotización, y que el servidor le entrega ya resuelta.
 
-type Props = {
-  folio: string;
-  client: { name: string; city: string };
-  items: PublicQuotePrintableItem[];
-  price: {
-    total: number;
-    estimated: boolean;
-    depositPercentage: number;
-    deposit: number;
-    remaining: number;
-  };
-};
-
-function todayStr() {
-  const d = new Date();
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+function documentDate(issuedAt: string): string {
+  const date = new Date(issuedAt);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
 }
 
-export function PublicQuoteDocument({ folio, client, items, price }: Props) {
-  const documentItems: QuoteDocumentItem[] = items.map((item, index) => {
-    const extrasText = [
-      item.extras.instalacion ? "Instalación incluida" : "Sin instalación",
-    ].filter(Boolean).join(" · ");
-    const areaM2 = item.widthMm * item.heightMm / 1_000_000;
+export function PublicQuoteDocument({ snapshot }: { snapshot: QuoteSnapshot }) {
+  const { folio, customer, project, items, totals } = snapshot;
+  const documentItems: QuoteDocumentItem[] = items.map((item) => {
+    const extrasText = item.extras.instalacion ? "Instalación incluida" : "Sin instalación";
+    const areaM2 = (item.widthMm * item.heightMm) / 1_000_000;
 
     return {
       id: item.id,
-      code: `${folio}-${String(index + 1).padStart(2, "0")}`,
+      code: item.id,
       title: `${item.productName} · ${item.styleName}`,
-      location: client.city,
+      location: customer.address || customer.city,
       specs: [
         ["Producto", `${item.productName} · ${item.styleName}`],
         ["Dimensiones preliminares", `${item.widthMm.toLocaleString("es-MX")} × ${item.heightMm.toLocaleString("es-MX")} mm`],
-        ["Perfil del sistema", item.brandName],
+        ["Perfilería", item.brandName],
         ["Marco / color", item.colorName],
         ["Vidrio", item.glassName],
         ["Extras", extrasText],
@@ -68,33 +40,36 @@ export function PublicQuoteDocument({ folio, client, items, price }: Props) {
       heightMm: item.heightMm,
       areaM2,
       quantity: item.quantity,
-      unitPrice: item.price.unit,
-      lineTotal: item.price.total,
+      unitPrice: item.unitPrice,
+      lineTotal: item.lineTotal,
     };
   });
   const totalPieces = items.reduce((sum, item) => sum + item.quantity, 0);
-  const brands = [...new Set(items.map((item) => item.brandName.toUpperCase()))].join(" · ");
+  const brands = [...new Set(items.map((item) => item.brandName.toUpperCase()).filter(Boolean))].join(" · ");
+  const contactLine = [customer.phone, customer.email].filter(Boolean).join(" · ");
 
   return (
     <CustomerQuoteDocument
       quoteNumber={folio}
-      client={client.name}
-      clientAddress={client.city}
-      project={`${items.length} ${items.length === 1 ? "configuración" : "configuraciones"} · ${totalPieces} ${totalPieces === 1 ? "pieza" : "piezas"}`}
-      quoteDate={todayStr()}
+      client={[customer.name, customer.company].filter(Boolean).join(" · ")}
+      clientAddress={[customer.address, customer.city, customer.postalCode].filter(Boolean).join(", ")}
+      clientContact={contactLine}
+      project={project.name || `${items.length} ${items.length === 1 ? "configuración" : "configuraciones"} · ${totalPieces} ${totalPieces === 1 ? "pieza" : "piezas"}`}
+      quoteDate={documentDate(snapshot.issuedAt)}
       vendorLabel={brands}
       intro="Gracias por cotizar con LUFT PVC. Esta propuesta reúne las configuraciones de tu proyecto y será revisada por un asesor antes de continuar."
+      notes={project.notes}
       items={documentItems}
       totals={{
-        subtotal: price.total,
-        total: price.total,
-        depositPercentage: price.depositPercentage,
-        depositAmount: price.deposit,
-        remainingBalance: price.remaining,
+        subtotal: totals.subtotal,
+        total: totals.total,
+        depositPercentage: totals.depositPercentage,
+        depositAmount: totals.deposit,
+        remainingBalance: totals.remaining,
       }}
       preliminary
-      estimated={price.estimated}
-      paymentTerms={`El depósito de ${price.depositPercentage}% se solicita únicamente después de validar medidas y confirmar el precio final.`}
+      estimated={totals.estimated}
+      paymentTerms={`El depósito de ${totals.depositPercentage}% se solicita únicamente después de validar medidas y confirmar el precio final.`}
     />
   );
 }

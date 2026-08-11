@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // A Proyecto holds N Componentes (individual windows/doors) so a single quote can cover a
 // whole building instead of one opening — ported from the Proyecto/Vano layer built once in
@@ -45,6 +45,100 @@ export const components = sqliteTable("components", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+// La persona detrás de una cotización, no la carpeta de trabajo. Existe aparte de `projects`
+// porque un cliente vuelve: pide dos ventanas en marzo y la puerta en julio, y esas son dos
+// cotizaciones del MISMO cliente. Con los datos escritos dentro de cada componente (como estaban
+// hasta ahora) no había forma de saber que era la misma persona.
+//
+// `phoneKey` son solo los dígitos del teléfono y es la llave de deduplicación: el cliente escribe
+// "993 221 1158", "9932211158" o "+52 993 2211158" y las tres son la misma persona. El teléfono
+// tal como lo escribió se conserva en `phone` para devolverle su propio formato.
+export const customers = sqliteTable(
+  "customers",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    phoneKey: text("phone_key").notNull(),
+    phone: text("phone").notNull().default(""),
+    email: text("email").notNull().default(""),
+    company: text("company").notNull().default(""),
+    city: text("city").notNull().default(""),
+    postalCode: text("postal_code").notNull().default(""),
+    address: text("address").notNull().default(""),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    // La deduplicación se apoya en el índice, no solo en la consulta previa: dos envíos
+    // simultáneos del mismo teléfono llegarían los dos a "no existe" y crearían dos clientes.
+    uniqueIndex("customers_phone_key_idx").on(table.phoneKey),
+    // Búsqueda del panel interno por correo, y segundo criterio de deduplicación.
+    index("customers_email_idx").on(table.email),
+  ]
+);
+
+// Una cotización registrada. `snapshot` es el documento tal como se le entregó al cliente
+// (renglones, medidas, importes y condiciones ya resueltos), no la configuración cruda: el PDF
+// de una cotización de marzo no debe cambiar porque en abril subió el precio de un perfil.
+// Las configuraciones siguen guardadas en `components` a través de `projectId`, así que la
+// trazabilidad hacia el editor interno se conserva.
+export const quotes = sqliteTable(
+  "quotes",
+  {
+    id: text("id").primaryKey(),
+    /** Folio comercial visible: LUFT-2026-000001. Se compone de `folioYear` y `folioSeq`. */
+    folio: text("folio").notNull(),
+    folioYear: integer("folio_year").notNull(),
+    folioSeq: integer("folio_seq").notNull(),
+    /** Llave de acceso al documento. Opaca a propósito: el folio es consecutivo y por tanto
+     * adivinable, así que no puede ser lo que abre la cotización de otra persona. */
+    token: text("token").notNull(),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "cascade" }),
+    /** Carpeta creada en el editor interno con esta cotización. Nullable porque el expediente
+     * comercial debe sobrevivir aunque alguien borre la carpeta de trabajo. */
+    projectId: text("project_id"),
+    projectName: text("project_name").notNull().default(""),
+    notes: text("notes").notNull().default(""),
+    /** Etapa comercial. Ver lib/quoteStatus.ts para la lista y su orden. */
+    status: text("status").notNull().default("generada"),
+    itemCount: integer("item_count").notNull().default(0),
+    pieceCount: integer("piece_count").notNull().default(0),
+    /** Total en pesos, redondeado. Es para la lista interna: el documento usa `snapshot`. */
+    total: integer("total").notNull().default(0),
+    snapshot: text("snapshot").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("quotes_folio_idx").on(table.folio),
+    uniqueIndex("quotes_token_idx").on(table.token),
+    // El consecutivo se reserva escribiendo: si dos envíos calculan el mismo número, el segundo
+    // choca contra este índice y reintenta. Sin él, dos clientes compartirían folio.
+    uniqueIndex("quotes_folio_seq_idx").on(table.folioYear, table.folioSeq),
+    index("quotes_customer_idx").on(table.customerId),
+    index("quotes_created_idx").on(table.createdAt),
+  ]
+);
+
+// Bitácora de la cotización: cada cambio de etapa queda escrito en vez de sobrescribir el
+// anterior. Es lo que hace que "Contactado el 12, visita el 15" sea recuperable y no una sola
+// columna con el último valor.
+export const quoteEvents = sqliteTable(
+  "quote_events",
+  {
+    id: text("id").primaryKey(),
+    quoteId: text("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "cascade" }),
+    status: text("status").notNull(),
+    note: text("note").notNull().default(""),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [index("quote_events_quote_idx").on(table.quoteId, table.createdAt)]
+);
 
 // One row per accepted request against a rate-limited public endpoint. Unlike every other
 // table here this is throwaway telemetry, not user data: lib/rateLimit.ts counts the rows in

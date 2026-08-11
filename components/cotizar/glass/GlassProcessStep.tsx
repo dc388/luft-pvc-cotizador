@@ -7,8 +7,10 @@ import { ChipIcon, StepIllustration } from "./ProcessIcons";
 // Una card por paso del proceso, con la misma anatomía de las referencias visuales: número
 // grande en cápsula, título, texto corto, ilustración a un lado y tres cápsulas de apoyo abajo.
 //
-// `extra` deja inyectar contenido calculado en servidor (el desglose del anticipo en el paso 4)
-// sin que este componente sepa nada de precios.
+// `extra` deja inyectar contenido en un paso concreto sin que este componente sepa qué es. Lo
+// usaba el desglose del anticipo; ese desglose se retiró del recorrido público (sus cifras solo
+// aparecen en el documento definitivo) y el punto de extensión se conserva para lo siguiente que
+// necesite un paso en particular, como la fecha de una visita agendada.
 export function GlassProcessStep({ step, extra }: { step: ProcessStep; extra?: React.ReactNode }) {
   return (
     <Reveal>

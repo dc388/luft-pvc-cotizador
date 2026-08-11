@@ -38,11 +38,16 @@ type Props = {
   quoteNumber: string;
   client: string;
   clientAddress?: string;
+  /** Teléfono/WhatsApp y correo en una línea. El documento es el acuse de la cotización: si el
+   *  cliente lo reenvía a un asesor, el contacto tiene que venir dentro del papel. */
+  clientContact?: string;
   project: string;
   quoteDate: string;
   deliveryDate?: string;
   vendorLabel?: string;
   intro: string;
+  /** Observaciones que escribió el cliente. Se imprimen tal cual, sin interpretarlas. */
+  notes?: string;
   items: QuoteDocumentItem[];
   totals: QuoteDocumentTotals;
   preliminary?: boolean;
@@ -69,11 +74,13 @@ export function CustomerQuoteDocument({
   quoteNumber,
   client,
   clientAddress,
+  clientContact,
   project,
   quoteDate,
   deliveryDate,
   vendorLabel,
   intro,
+  notes,
   items,
   totals,
   preliminary = false,
@@ -103,6 +110,7 @@ export function CustomerQuoteDocument({
           <dl>
             <Meta label="Cliente" value={client || "—"} />
             <Meta label="Dirección" value={clientAddress || "—"} />
+            {clientContact && <Meta label="Contacto" value={clientContact} />}
             <Meta label="Proyecto" value={project || "—"} />
           </dl>
           <dl>
@@ -120,6 +128,13 @@ export function CustomerQuoteDocument({
         )}
 
         <p className="quoteIntro">{intro}</p>
+
+        {notes && (
+          <section className="quoteNotes" aria-label="Observaciones del cliente">
+            <h3>Observaciones</h3>
+            <p>{notes}</p>
+          </section>
+        )}
 
         <div className="quoteItems">
           {items.map((item, index) => (

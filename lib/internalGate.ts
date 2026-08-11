@@ -31,7 +31,13 @@ const LOGIN_PATH = "/acceso";
 // public-assistant...). Se generalizó tras un fallo real: la lista decía `/api/public-quote` y
 // dejó al asistente del cotizador devolviendo 401 en producción. La convención de nombre es
 // ahora el contrato -- una ruta que deba ser pública se llama `public-*`.
-const PUBLIC_PREFIXES = ["/cotizar", "/api/public-", "/api/version", "/_vinext/", LOGIN_PATH];
+//
+// `/cotizacion/` es la cotización definitiva del cliente y se agrega aquí a propósito, rompiendo
+// la convención de nombre `public-*`: es una URL que el cliente guarda y reenvía, y "cotizacion"
+// es lo que tiene que decir. Su credencial no es la contraseña interna sino el token opaco de la
+// propia ruta (ver lib/quoteRepo.ts): sin ese token no hay nada que leer, y el folio consecutivo
+// deliberadamente NO abre el documento.
+const PUBLIC_PREFIXES = ["/cotizar", "/cotizacion/", "/api/public-", "/api/version", "/_vinext/", LOGIN_PATH];
 const PUBLIC_EXACT = new Set(["/favicon.svg", "/favicon.ico", "/robots.txt", "/manifest.webmanifest"]);
 // Los estáticos siempre pasan: si se filtraran, el propio cotizador público se quedaría sin su
 // JavaScript y sus estilos.

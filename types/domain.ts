@@ -1,5 +1,5 @@
 export type Brand = "Aluplast" | "Deceuninck";
-export type Tab = "Proyecto" | "Resumen" | "Diseño" | "Consumo" | "Servicios" | "Informes";
+export type Tab = "Proyecto" | "Clientes" | "Resumen" | "Diseño" | "Consumo" | "Servicios" | "Informes";
 export type Report = "Cotización" | "Optimización de corte" | "Pedido de vidrio" | "Producción" | "Herrajes" | "Costos";
 export type ViewMode = "2D" | "Sección" | "3D";
 export type ViewPreset3D = "Frente" | "Planta" | "Perfil" | "Isométrica";

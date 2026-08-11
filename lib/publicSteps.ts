@@ -14,14 +14,17 @@ export const PUBLIC_STEPS = [
   "Medidas",
   "Color",
   "Vidrio",
-  "Instalación y precio",
+  "Instalación",
   "Resumen",
   "Proceso",
   "Contacto",
   "Listo",
 ] as const;
 
-/** CONFIRM reúne lo que antes eran dos pantallas: el interruptor de instalación y el total.
+/** CONFIRM reúne lo que antes eran dos pantallas: el interruptor de instalación y el total. El
+ *  total ya no está ahí -- el cliente no ve importes mientras configura y el precio solo aparece
+ *  en el documento definitivo (app/cotizacion/[token]) -- pero la etapa se conserva porque la
+ *  instalación sigue siendo una decisión suya.
  *  No es lo mismo que SUMMARY, que revisa el proyecto completo (todos los diseños).
  *
  *  NO hay etapa de línea/marca. Toda la cancelería que se cotiza aquí es de perfilería Aluplast,
