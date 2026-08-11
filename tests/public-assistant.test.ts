@@ -108,6 +108,36 @@ test("desde Proceso el modelo ya no puede proponer cambios, sea cual sea el índ
   assert.equal(open.action?.kind, "dimensions");
 });
 
+test("la propuesta de configuración también se cierra en Proceso, no solo las del modelo", async () => {
+  // Esta rama devuelve una acción sin pasar por validatedAction(), así que tenía su propio
+  // candado escrito como `context.step < 9`. Ese número ya se había quedado atrás una vez: al
+  // fusionar Instalación y Precio, Proceso pasó a ser la 8 y la etapa quedó abierta a cambios.
+  // Ahora hay una etapa menos, así que el número suelto habría dejado abiertas dos.
+  const brief = () => ({ widthMm: 2000, heightMm: 2200, accessRequired: true, openingGoal: "maximum" as const });
+  const silent = async () => ({ response: { text: "Te acompaño con lo que ya está registrado.", actionKind: "none", widthMm: 0, heightMm: 0, qty: 0, optionId: "", installation: false } });
+
+  for (const step of [S.PROCESS, S.CONTACT, S.DONE]) {
+    const reply = await answerPublicAssistant(
+      "¿Qué me recomiendas?",
+      publicAssistantRequestContext(context({ step, stepName: publicStepName(step), styleId: "" })),
+      [],
+      silent,
+      brief()
+    );
+    assert.equal(reply.action, undefined, `en ${publicStepName(step)} no debe proponerse ninguna configuración`);
+  }
+
+  // Y antes de Proceso la misma pregunta sí arma la propuesta: el candado cierra, no rompe.
+  const open = await answerPublicAssistant(
+    "¿Qué me recomiendas?",
+    publicAssistantRequestContext(context({ step: S.STYLE, stepName: publicStepName(S.STYLE), styleId: "" })),
+    [],
+    silent,
+    brief()
+  );
+  assert.equal(open.action?.kind, "configure");
+});
+
 test("LUFT Asesor entiende cantidades escritas con palabras antes de consultar el modelo", async () => {
   let calls = 0;
   const reply = await answerPublicAssistant("Mejor serían tres de estas", publicAssistantRequestContext(context()), [], async () => {

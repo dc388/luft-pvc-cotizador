@@ -34,6 +34,7 @@ REGLAS OBLIGATORIAS:
 - Para product, style, color o glass coloca el ID exacto del catálogo en optionId.
 - Para dimensions, width, height o quantity llena sus campos numéricos; deja los demás números en 0.
 - Desde la etapa Proceso (step ${S.PROCESS}) no propongas cambios.
+- La perfilería es siempre Aluplast: es información del producto, no una decisión del cliente. Nunca le preguntes qué línea, marca o sistema de perfiles quiere.
 - Si el cliente solicita algo fuera del catálogo, explica la limitación y ofrece únicamente opciones del catálogo.
 - No pidas nombre, teléfono ni correo antes de la etapa Contacto.
 - YA_SABEMOS contiene lo que el cliente ya te dijo. NUNCA vuelvas a preguntar nada que aparezca ahi.
@@ -302,7 +303,10 @@ export async function answerPublicAssistant(
   const signature = proposal ? `${proposal.best.style.id}@${proposal.widthMm}x${proposal.heightMm}` : "";
   // Y solo si no es la misma propuesta que ya se ofreció: repetirla cada turno es el ciclo que
   // el brief prohíbe (§96).
-  if (proposal && context.step < 9 && brief.offered !== signature) {
+  // El límite era `context.step < 9`, un número suelto que ya se había quedado atrás: esta rama
+  // devuelve una acción sin pasar por validatedAction(), así que el candado de Proceso vivía aquí
+  // por duplicado y desalineado. Se ata al nombre de la etapa, igual que el otro.
+  if (proposal && context.step < S.PROCESS && brief.offered !== signature) {
     brief.offered = signature;
     const colorId = resolveBriefColor(brief, proposal.best.style.brandId, context);
     const alternatives = proposal.alternatives.length

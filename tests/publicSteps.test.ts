@@ -41,6 +41,15 @@ test("ninguna etapa se llama solo Instalación o solo Precio", () => {
   }
 });
 
+test("el estilo va inmediatamente después del producto: no hay etapa de línea", () => {
+  // Aluplast es la única perfilería, así que elegirla no era una decisión real. Si vuelve a
+  // aparecer una etapa entre Producto y Estilo, el cliente vuelve a pagar un clic por nada.
+  assert.equal(S.STYLE, S.PRODUCT + 1);
+  for (const name of PUBLIC_STEPS) {
+    assert.doesNotMatch(name, /l[íi]nea|marca|aluplast/i, `“${name}” no debe ser una etapa: la marca es información, no una elección`);
+  }
+});
+
 test("publicStepName nunca deja al asesor sin etapa", () => {
   assert.equal(publicStepName(-1), PUBLIC_STEPS[S.PRODUCT]);
   assert.equal(publicStepName(999), PUBLIC_STEPS[S.PRODUCT]);

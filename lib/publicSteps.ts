@@ -10,7 +10,6 @@
 
 export const PUBLIC_STEPS = [
   "Producto",
-  "Línea",
   "Estilo",
   "Medidas",
   "Color",
@@ -23,19 +22,23 @@ export const PUBLIC_STEPS = [
 ] as const;
 
 /** CONFIRM reúne lo que antes eran dos pantallas: el interruptor de instalación y el total.
- *  No es lo mismo que SUMMARY, que revisa el proyecto completo (todos los diseños). */
+ *  No es lo mismo que SUMMARY, que revisa el proyecto completo (todos los diseños).
+ *
+ *  NO hay etapa de línea/marca. Toda la cancelería que se cotiza aquí es de perfilería Aluplast,
+ *  así que preguntarla era pedirle al cliente que "eligiera" entre una sola opción. La marca se
+ *  deriva del catálogo (lib/publicCatalog.ts) y se le muestra como característica del producto,
+ *  no como decisión. Si algún día hay una segunda línea pública, la etapa vuelve aquí. */
 export const S = {
   PRODUCT: 0,
-  BRAND: 1,
-  STYLE: 2,
-  SIZE: 3,
-  COLOR: 4,
-  GLASS: 5,
-  CONFIRM: 6,
-  SUMMARY: 7,
-  PROCESS: 8,
-  CONTACT: 9,
-  DONE: 10,
+  STYLE: 1,
+  SIZE: 2,
+  COLOR: 3,
+  GLASS: 4,
+  CONFIRM: 5,
+  SUMMARY: 6,
+  PROCESS: 7,
+  CONTACT: 8,
+  DONE: 9,
 } as const;
 
 export type PublicStep = (typeof S)[keyof typeof S];

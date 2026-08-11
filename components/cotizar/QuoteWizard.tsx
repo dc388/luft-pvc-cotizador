@@ -52,15 +52,15 @@ type ItemDetails = {
 };
 
 const DEFAULT_EXTRAS: Extras = { instalacion: true };
-// v2: al fusionar Instalación y Precio los índices de paso cambiaron de significado. Un borrador
-// v1 restaurado sobre el índice nuevo dejaría al cliente en otra pantalla, así que se descarta.
-const DRAFT_KEY = "luft-public-quote-draft-v2";
-const DRAFT_VERSION = 2;
+// La versión sube cada vez que los índices de paso cambian de significado: v2 al fusionar
+// Instalación y Precio, v3 al eliminar la etapa de línea. Un borrador viejo restaurado sobre el
+// índice nuevo dejaría al cliente en otra pantalla, así que se descarta en vez de traducirse.
+const DRAFT_KEY = "luft-public-quote-draft-v3";
+const DRAFT_VERSION = 3;
 
 export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   const [step, setStep] = useState<number>(S.PRODUCT);
   const [productId, setProductId] = useState("");
-  const [brandId, setBrandId] = useState("");
   const [styleId, setStyleId] = useState("");
   const [widthMm, setWidthMm] = useState(1500);
   const [heightMm, setHeightMm] = useState(1200);
@@ -97,14 +97,21 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
 
   const style = useMemo(() => catalog.styles.find((s) => s.id === styleId) ?? null, [catalog.styles, styleId]);
   const product = catalog.products.find((entry) => entry.id === productId) ?? null;
-  const brand = catalog.brands.find((entry) => entry.id === brandId) ?? null;
+  // La perfilería no se pregunta. Es la del estilo elegido y, mientras no haya estilo, la única
+  // línea del catálogo público. Antes vivía en un useState que el cliente tenía que llenar en una
+  // pantalla propia; al ser un valor derivado ya no existe el estado "sin marca elegida".
+  const brand = catalog.brands.find((entry) => entry.id === style?.brandId) ?? catalog.brands[0] ?? null;
+  const brandId = brand?.id ?? "";
   const colorsForBrand = useMemo(() => catalog.colors.filter((c) => c.brandId === brandId), [catalog.colors, brandId]);
   const color = colorsForBrand.find((c) => c.id === colorId) ?? colorsForBrand[0] ?? null;
   const glass = catalog.glass.find((entry) => entry.id === glassId) ?? catalog.glass[0];
   const frameHex = color?.hex ?? "#f3f3ef";
+  // Se filtra solo por producto: la línea ya no acota la lista. Si el catálogo público llegara a
+  // ofrecer una segunda perfilería, sus estilos aparecerían aquí junto a los demás en vez de
+  // quedarse invisibles esperando una pantalla de selección que ya no existe.
   const stylesForProduct = useMemo(
-    () => catalog.styles.filter((s) => s.productId === productId && s.brandId === brandId),
-    [catalog.styles, productId, brandId]
+    () => catalog.styles.filter((s) => s.productId === productId),
+    [catalog.styles, productId]
   );
   const sizeError = useMemo(() => {
     if (!style) return "";
@@ -144,7 +151,6 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
           version?: number;
           step?: number;
           productId?: string;
-          brandId?: string;
           styleId?: string;
           widthMm?: number;
           heightMm?: number;
@@ -157,7 +163,6 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         };
         if (draft.version !== DRAFT_VERSION) return;
         if (draft.productId && catalog.products.some((entry) => entry.id === draft.productId)) setProductId(draft.productId);
-        if (draft.brandId && catalog.brands.some((entry) => entry.id === draft.brandId)) setBrandId(draft.brandId);
         if (draft.styleId && catalog.styles.some((entry) => entry.id === draft.styleId)) setStyleId(draft.styleId);
         if (Number.isFinite(draft.widthMm)) setWidthMm(Number(draft.widthMm));
         if (Number.isFinite(draft.heightMm)) setHeightMm(Number(draft.heightMm));
@@ -197,7 +202,6 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
         version: DRAFT_VERSION,
         step,
         productId,
-        brandId,
         styleId,
         widthMm,
         heightMm,
@@ -211,7 +215,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     } catch {
       // La cotización continúa aunque el navegador deshabilite el almacenamiento de sesión.
     }
-  }, [draftReady, step, productId, brandId, styleId, widthMm, heightMm, qty, colorId, glassId, extras, sizeConfirmed, savedItems]);
+  }, [draftReady, step, productId, styleId, widthMm, heightMm, qty, colorId, glassId, extras, sizeConfirmed, savedItems]);
 
   function detailsFor(item: ProjectItem): ItemDetails {
     const itemStyle = catalog.styles.find((entry) => entry.id === item.config.styleId);
@@ -273,7 +277,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   // (por el formulario o por LUFT Asesor). Cotiza el lote con el mismo endpoint y el mismo
   // motor que el resto del flujo: la tarjeta no calcula nada por su cuenta. Sin medidas no se
   // pide precio, porque una puerta de 800 × 2100 no cuesta lo mismo que una de 1200 × 2600.
-  const quoteSig = `${productId}|${brandId}|${widthMm}|${heightMm}|${qty}|${color?.id ?? ""}|${glassId}|${extras.instalacion}`;
+  const quoteSig = `${productId}|${widthMm}|${heightMm}|${qty}|${color?.id ?? ""}|${glassId}|${extras.instalacion}`;
   useEffect(() => {
     if (step !== S.STYLE || !sizeConfirmed || !color) return;
 
@@ -327,7 +331,6 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
 
   const canAdvance = (() => {
     if (step === S.PRODUCT) return !!productId;
-    if (step === S.BRAND) return !!brandId;
     if (step === S.STYLE) return !!styleId;
     if (step === S.SIZE) return !sizeError;
     if (step === S.CONFIRM) return !!price;
@@ -339,7 +342,6 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
   function resetCurrentItem() {
     requestId.current += 1;
     setProductId("");
-    setBrandId("");
     setStyleId("");
     setWidthMm(1500);
     setHeightMm(1200);
@@ -469,17 +471,15 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
     }
     if (action.kind === "product") {
       setProductId(action.productId);
-      setBrandId("");
       setStyleId("");
       setColorId("");
-      setStep(S.BRAND);
+      setStep(S.STYLE);
       return;
     }
     if (action.kind === "style") {
       const nextStyle = catalog.styles.find((entry) => entry.id === action.styleId);
       if (!nextStyle) return;
       setProductId(nextStyle.productId);
-      setBrandId(nextStyle.brandId);
       setStyleId(nextStyle.id);
       setColorId(catalog.colors.find((entry) => entry.brandId === nextStyle.brandId)?.id ?? "");
       // Esta acción trae la medida de presentación del estilo, no una medida del cliente: se
@@ -494,7 +494,6 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       const nextStyle = catalog.styles.find((entry) => entry.id === action.styleId);
       if (!nextStyle) return;
       setProductId(nextStyle.productId);
-      setBrandId(nextStyle.brandId);
       setStyleId(nextStyle.id);
       const brandColors = catalog.colors.filter((entry) => entry.brandId === nextStyle.brandId);
       const wanted = action.colorId ? brandColors.find((entry) => entry.id === action.colorId) : undefined;
@@ -615,30 +614,11 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
               {catalog.products.map((p) => (
                 <button key={p.id} className={`cotCard ${productId === p.id ? "sel" : ""}`} onClick={() => {
                   setProductId(p.id);
-                  setBrandId("");
                   setStyleId("");
                   setColorId("");
-                  setStep(S.BRAND);
-                }}>
-                  <b>{p.name}</b><small>{p.blurb}</small>
-                </button>
-              ))}
-            </div>
-          </Screen>
-        )}
-
-        {step === S.BRAND && (
-          <Screen title="Elige la línea" hint="PVC de importación con precio respaldado por el catálogo vigente.">
-            <div className="cotCards">
-              {catalog.brands.map((b) => (
-                <button key={b.id} className={`cotCard ${brandId === b.id ? "sel" : ""}`} onClick={() => {
-                  setBrandId(b.id);
-                  setStyleId("");
-                  setColorId(catalog.colors.find((c) => c.brandId === b.id)?.id ?? "");
                   setStep(S.STYLE);
                 }}>
-                  <b>{b.name}</b>
-                  <small>{b.blurb}</small>
+                  <b>{p.name}</b><small>{p.blurb}</small>
                 </button>
               ))}
             </div>
@@ -652,6 +632,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
               ? `Precios para ${widthMm.toLocaleString("es-MX")} × ${heightMm.toLocaleString("es-MX")} mm en ${color?.name?.toLowerCase() ?? "el color elegido"}.`
               : "Cada elemento de tu proyecto puede tener un estilo distinto."}
           >
+            {brand && <SystemNote name={brand.name} />}
             <div className="cotCards">
               {stylesForProduct.map((s) => {
                 const status = styleStatus(s);
@@ -674,7 +655,8 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
                     />
                     <span className="cotCardBody">
                       <b>{s.name}</b>
-                      <small className="cotCardSystem">Sistema {s.brandId}</small>
+                      {/* El sistema ya no se repite por tarjeta: con una sola perfilería, decirlo
+                          en las siete tarjetas de la pantalla era ruido. Va una vez arriba. */}
                       <small>{s.blurb}</small>
                       <span className={`cotCardPrice ${status.kind === "available" ? "isPrice" : ""}`}>{priceStatusLabel(status)}</span>
                     </span>
@@ -822,6 +804,18 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
 
 function Screen({ title, hint, className, children }: { title: string; hint?: string; className?: string; children: React.ReactNode }) {
   return <section className={`cotScreen ${className ?? ""}`.trim()}><h1>{title}</h1>{hint && <p className="cotHint">{hint}</p>}{children}</section>;
+}
+
+// La perfilería como característica del producto, no como opción. Es deliberadamente un párrafo
+// y no un botón: no recibe foco, no tiene estado "seleccionado" y no responde al clic, para que
+// nadie crea que hay una decisión pendiente donde solo hay información.
+function SystemNote({ name }: { name: string }) {
+  return (
+    <p className="cotSystemNote">
+      <i aria-hidden="true">✓</i>
+      <span><b>Perfilería {name}</b><small>Sistema alemán de PVC. Toda nuestra cancelería se fabrica con estos perfiles.</small></span>
+    </p>
+  );
 }
 
 function Toggle({ label, detail, on, onChange }: { label: string; detail: string; on: boolean; onChange: (value: boolean) => void }) {

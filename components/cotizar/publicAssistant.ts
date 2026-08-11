@@ -87,10 +87,11 @@ export type PublicAssistantReply = {
 // fusionar Instalación y Precio, y el desfase solo se notaba leyendo la ayuda equivocada.
 const STEP_HELP: Record<number, string> = {
   [S.PRODUCT]: "Puedo ayudarte a decidir entre una ventana y una puerta. Cuéntame si buscas ventilación, iluminación, acceso o ahorrar espacio.",
-  [S.BRAND]: "Aluplast es la línea pública disponible. Las opciones y medidas que ves provienen del catálogo autorizado.",
-  [S.STYLE]: "Puedo explicarte cada apertura o recomendarte una según el espacio disponible.",
+  // Ya no hay etapa de línea: toda la cancelería es de perfilería Aluplast y eso se le informa al
+  // cliente en esta pantalla, no se le pregunta.
+  [S.STYLE]: "Puedo explicarte cada apertura o recomendarte una según el espacio disponible. Todos los sistemas son de perfilería Aluplast, así que no tienes que elegir línea.",
   [S.SIZE]: "Escribe una medida como “1.80 × 1.20 m”, “180 × 120 cm” o “1800 × 1200 mm”. La convertiré y te pediré confirmación antes de aplicarla.",
-  [S.COLOR]: "Puedo cambiar el color entre las opciones disponibles para la línea seleccionada.",
+  [S.COLOR]: "Puedo cambiar el color entre las opciones disponibles para tu sistema.",
   [S.GLASS]: "Puedo comparar los vidrios disponibles según seguridad, ruido y aislamiento.",
   [S.CONFIRM]: "La instalación es opcional y, si la incluyes, el servidor recalcula el total en esta misma pantalla. El precio se calcula con la configuración vigente: no uso precios inventados.",
   [S.SUMMARY]: "Puedo revisar medidas, estilo, color, vidrio, cantidad y total antes de continuar.",
@@ -343,7 +344,7 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
   }
 
   if (/colores|que color/.test(normalized)) {
-    return { text: availableColors.length ? `Colores disponibles: ${availableColors.map((entry) => entry.name).join(", ")}. Puedes decir “cambia el color a negro”.` : "Selecciona primero una línea para consultar sus colores disponibles." };
+    return { text: availableColors.length ? `Colores disponibles: ${availableColors.map((entry) => entry.name).join(", ")}. Puedes decir “cambia el color a negro”.` : "Selecciona primero un estilo para consultar los colores disponibles." };
   }
 
   if (/vidrios|cristales|ruido|aislamiento|seguridad/.test(normalized)) {
