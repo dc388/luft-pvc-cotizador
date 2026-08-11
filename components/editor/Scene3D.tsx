@@ -42,6 +42,11 @@ type Props = {
   onSplit: (id: string, axis: "row" | "col", fraction: number) => void;
   onAssignWing: (id: string) => void;
   onReady?: () => void;
+  /** Wires the gizmo's clickable N/E compass points + ring + elevation bar to the same
+   * setViewPreset/presetToken flow the preset-row buttons in app/page.tsx already use — see
+   * changePreset there. Optional so the gizmo still renders (display-only) if a caller doesn't
+   * pass it. */
+  onPresetSelect?: (preset: ViewPreset3D) => void;
 };
 
 // Real WebGL architectural viewer (three.js), not a CSS fake — free orbit + click-to-edit,
@@ -50,8 +55,10 @@ type Props = {
 // a persistent <div ref> + imperative appendChild), so React's reconciliation never fights the
 // WebGL render loop; the model itself is fully rebuilt on every relevant prop change since the
 // scene is cheap (a few dozen boxes).
-export function Scene3D({ tree, width, height, sys, color, selectedId, focusScope, focusPart, focusSide, activeTool, viewPreset, presetToken, onSelect, onSplit, onAssignWing, onReady }: Props) {
+export function Scene3D({ tree, width, height, sys, color, selectedId, focusScope, focusPart, focusSide, activeTool, viewPreset, presetToken, onSelect, onSplit, onAssignWing, onReady, onPresetSelect }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const compassRef = useRef<HTMLDivElement | null>(null);
+  const elevationRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -111,6 +118,14 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
       if (!canvas.isConnected) return;
       controls.update();
       renderer.render(scene, camera);
+      // Live orientation gizmo (compass + elevation bar), read straight off OrbitControls'
+      // public spherical-angle API -- cheap, and keeps the little "which way am I looking"
+      // indicator in sync with drag-rotate/preset changes without any extra state plumbing.
+      if (compassRef.current) compassRef.current.style.transform = `rotate(${-controls.getAzimuthalAngle()}rad)`;
+      if (elevationRef.current) {
+        const pct = Math.max(0, Math.min(100, (1 - controls.getPolarAngle() / Math.PI) * 100));
+        elevationRef.current.style.height = `${pct}%`;
+      }
     };
     raf = requestAnimationFrame(animate);
 
@@ -303,7 +318,57 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
 
   return (
     <>
-      <div className="scene3dSlot" ref={containerRef} />
+      <div className="scene3dSlot" ref={containerRef}>
+        {/* Interactive view-cube-style gizmo: N/E compass points and the ring snap the camera
+            to the same Frente/Perfil/Isométrica presets as the preset-row buttons above the
+            canvas (see PRESETS_3D in app/page.tsx); the elevation bar's top/bottom halves snap
+            to Planta/Frente. Every clickable piece sets pointer-events:auto explicitly — the
+            gizmo wrapper itself stays pointer-events:none so the rest of its padding still lets
+            drag-to-orbit gestures reach the canvas underneath. */}
+        <div className="axisGizmo" title="Orientación de la cámara">
+          <div className="axisCompass" ref={compassRef}>
+            <button
+              type="button"
+              className="axisCompassRing"
+              title="Vista isométrica"
+              aria-label="Vista isométrica"
+              onClick={() => onPresetSelect?.("Isométrica")}
+            />
+            <button
+              type="button"
+              className="axisCompassN"
+              title="Vista frontal"
+              aria-label="Vista frontal"
+              onClick={() => onPresetSelect?.("Frente")}
+            >
+              N
+            </button>
+            <button
+              type="button"
+              className="axisCompassE"
+              title="Vista de perfil"
+              aria-label="Vista de perfil"
+              onClick={() => onPresetSelect?.("Perfil")}
+            >
+              E
+            </button>
+            <span className="axisCompassNeedle" />
+          </div>
+          <button
+            type="button"
+            className="axisElevation"
+            title="Vista en planta / vista frontal"
+            aria-label="Vista en planta o frontal según la mitad pulsada"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const relY = (e.clientY - rect.top) / rect.height;
+              onPresetSelect?.(relY < 0.5 ? "Planta" : "Frente");
+            }}
+          >
+            <span className="axisElevationFill" ref={elevationRef} />
+          </button>
+        </div>
+      </div>
       <div className="scene3dHint">Arrastra para rotar · rueda para acercar · clic derecho para desplazar</div>
     </>
   );

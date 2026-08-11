@@ -2,7 +2,8 @@
 
 import type { CSSProperties, MouseEvent } from "react";
 import type { FocusScope, FrameNode } from "@/types/domain";
-import { isSlidingLeaf, motionGlyph, wingName, SLIDING_WINGS } from "@/lib/tree";
+import { hasSashWing, isOperableWing, isSlidingLeaf, wingName, MOVABLE_SLIDING_WINGS, SLIDING_WINGS } from "@/lib/tree";
+import { HandleIcon, MotionArrowIcon, WingIcon } from "./icons";
 import { SIDES, SIDE_LABELS, type Edges, type PartKind, type SideKey } from "./frameTypes";
 
 type Props = {
@@ -74,12 +75,15 @@ export function FrameNodeView({ node, widthMm, heightMm, selectedId, flexBasis, 
     );
   }
 
-  const hasSash = node.wing !== "fixed" && node.wing !== "inactive";
-  const isOperable = hasSash && node.wing !== "sliding-fixed";
+  const hasSash = hasSashWing(node.wing);
+  const isOperable = isOperableWing(node.wing);
   const showOpeningLines = isOperable && !SLIDING_WINGS.includes(node.wing);
-  const glyph = motionGlyph(node.wing, node.spec.direction);
+  const isFixedGlyph = node.wing === "fixed" || node.wing === "inactive" || node.wing === "sliding-fixed";
+  const isMovableSliding = MOVABLE_SLIDING_WINGS.includes(node.wing);
   const borderWidth = `${edgeWidth(e.top)}px ${edgeWidth(e.right)}px ${edgeWidth(e.bottom)}px ${edgeWidth(e.left)}px`;
-  const isSideFocused = (side: SideKey) => focusScope === "leaf" && node.id === selectedId && focusPart === "marco" && focusSide === side;
+  // No specific side picked (focusSide === null) means the whole marco is focused -- matches
+  // Scene3D's isSelectedPart, which highlights all four sides in that case.
+  const isSideFocused = (side: SideKey) => focusScope === "leaf" && node.id === selectedId && focusPart === "marco" && (!focusSide || focusSide === side);
   const isGlassSideFocused = (side: SideKey) => focusScope === "leaf" && node.id === selectedId && focusPart === "vidrio" && focusSide === side;
 
   return (
@@ -102,11 +106,21 @@ export function FrameNodeView({ node, widthMm, heightMm, selectedId, flexBasis, 
       ))}
       {hasSash ? (
         <button type="button" className="hit hitHoja" title="Hoja / tipo de apertura" onClick={(ev) => onPartClick(node.id, "hoja", null, ev)}>
-          <span className="motion">{glyph}</span>
+          <span className="motion">
+            {isFixedGlyph ? (
+              <b className="motionFixed">FIJO</b>
+            ) : isMovableSliding ? (
+              <MotionArrowIcon direction={node.spec.direction} size={26} />
+            ) : (
+              <WingIcon id={node.wing} size={24} />
+            )}
+          </span>
           {showOpeningLines && <i className="openingLines" />}
         </button>
       ) : (
-        <span className="motion">{glyph}</span>
+        <span className="motion">
+          <WingIcon id={node.wing} size={22} />
+        </span>
       )}
       <button type="button" className="hit hitVidrio" title="Vidrio" onClick={(ev) => onPartClick(node.id, "vidrio", null, ev)} />
       {SIDES.map((side) => (
@@ -121,7 +135,7 @@ export function FrameNodeView({ node, widthMm, heightMm, selectedId, flexBasis, 
       ))}
       {isOperable && (
         <button type="button" className="hit hitHerraje" title="Herraje / manilla" onClick={(ev) => onPartClick(node.id, "herraje", null, ev)}>
-          ⚙
+          <HandleIcon size={14} />
         </button>
       )}
       <em>{wingName(node.wing)}</em>
