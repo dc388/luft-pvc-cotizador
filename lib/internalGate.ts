@@ -43,6 +43,22 @@ const PUBLIC_EXACT = new Set(["/favicon.svg", "/favicon.ico", "/robots.txt", "/m
 // JavaScript y sus estilos.
 const ASSET_EXT = /\.(?:js|mjs|cjs|css|map|svg|png|jpe?g|webp|avif|gif|ico|woff2?|ttf|otf|wasm|txt)$/i;
 
+// La sesión interna dura 30 días, así que una pestaña anclada al servidor de desarrollo volvería
+// a pedir contraseña cada mes. En local no aporta nada: quien edita el código ya tiene la base de
+// datos delante. Así que ahí el candado se abre y el enlace no vence nunca.
+//
+// Exige LAS DOS condiciones a la vez, y ninguna es configurable en tiempo de ejecución:
+//   - `__LUFT_LOCAL_DEV__` solo es `true` bajo `vite` (ver vite.config.ts). En el Worker
+//     desplegado la constante se sustituye por `false` y todo este bloque se elimina del bundle.
+//   - el host tiene que ser de loopback, porque el servidor de desarrollo escucha en 0.0.0.0 y la
+//     app interna trae nombre, teléfono y dirección de cada cliente. Entrando por la IP de la red
+//     local (o por un túnel de Cloudflare) se sigue pidiendo la contraseña, como debe ser.
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+function isTrustedLocalDev(url: URL): boolean {
+  return __LUFT_LOCAL_DEV__ && LOOPBACK_HOSTS.has(url.hostname);
+}
+
 export function isPublicPath(pathname: string): boolean {
   if (PUBLIC_EXACT.has(pathname)) return true;
   if (ASSET_EXT.test(pathname)) return true;
@@ -158,6 +174,8 @@ export async function guardInternal(request: Request, password: string | undefin
     }
     return loginPage(url, "");
   }
+
+  if (isTrustedLocalDev(url)) return null;
 
   if (isPublicPath(url.pathname)) return null;
 

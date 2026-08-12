@@ -5,7 +5,7 @@ import { sites } from "./build/sites-vite-plugin";
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ command }) => {
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= "false";
@@ -24,9 +24,15 @@ export default defineConfig(async () => {
   return {
     define: {
       __LUFT_BUILD_ID__: JSON.stringify(buildId),
+      // Cierto únicamente con `vite` (servidor de desarrollo). Cualquier `vite build` lo deja en
+      // `false`, así que lo que dependa de esta bandera desaparece del bundle desplegado.
+      __LUFT_LOCAL_DEV__: JSON.stringify(command === "serve"),
     },
     server: {
       host: "0.0.0.0",
+      // Puerto fijo para que http://localhost:5173 sea el enlace de siempre y se pueda anclar en
+      // el navegador. Los arranques con `--port` explícito lo sobrescriben.
+      port: 5173,
       // ".trycloudflare.com" habilita los túneles rápidos de Cloudflare
       // (`cloudflared tunnel --url http://localhost:5174`) para enseñarle el cotizador a
       // alguien fuera de esta red sin desplegar. Solo afecta al servidor de desarrollo: es la
