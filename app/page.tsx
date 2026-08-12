@@ -23,7 +23,7 @@ import {
   updateSide,
   updateSpec,
 } from "@/lib/tree";
-import { calcQuote } from "@/lib/calc";
+import { calcQuote, DEFAULT_WASTE_PCT, DEFAULT_LABOR_MXN_PER_M2, DEFAULT_OVERHEAD_PCT } from "@/lib/calc";
 import { money } from "@/lib/money";
 import { runSelfCheck, type SelfCheckResult } from "@/lib/selfCheck";
 import { Block } from "@/components/Block";
@@ -66,6 +66,9 @@ export default function Home() {
   const [installation, setInstallation] = useState(1200);
   const [transport, setTransport] = useState(450);
   const [discount, setDiscount] = useState(0);
+  const [wastePct, setWastePct] = useState(DEFAULT_WASTE_PCT);
+  const [laborPerM2, setLaborPerM2] = useState(DEFAULT_LABOR_MXN_PER_M2);
+  const [overheadPct, setOverheadPct] = useState(DEFAULT_OVERHEAD_PCT);
   const [code, setCode] = useState("001");
   const [designation, setDesignation] = useState("V01");
   const [location, setLocation] = useState("Cocina");
@@ -106,8 +109,8 @@ export default function Home() {
   }, [profileSearch, profileSystemFilter]);
 
   const calc = useMemo(
-    () => calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount }),
-    [width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount]
+    () => calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, wastePct, laborPerM2, overheadPct }),
+    [width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, wastePct, laborPerM2, overheadPct]
   );
 
   const selectedLeaf = useMemo(() => {
@@ -132,12 +135,11 @@ export default function Home() {
   // ---------- Self-check: re-run whenever anything relevant to it changes, and periodically ----------
   useEffect(() => {
     const run = () =>
-      setSelfCheck(runSelfCheck({ tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, marco, threeReady }));
+      setSelfCheck(runSelfCheck({ tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, wastePct, laborPerM2, overheadPct, marco, threeReady }));
     run();
     const id = setInterval(run, 25000);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, marco, threeReady]);
+  }, [tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, wastePct, laborPerM2, overheadPct, marco, threeReady]);
 
   // ---------- Tree-mutation click helpers (split/assign-wing tools only apply via a leaf's own
   // pane rect; select-tool clicks just move focus, see handlePartClick below) ----------
@@ -451,11 +453,18 @@ export default function Home() {
 
           {tab === "Servicios" && (
             <>
-              <Block n="01" title="Costos adicionales" sub="Recargos y condiciones comerciales." />
+              <Block n="01" title="Costos de producción" sub="Mano de obra de taller y merma de perfil." />
+              <label>Mano de obra por m² <input type="number" value={laborPerM2} onChange={(e) => setLaborPerM2(Number(e.target.value))} /></label>
+              <label>Merma de perfil <b>{wastePct}%</b><input type="range" min="0" max="30" value={wastePct} onChange={(e) => setWastePct(Number(e.target.value))} /></label>
+
+              <Block n="02" title="Costos adicionales" sub="Recargos y condiciones comerciales." />
               <label>Instalación por pieza<input type="number" value={installation} onChange={(e) => setInstallation(Number(e.target.value))} /></label>
               <label>Transporte por pieza<input type="number" value={transport} onChange={(e) => setTransport(Number(e.target.value))} /></label>
               <label>Margen de utilidad <b>{margin}%</b><input type="range" min="10" max="60" value={margin} onChange={(e) => setMargin(Number(e.target.value))} /></label>
               <label>Descuento <b>{discount}%</b><input type="range" min="0" max="20" value={discount} onChange={(e) => setDiscount(Number(e.target.value))} /></label>
+
+              <Block n="03" title="Gastos fijos" sub="Solo afecta la utilidad neta reportada, no el precio." />
+              <label>Gastos fijos sobre venta <b>{overheadPct}%</b><input type="range" min="0" max="45" value={overheadPct} onChange={(e) => setOverheadPct(Number(e.target.value))} /></label>
             </>
           )}
 
@@ -620,17 +629,20 @@ export default function Home() {
               </div>
               <div className="costSummary">
                 <h2>Costos del elemento</h2>
-                <Cost label="Perfiles" value={calc.profileCost} />
+                <Cost label={`Perfiles (incl. ${wastePct}% merma)`} value={calc.profileCost} />
                 <Cost label="Accesorios y herrajes" value={calc.accessories + calc.reinforce + calc.seals} />
                 {calc.addons > 0 && <Cost label="Persianas Mallorquina" value={calc.addons} />}
                 <Cost label="Vidrio" value={calc.glassCost} />
+                <Cost label="Mano de obra de taller" value={calc.labor} />
                 <Cost label="Servicios y consumibles" value={installation + transport + calc.consumables} />
                 <div className="direct"><span>Costo directo / pza.</span><b>{money(calc.direct)}</b></div>
               </div>
               <div className="totalBox">
                 <span>TOTAL OFERTA <small>IVA no incluido</small></span>
                 <strong>{money(calc.total)}</strong>
-                <div><span>Utilidad estimada</span><b>{money(calc.utility)}</b></div>
+                <div><span>Utilidad bruta</span><b>{money(calc.utility)}</b></div>
+                <div><span>Gastos fijos ({overheadPct}%)</span><b>−{money(calc.overhead)}</b></div>
+                <div><span>Utilidad neta ({calc.netMarginPct.toFixed(1)}%)</span><b>{money(calc.netUtility)}</b></div>
               </div>
               <details className="materials" open>
                 <summary>Consumo calculado</summary>
@@ -641,7 +653,7 @@ export default function Home() {
                 <Item code="EPDM" name="Juntas y sellos" qty={`${(calc.frameM + calc.sashM).toFixed(2)} m`} />
                 <Item code="HERRAJE" name="Juego de herrajes" qty={`${calc.leaves.length} set`} />
               </details>
-              <p className="priceNote">Motor técnico v4 · Editor compositivo estilo RA Workshop + catálogo real Aluplast (EXWORK Veracruz, rev. ABR_22 2022). Valores en MXN. Los precios y límites deben validarse con la lista vigente y la ingeniería de cada proyecto.</p>
+              <p className="priceNote">Motor técnico v5 · Editor compositivo estilo RA Workshop + catálogo real Aluplast (EXWORK Veracruz, rev. ABR_22 2022). Valores en MXN. El costo directo ya incluye merma de perfil y mano de obra de taller. Pendiente de calibrar con datos reales: tipo de cambio, factor de importación (EXWORK → puesto en planta), tarifa de mano de obra y herrajes de mallorquina. Los precios y límites deben validarse con la lista vigente y la ingeniería de cada proyecto.</p>
             </>
           )}
         </aside>
