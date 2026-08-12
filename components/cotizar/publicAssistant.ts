@@ -110,8 +110,42 @@ const QUANTITY_WORDS: Record<string, number> = {
   dieciocho: 18, diecinueve: 19, veinte: 20,
 };
 
+// Todo lo que se fabrica aquí es PVC. Cuando el cliente pide otro material el modelo contestaba de
+// la peor forma posible: a "quiero que sea de aluminio" respondió que el catálogo tiene "varios
+// estilos de ventanas y puertas de aluminio". No existe ninguno, y una disponibilidad inventada en
+// un cotizador es una promesa que alguien tendrá que romper delante del cliente. La trampa estaba
+// servida porque la perfilería se llama Aluplast, que empieza igual que "aluminio".
+// Se contesta con una regla y el modelo no llega a ver la pregunta.
+const OTHER_MATERIAL = /\b(aluminio|aluminum|aluminium|madera|maderas|acero|fierro|hierro|vinil|vinilo|fibra de vidrio)\b/;
+
+/** Términos que delatan una pregunta por dinero. Una sola definición para las dos ramas que la
+ *  consultan -- la regla y el desvío que impide que el modelo conteste -- porque la versión
+ *  duplicada ya se había desalineado: "¿más o menos cuánto me va a salir?" no coincidía con
+ *  ninguna de las dos, llegaba al modelo, y el modelo contestaba "no puedo calcular el precio sin
+ *  las medidas exactas", insinuando que con las medidas sí lo cotizaría. */
+const PRICE_QUESTION = /precio|costo|costar|presupuesto|anticipo|enganche|deposito|saldo|cotizacion definitiva|cu[a]nto\s+(?:mas\s+o\s+menos\s+)?(?:me\s+)?(?:cuesta|cuestan|sale|salen|saldria|vale|valen|seria|serian|es|cobran|cobrarian|va\s+a\s+(?:salir|costar))/;
+
+/** "No entiendo esta pantalla" tiene que contestarse con la ayuda de la etapa actual, y esa la sabe
+ *  STEP_HELP, no el modelo: preguntado en la etapa del vidrio, el modelo explicó la del producto
+ *  ("debes elegir el tipo de producto") porque el nombre de la etapa es un dato más del contexto y
+ *  lo ignoró. Va después de las ramas específicas, así que "no entiendo los vidrios" sigue cayendo
+ *  en la comparación de vidrios y no en la plantilla. */
+const STEP_CONFUSION = /no (?:le )?entiendo|no me queda claro|no se que (?:elijo|elegir|hago|poner)|que (?:se supone que )?(?:elijo|elija|escojo|debo elegir|tengo que elegir)|que hago (?:aqui|en esta pantalla)|explicame esta pantalla|para que (?:es|sirve) esto|estoy perdid/;
+
 export function isConfidentialAssistantRequest(value: string): boolean {
   return CONFIDENTIAL_TERMS.test(value.slice(0, 500));
+}
+
+export function isOtherMaterialRequest(value: string): boolean {
+  return OTHER_MATERIAL.test(normalize(value.slice(0, 500)));
+}
+
+export function isPriceQuestion(value: string): boolean {
+  return PRICE_QUESTION.test(normalize(value.slice(0, 500)));
+}
+
+export function isStepConfusion(value: string): boolean {
+  return STEP_CONFUSION.test(normalize(value.slice(0, 500)));
 }
 
 export function publicAssistantRequestContext(context: PublicAssistantContext): PublicAssistantRequestContext {
@@ -283,6 +317,13 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
     return { text: "Esa información es interna y no está disponible en el cotizador público. Sí puedo ayudarte con las opciones visibles y validar tu configuración." };
   }
 
+  // Antes de cualquier propuesta: si el cliente parte de otro material, la respuesta corrige la
+  // premisa. Sin esta rama, "quiero color negro de aluminio" acababa en la rama del color, que
+  // proponía Negro y daba por buena la parte del aluminio sin decir nada.
+  if (isOtherMaterialRequest(text)) {
+    return { text: "Todo lo que fabricamos es PVC con perfilería Aluplast: no trabajamos aluminio, madera ni acero, así que no puedo cotizar otro material. Si lo que buscas es el aspecto, dime y te digo los colores disponibles para tu sistema." };
+  }
+
   if (/revisa (mi|la) configuracion|resumen|que (he|ya) elegi|todo esta correcto/.test(normalized)) {
     return { text: configurationSummary(context) };
   }
@@ -352,8 +393,14 @@ export function buildPublicAssistantReply(input: string, context: PublicAssistan
     return { text: `Opciones confirmadas: ${context.catalog.glass.map((entry) => `${entry.name} — ${entry.benefit}`).join(" ")}` };
   }
 
-  if (/cuanto (cuesta|sale|vale)|precio|costo|cotizacion definitiva|presupuesto/.test(normalized)) {
+  if (isPriceQuestion(text)) {
     return { text: PRICE_ANSWER };
+  }
+
+  // Después de las ramas específicas a propósito: "no entiendo los vidrios" ya se contestó arriba
+  // con la comparación real, y aquí solo llega el desconcierto a secas.
+  if (isStepConfusion(text)) {
+    return { text: STEP_HELP[context.step] ?? STEP_HELP[S.PRODUCT] };
   }
 
   if (/terminar|finalizar|continuar con la compra/.test(normalized)) {

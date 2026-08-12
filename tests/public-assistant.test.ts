@@ -313,3 +313,76 @@ test("el servidor público fija 42% y rechaza descuentos enviados por el navegad
     assert.doesNotMatch(JSON.stringify(publicPrice), /margin|utility|direct|profit|utilidad/i);
   }
 });
+
+// Los tres desvíos que se añadieron después de probar el asesor contra el modelo real. Cada uno
+// falló en producción de una forma concreta, y el espía comprueba lo que de verdad importa: que la
+// pregunta no llega al modelo, así que su respuesta equivocada no puede aparecer nunca.
+function spyModel(hallucination: string) {
+  const calls: string[] = [];
+  const runModel = async (model: string) => {
+    calls.push(model);
+    return { response: JSON.stringify({ text: hallucination, actionKind: "none", widthMm: 0, heightMm: 0, qty: 0, optionId: "", installation: false }) };
+  };
+  return { calls, runModel };
+}
+
+test("pedir otro material corrige la premisa y no llega al modelo", async () => {
+  const { calls, runModel } = spyModel("En nuestro catálogo hay varios estilos de ventanas y puertas de aluminio.");
+  for (const message of ["quiero que sea de aluminio color madera oscuro", "las tienen de madera?", "prefiero el marco de acero"]) {
+    const answer = await answerPublicAssistant(message, publicAssistantRequestContext(context({ step: S.STYLE })), [], runModel);
+    assert.equal(answer.source, "rules");
+    assert.match(answer.text, /PVC/);
+    assert.doesNotMatch(answer.text, /hay varios estilos/);
+    assert.equal(answer.action, undefined);
+  }
+  assert.deepEqual(calls, []);
+});
+
+test("preguntar el precio con otras palabras también responde la regla", async () => {
+  const { calls, runModel } = spyModel("No puedo calcular el precio sin saber las medidas exactas.");
+  for (const message of ["y mas o menos cuanto me va a salir?", "cuanto me sale", "que precio tiene", "cuanto cobran por esto", "de cuanto seria el anticipo"]) {
+    const answer = await answerPublicAssistant(message, publicAssistantRequestContext(context()), [], runModel);
+    assert.equal(answer.source, "rules");
+    assert.equal(answer.text, PRICE_ANSWER);
+  }
+  assert.deepEqual(calls, []);
+});
+
+test("el desconcierto se contesta con la etapa actual, no con la que invente el modelo", async () => {
+  const { calls, runModel } = spyModel("Hola, en esta pantalla debes elegir el tipo de producto.");
+  const glass = await answerPublicAssistant("no entiendo nada de esta pantalla, que se supone que elija", publicAssistantRequestContext(context({ step: S.GLASS })), [], runModel);
+  assert.equal(glass.source, "rules");
+  assert.match(glass.text, /vidrio/i);
+  const color = await answerPublicAssistant("no entiendo, que elijo aqui", publicAssistantRequestContext(context({ step: S.COLOR })), [], runModel);
+  assert.match(color.text, /color/i);
+  assert.deepEqual(calls, []);
+});
+
+test("una duda concreta sobre los vidrios sigue llegando a la comparación real", async () => {
+  const { runModel } = spyModel("respuesta del modelo");
+  const answer = await answerPublicAssistant("no entiendo la diferencia entre los vidrios", publicAssistantRequestContext(context({ step: S.GLASS })), [], runModel);
+  assert.equal(answer.source, "rules");
+  for (const entry of catalog.glass) assert.ok(answer.text.includes(entry.name), `falta ${entry.name}`);
+});
+
+test("una respuesta que devuelve la decisión al cliente se descarta", async () => {
+  const runModel = async () => ({ response: JSON.stringify({ text: "Ambas son buenas, te recomiendo elegir la que mejor se adapte a tus necesidades.", actionKind: "none" }) });
+  const answer = await answerPublicAssistant("cual conviene para ventilar", publicAssistantRequestContext(context({ step: S.STYLE })), [], runModel);
+  assert.equal(answer.source, "rules");
+  assert.doesNotMatch(answer.text, /elegir la que/);
+});
+
+test("un listado del catálogo entero no pasa como comparación", async () => {
+  const names = catalog.styles.slice(0, 5).map((entry) => entry.name).join(", ");
+  const runModel = async () => ({ response: JSON.stringify({ text: `Tenemos ${names}.`, actionKind: "none" }) });
+  const answer = await answerPublicAssistant("cual me sirve para una recamara", publicAssistantRequestContext(context({ step: S.STYLE })), [], runModel);
+  assert.equal(answer.source, "rules");
+});
+
+test("una comparación de dos opciones sí se conserva", async () => {
+  const [first, second] = catalog.styles;
+  const runModel = async () => ({ response: JSON.stringify({ text: `Entre ${first.name} y ${second.name}, la segunda ventila y la primera solo da luz.`, actionKind: "none" }) });
+  const answer = await answerPublicAssistant("diferencia entre esas dos", publicAssistantRequestContext(context({ step: S.STYLE })), [], runModel);
+  assert.equal(answer.source, "model");
+  assert.match(answer.text, new RegExp(second.name));
+});
