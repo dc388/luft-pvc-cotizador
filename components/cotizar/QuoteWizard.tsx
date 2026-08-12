@@ -627,198 +627,208 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       </header>
       <div className="cotProgress" aria-hidden="true"><span style={{ width: `${((step + 1) / PUBLIC_STEPS.length) * 100}%` }} /></div>
 
-      <main className="cotMain">
-        {step === S.PRODUCT && (
-          <Screen title="¿Qué necesitas?" hint="Elige una opción para empezar.">
-            {savedItems.length > 0 && <ProjectBar items={savedItems} onReview={() => setStep(S.SUMMARY)} />}
-            <div className="cotCards">
-              {catalog.products.map((p) => (
-                <button key={p.id} className={`cotCard ${productId === p.id ? "sel" : ""}`} onClick={() => {
-                  setProductId(p.id);
-                  setStyleId("");
-                  setColorId("");
-                  trackPublicFunnel("product_selected", { productId: p.id });
-                  setStep(S.STYLE);
-                }}>
-                  <b>{p.name}</b><small>{p.blurb}</small>
-                </button>
-              ))}
-            </div>
-          </Screen>
-        )}
-
-        {step === S.STYLE && (
-          <Screen
-            className="cotScreenStyles"
-            title="Elige el estilo"
-            hint={sizeConfirmed
-              ? `Disponibilidad para ${widthMm.toLocaleString("es-MX")} × ${heightMm.toLocaleString("es-MX")} mm.`
-              : "Cada elemento de tu proyecto puede tener un estilo distinto."}
-          >
-            {brand && <SystemNote name={brand.name} />}
-            <div className="cotCards cotCardsWide">
-              {stylesForProduct.map((s) => {
-                const status = styleStatus(s);
-                return (
-                  <button key={s.id} className={`cotCard cotCardStyle ${styleId === s.id ? "sel" : ""}`} onClick={() => {
-                    setStyleId(s.id);
-                    // Las medidas del cliente mandan sobre la medida de presentación del estilo.
-                    if (!sizeConfirmed) {
-                      setWidthMm(s.defaultW);
-                      setHeightMm(s.defaultH);
-                    }
-                    setStep(S.SIZE);
+      {/* El escenario envuelve al contenido y al asesor. Es lo que hace que la burbuja flote
+          siempre sobre el área de contenido y nunca sobre la navegación: su posición se resuelve
+          contra esta caja, no contra el viewport con un `bottom` calculado a mano. */}
+      <div className="cotStage">
+        <main className="cotMain">
+          {step === S.PRODUCT && (
+            <Screen title="¿Qué necesitas?" hint="Elige una opción para empezar.">
+              {savedItems.length > 0 && <ProjectBar items={savedItems} onReview={() => setStep(S.SUMMARY)} />}
+              <div className="cotCards">
+                {catalog.products.map((p) => (
+                  <button key={p.id} className={`cotCard ${productId === p.id ? "sel" : ""}`} onClick={() => {
+                    setProductId(p.id);
+                    setStyleId("");
+                    setColorId("");
+                    trackPublicFunnel("product_selected", { productId: p.id });
+                    setStep(S.STYLE);
                   }}>
-                    <WindowPreview
-                      wings={s.wings}
-                      widthMm={sizeConfirmed ? widthMm : s.defaultW}
-                      heightMm={sizeConfirmed ? heightMm : s.defaultH}
-                      frameHex={frameHex}
-                      label={`Vista previa de ${s.name}`}
-                    />
-                    <span className="cotCardBody">
-                      <b>{s.name}</b>
-                      <small>{s.blurb}</small>
-                      <span className={`cotCardState is-${status.kind}`}>{availabilityLabel(status)}</span>
-                    </span>
+                    <b>{p.name}</b><small>{p.blurb}</small>
                   </button>
-                );
-              })}
-            </div>
-          </Screen>
-        )}
-
-        {step === S.SIZE && (
-          <Screen title="¿De qué medida?" hint="En milímetros. Si no estás seguro, un asesor lo verifica después." aside={livePreview}>
-            <div className="cotFieldGrid">
-              <label className="cotField">Ancho (mm)<input type="number" inputMode="numeric" value={widthMm} onChange={(e) => { setWidthMm(Number(e.target.value) || 0); setSizeConfirmed(true); }} /></label>
-              <label className="cotField">Alto (mm)<input type="number" inputMode="numeric" value={heightMm} onChange={(e) => { setHeightMm(Number(e.target.value) || 0); setSizeConfirmed(true); }} /></label>
-              <div className="cotField">Cantidad<div className="cotStepper">
-                <button onClick={() => setQty((value) => Math.max(1, value - 1))} aria-label="Menos">−</button>
-                <b>{qty}</b>
-                <button onClick={() => setQty((value) => Math.min(catalog.maxQty, value + 1))} aria-label="Más">+</button>
-              </div></div>
-            </div>
-            {sizeError && <p className="cotWarn">{sizeError}</p>}
-          </Screen>
-        )}
-
-        {step === S.COLOR && (
-          <Screen title="Elige el color" hint="Color del marco, por dentro y por fuera." aside={livePreview}>
-            <div className="cotSwatches">
-              {colorsForBrand.map((entry) => (
-                <button key={entry.id} className={`cotSwatch ${color?.id === entry.id ? "sel" : ""}`} onClick={() => setColorId(entry.id)}>
-                  <span style={{ background: entry.hex }} />{entry.name}
-                </button>
-              ))}
-            </div>
-          </Screen>
-        )}
-
-        {step === S.GLASS && (
-          <Screen title="Elige el vidrio" hint="De más sencillo a mayor aislamiento." aside={livePreview}>
-            <div className="cotCards">
-              {catalog.glass.map((entry) => (
-                <button key={entry.id} className={`cotCard ${glassId === entry.id ? "sel" : ""}`} onClick={() => setGlassId(entry.id)}>
-                  <b>{entry.name}</b><small>{entry.benefit}</small>
-                </button>
-              ))}
-            </div>
-          </Screen>
-        )}
-
-        {step === S.CONFIRM && (
-          // Diseño e instalación en una pantalla. Antes aquí vivía el total; ahora vive el acuse
-          // de que la configuración quedó completa, que es la información que el cliente necesita
-          // para decidir si sigue o cambia algo.
-          <Screen className="cotScreenConfirm" title="Revisa tu diseño" hint="Confirma la instalación. Puedes cambiar lo que quieras antes de continuar." aside={livePreview}>
-            <Toggle label="Instalación" detail="Nuestro equipo la instala en tu domicilio." on={extras.instalacion} onChange={(value) => setExtras((current) => ({ ...current, instalacion: value }))} />
-            <ReadyBox ready={configReady} checking={checking} error={configError} />
-          </Screen>
-        )}
-
-        {step === S.SUMMARY && (
-          <Screen title="Tu proyecto" hint="Revisa tus diseños o agrega otra ventana antes de continuar.">
-            <div className="cotProjectList">
-              {reviewItems.map((item, index) => (
-                <ProjectItemCard key={item.id} index={index} item={item} details={detailsFor(item)} current={item.id === "current"} onRemove={item.id === "current" ? undefined : () => removeSavedItem(item.id)} />
-              ))}
-            </div>
-            {reviewItems.length > 0 && (
-              <div className="cotProjectTotal">
-                <span>Tu proyecto</span>
-                <b>{reviewItems.length} {reviewItems.length === 1 ? "diseño" : "diseños"} · {totalPieces} {totalPieces === 1 ? "pieza" : "piezas"}</b>
+                ))}
               </div>
-            )}
-            <button className="cotAddAnother" onClick={addAnotherItem}>
-              <i aria-hidden="true">＋</i><span><b>Agregar otra ventana</b><small>Puede tener otro estilo, medida, color y vidrio.</small></span>
-            </button>
-            {projectError && <p className="cotWarn">{projectError}</p>}
-          </Screen>
-        )}
+            </Screen>
+          )}
 
-        {step === S.PROCESS && (
-          <Screen title="¿Qué sigue después de tu cotización?" hint={`Tu proyecto reúne ${lockedItems.length} ${lockedItems.length === 1 ? "configuración" : "configuraciones"}.`}>
-            <ProcessSection />
-          </Screen>
-        )}
-
-        {step === S.CONTACT && (
-          <Screen title="¿A dónde te enviamos tu cotización?" hint="Con estos datos preparamos tu propuesta y te damos seguimiento.">
-            <div className="cotFieldGrid">
-              <Field label="Nombre completo" required value={contact.name} error={contactErrors.name} autoComplete="name" onChange={(value) => setContact({ ...contact, name: value })} />
-              <Field label="WhatsApp / teléfono" required value={contact.phone} error={contactErrors.phone} type="tel" autoComplete="tel" onChange={(value) => setContact({ ...contact, phone: value })} />
-              <Field label="Ciudad / municipio" required value={contact.city} error={contactErrors.city} autoComplete="address-level2" onChange={(value) => setContact({ ...contact, city: value })} />
-              <Field label="Correo electrónico" value={contact.email} error={contactErrors.email} type="email" autoComplete="email" onChange={(value) => setContact({ ...contact, email: value })} />
-              <Field label="Código postal" value={contact.postalCode} error={contactErrors.postalCode} inputMode="numeric" autoComplete="postal-code" onChange={(value) => setContact({ ...contact, postalCode: value })} />
-              <Field label="Empresa" value={contact.company} autoComplete="organization" onChange={(value) => setContact({ ...contact, company: value })} />
-              <Field label="Nombre del proyecto" value={contact.projectName} onChange={(value) => setContact({ ...contact, projectName: value })} />
-              <Field label="Dirección de instalación" value={contact.address} autoComplete="street-address" onChange={(value) => setContact({ ...contact, address: value })} />
-            </div>
-            <label className="cotField cotFieldWide">Comentarios u observaciones
-              <textarea value={contact.notes} maxLength={1000} rows={2} onChange={(event) => setContact({ ...contact, notes: event.target.value })} />
-            </label>
-            <label className="cotToggle cotConsent">
-              <span><b>Autorizo el seguimiento</b><small>LUFT PVC puede contactarme para continuar con esta cotización.</small></span>
-              <input
-                type="checkbox"
-                checked={consentToContact}
-                onChange={(event) => {
-                  setConsentToContact(event.target.checked);
-                  if (event.target.checked) setConsentError("");
-                }}
-                aria-label="Autorizar contacto de LUFT PVC"
-              />
-            </label>
-            {consentError && <small className="cotFieldError">{consentError}</small>}
-            <p className="cotFinePrint">Al continuar aceptas que LUFT PVC utilice estos datos para preparar y dar seguimiento a tu cotización.</p>
-            {submitError && <p className="cotWarn">{submitError}</p>}
-          </Screen>
-        )}
-
-        {step === S.DONE && (
-          <Screen title="¡Tu cotización está lista!" hint={folio ? `La guardamos con el folio ${folio}.` : ""}>
-            <div className="cotDoc">
-              <p className="cotFolio">{folio}</p>
-              <p className="cotHint">Hemos preparado tu propuesta personalizada. Ábrela para consultarla o descargarla.</p>
-              <div className="cotProjectList cotProjectListCompact">
-                {doneItems.map((item, index) => <ProjectItemCard key={item.id} index={index} item={item} details={detailsFor(item)} />)}
+          {step === S.STYLE && (
+            <Screen
+              className="cotScreenStyles"
+              title="Elige el estilo"
+              hint={sizeConfirmed
+                ? `Disponibilidad para ${widthMm.toLocaleString("es-MX")} × ${heightMm.toLocaleString("es-MX")} mm.`
+                : "Cada elemento de tu proyecto puede tener un estilo distinto."}
+            >
+              {brand && <SystemNote name={brand.name} />}
+              <div className="cotCards cotCardsWide">
+                {stylesForProduct.map((s) => {
+                  const status = styleStatus(s);
+                  return (
+                    <button key={s.id} className={`cotCard cotCardStyle ${styleId === s.id ? "sel" : ""}`} onClick={() => {
+                      setStyleId(s.id);
+                      // Las medidas del cliente mandan sobre la medida de presentación del estilo.
+                      if (!sizeConfirmed) {
+                        setWidthMm(s.defaultW);
+                        setHeightMm(s.defaultH);
+                      }
+                      setStep(S.SIZE);
+                    }}>
+                      {/* La caja de dibujo tiene alto propio: el dibujo conserva la proporción
+                          real de la ventana, así que sin ella una puerta alta hacía la tarjeta
+                          casi el doble de alta que la de una corredera de la misma lista. */}
+                      <span className="cotCardArt">
+                        <WindowPreview
+                          wings={s.wings}
+                          widthMm={sizeConfirmed ? widthMm : s.defaultW}
+                          heightMm={sizeConfirmed ? heightMm : s.defaultH}
+                          frameHex={frameHex}
+                          label={`Vista previa de ${s.name}`}
+                        />
+                      </span>
+                      <span className="cotCardBody">
+                        <b>{s.name}</b>
+                        <small>{s.blurb}</small>
+                        <span className={`cotCardState is-${status.kind}`}>{availabilityLabel(status)}</span>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-              <p className="cotFinePrint">Un asesor de LUFT PVC podrá dar seguimiento a tu proyecto utilizando los datos proporcionados.</p>
-            </div>
-            <div className="cotDoc procTimelineCard"><h3>¿Qué sigue?</h3><GlassTimeline currentIndex={1} /></div>
-            <div className="cotFinalActions">
-              {/* Los dos abren el mismo documento renderizado en el servidor: uno para leerlo y
-                  otro para el diálogo de impresión del navegador, que es el que genera el PDF. */}
-              <a className="cotPrimary cotPrimaryLink" href={documentPath} target="_blank" rel="noopener noreferrer" onClick={() => trackPublicFunnel("pdf_opened")}>Ver cotización</a>
-              <a className="cotSecondary" href={`${documentPath}?print=1`} target="_blank" rel="noopener noreferrer" onClick={() => trackPublicFunnel("pdf_opened")}>Descargar PDF</a>
-              <a className="cotSecondary" href={whatsappHref} target="_blank" rel="noopener noreferrer">Continuar por WhatsApp</a>
-            </div>
-          </Screen>
-        )}
-      </main>
+            </Screen>
+          )}
 
-      <QuoteAssistant context={assistantContext} onApply={applyAssistantAction} supportHref={whatsappHref} humanAvailable={step === S.DONE} />
+          {step === S.SIZE && (
+            <Screen title="¿De qué medida?" hint="En milímetros. Si no estás seguro, un asesor lo verifica después." aside={livePreview}>
+              <div className="cotFieldGrid cotFieldGridTight">
+                <label className="cotField">Ancho (mm)<input type="number" inputMode="numeric" value={widthMm} onChange={(e) => { setWidthMm(Number(e.target.value) || 0); setSizeConfirmed(true); }} /></label>
+                <label className="cotField">Alto (mm)<input type="number" inputMode="numeric" value={heightMm} onChange={(e) => { setHeightMm(Number(e.target.value) || 0); setSizeConfirmed(true); }} /></label>
+                <div className="cotField">Cantidad<div className="cotStepper">
+                  <button onClick={() => setQty((value) => Math.max(1, value - 1))} aria-label="Menos">−</button>
+                  <b>{qty}</b>
+                  <button onClick={() => setQty((value) => Math.min(catalog.maxQty, value + 1))} aria-label="Más">+</button>
+                </div></div>
+              </div>
+              {sizeError && <p className="cotWarn">{sizeError}</p>}
+            </Screen>
+          )}
+
+          {step === S.COLOR && (
+            <Screen title="Elige el color" hint="Color del marco, por dentro y por fuera." aside={livePreview}>
+              <div className="cotSwatches">
+                {colorsForBrand.map((entry) => (
+                  <button key={entry.id} className={`cotSwatch ${color?.id === entry.id ? "sel" : ""}`} onClick={() => setColorId(entry.id)}>
+                    <span style={{ background: entry.hex }} />{entry.name}
+                  </button>
+                ))}
+              </div>
+            </Screen>
+          )}
+
+          {step === S.GLASS && (
+            <Screen title="Elige el vidrio" hint="De más sencillo a mayor aislamiento." aside={livePreview}>
+              <div className="cotCards">
+                {catalog.glass.map((entry) => (
+                  <button key={entry.id} className={`cotCard ${glassId === entry.id ? "sel" : ""}`} onClick={() => setGlassId(entry.id)}>
+                    <b>{entry.name}</b><small>{entry.benefit}</small>
+                  </button>
+                ))}
+              </div>
+            </Screen>
+          )}
+
+          {step === S.CONFIRM && (
+            // Diseño e instalación en una pantalla. Antes aquí vivía el total; ahora vive el acuse
+            // de que la configuración quedó completa, que es la información que el cliente necesita
+            // para decidir si sigue o cambia algo.
+            <Screen className="cotScreenConfirm" title="Revisa tu diseño" hint="Confirma la instalación. Puedes cambiar lo que quieras antes de continuar." aside={livePreview}>
+              <Toggle label="Instalación" detail="Nuestro equipo la instala en tu domicilio." on={extras.instalacion} onChange={(value) => setExtras((current) => ({ ...current, instalacion: value }))} />
+              <ReadyBox ready={configReady} checking={checking} error={configError} />
+            </Screen>
+          )}
+
+          {step === S.SUMMARY && (
+            <Screen title="Tu proyecto" hint="Revisa tus diseños o agrega otra ventana antes de continuar.">
+              <div className="cotProjectList">
+                {reviewItems.map((item, index) => (
+                  <ProjectItemCard key={item.id} index={index} item={item} details={detailsFor(item)} current={item.id === "current"} onRemove={item.id === "current" ? undefined : () => removeSavedItem(item.id)} />
+                ))}
+              </div>
+              {reviewItems.length > 0 && (
+                <div className="cotProjectTotal">
+                  <span>Tu proyecto</span>
+                  <b>{reviewItems.length} {reviewItems.length === 1 ? "diseño" : "diseños"} · {totalPieces} {totalPieces === 1 ? "pieza" : "piezas"}</b>
+                </div>
+              )}
+              <button className="cotAddAnother" onClick={addAnotherItem}>
+                <i aria-hidden="true">＋</i><span><b>Agregar otra ventana</b><small>Puede tener otro estilo, medida, color y vidrio.</small></span>
+              </button>
+              {projectError && <p className="cotWarn">{projectError}</p>}
+            </Screen>
+          )}
+
+          {step === S.PROCESS && (
+            <Screen className="cotScreenProcess" title="¿Qué sigue después de tu cotización?" hint={`Tu proyecto reúne ${lockedItems.length} ${lockedItems.length === 1 ? "configuración" : "configuraciones"}.`}>
+              <ProcessSection />
+            </Screen>
+          )}
+
+          {step === S.CONTACT && (
+            <Screen title="¿A dónde te enviamos tu cotización?" hint="Con estos datos preparamos tu propuesta y te damos seguimiento.">
+              <div className="cotFieldGrid">
+                <Field label="Nombre completo" required value={contact.name} error={contactErrors.name} autoComplete="name" onChange={(value) => setContact({ ...contact, name: value })} />
+                <Field label="WhatsApp / teléfono" required value={contact.phone} error={contactErrors.phone} type="tel" autoComplete="tel" onChange={(value) => setContact({ ...contact, phone: value })} />
+                <Field label="Ciudad / municipio" required value={contact.city} error={contactErrors.city} autoComplete="address-level2" onChange={(value) => setContact({ ...contact, city: value })} />
+                <Field label="Correo electrónico" value={contact.email} error={contactErrors.email} type="email" autoComplete="email" onChange={(value) => setContact({ ...contact, email: value })} />
+                <Field label="Código postal" value={contact.postalCode} error={contactErrors.postalCode} inputMode="numeric" autoComplete="postal-code" onChange={(value) => setContact({ ...contact, postalCode: value })} />
+                <Field label="Empresa" value={contact.company} autoComplete="organization" onChange={(value) => setContact({ ...contact, company: value })} />
+                <Field label="Nombre del proyecto" value={contact.projectName} onChange={(value) => setContact({ ...contact, projectName: value })} />
+                <Field label="Dirección de instalación" value={contact.address} autoComplete="street-address" onChange={(value) => setContact({ ...contact, address: value })} />
+              </div>
+              <label className="cotField cotFieldWide">Comentarios u observaciones
+                <textarea value={contact.notes} maxLength={1000} rows={2} onChange={(event) => setContact({ ...contact, notes: event.target.value })} />
+              </label>
+              <label className="cotToggle cotConsent">
+                <span><b>Autorizo el seguimiento</b><small>LUFT PVC puede contactarme para continuar con esta cotización.</small></span>
+                <input
+                  type="checkbox"
+                  checked={consentToContact}
+                  onChange={(event) => {
+                    setConsentToContact(event.target.checked);
+                    if (event.target.checked) setConsentError("");
+                  }}
+                  aria-label="Autorizar contacto de LUFT PVC"
+                />
+              </label>
+              {consentError && <small className="cotFieldError">{consentError}</small>}
+              <p className="cotFinePrint">Al continuar aceptas que LUFT PVC utilice estos datos para preparar y dar seguimiento a tu cotización.</p>
+              {submitError && <p className="cotWarn">{submitError}</p>}
+            </Screen>
+          )}
+
+          {step === S.DONE && (
+            <Screen title="¡Tu cotización está lista!" hint={folio ? `La guardamos con el folio ${folio}.` : ""}>
+              <div className="cotDoc">
+                <p className="cotFolio">{folio}</p>
+                <p className="cotHint">Hemos preparado tu propuesta personalizada. Ábrela para consultarla o descargarla.</p>
+                <div className="cotProjectList cotProjectListCompact">
+                  {doneItems.map((item, index) => <ProjectItemCard key={item.id} index={index} item={item} details={detailsFor(item)} />)}
+                </div>
+                <p className="cotFinePrint">Un asesor de LUFT PVC podrá dar seguimiento a tu proyecto utilizando los datos proporcionados.</p>
+              </div>
+              <div className="cotDoc procTimelineCard"><h3>¿Qué sigue?</h3><GlassTimeline currentIndex={1} /></div>
+              <div className="cotFinalActions">
+                {/* Los dos abren el mismo documento renderizado en el servidor: uno para leerlo y
+                    otro para el diálogo de impresión del navegador, que es el que genera el PDF. */}
+                <a className="cotPrimary cotPrimaryLink" href={documentPath} target="_blank" rel="noopener noreferrer" onClick={() => trackPublicFunnel("pdf_opened")}>Ver cotización</a>
+                <a className="cotSecondary" href={`${documentPath}?print=1`} target="_blank" rel="noopener noreferrer" onClick={() => trackPublicFunnel("pdf_opened")}>Descargar PDF</a>
+                <a className="cotSecondary" href={whatsappHref} target="_blank" rel="noopener noreferrer">Continuar por WhatsApp</a>
+              </div>
+            </Screen>
+          )}
+        </main>
+
+        <QuoteAssistant context={assistantContext} onApply={applyAssistantAction} supportHref={whatsappHref} humanAvailable={step === S.DONE} />
+      </div>
 
       {step < S.DONE && (
         <footer className="cotFoot">
