@@ -1066,8 +1066,8 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
             <>
               <Block n="01" title="Marca y sistema" sub="Catálogo técnico del proyecto." />
               <div className="segmented">
-                <button className={brand === "Aluplast" ? "selected" : ""} style={brand === "Aluplast" ? { background: brandAccent.Aluplast } : undefined} onClick={() => changeBrand("Aluplast")}>ALUPLAST</button>
-                <button className={brand === "Deceuninck" ? "selected" : ""} style={brand === "Deceuninck" ? { background: brandAccent.Deceuninck } : undefined} onClick={() => changeBrand("Deceuninck")}>DECEUNINCK</button>
+                <button className={brand === "Aluplast" ? "selected brandPill" : ""} style={brand === "Aluplast" ? { background: brandAccent.Aluplast } : undefined} onClick={() => changeBrand("Aluplast")}>ALUPLAST</button>
+                <button className={brand === "Deceuninck" ? "selected brandPill" : ""} style={brand === "Deceuninck" ? { background: brandAccent.Deceuninck } : undefined} onClick={() => changeBrand("Deceuninck")}>DECEUNINCK</button>
               </div>
               <label>Sistema
                 <select value={systemIndex} onChange={(e) => changeSystem(Number(e.target.value))}>
@@ -1263,6 +1263,7 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
                     selectedId={selectedId}
                     color={color}
                     system={sys}
+                    railCount={rail}
                     focusScope={focusScope}
                     focusPart={focusPart}
                     focusSide={focusSide}
