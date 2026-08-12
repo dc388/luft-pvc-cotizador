@@ -19,6 +19,9 @@ type Params = {
   transport: number;
   margin: number;
   discount: number;
+  wastePct?: number;
+  laborPerM2?: number;
+  overheadPct?: number;
   marco: Marco;
   /** true once the 3D viewer has successfully mounted its WebGL renderer at least once. */
   threeReady: boolean;
@@ -43,8 +46,11 @@ export function runSelfCheck(p: Params): SelfCheckResult {
     const c = calcQuote({
       width: p.width, height: p.height, qty: p.qty, tree: p.tree, sys: p.sys, glass: p.glass, color: p.color,
       rail: p.rail, installation: p.installation, transport: p.transport, margin: p.margin, discount: p.discount,
+      wastePct: p.wastePct, laborPerM2: p.laborPerM2, overheadPct: p.overheadPct,
     });
-    calcOk = Number.isFinite(c.total) && c.total >= 0 && Number.isFinite(c.area) && c.leaves.length === ids.length;
+    calcOk =
+      Number.isFinite(c.total) && c.total >= 0 && Number.isFinite(c.area) && c.leaves.length === ids.length &&
+      Number.isFinite(c.netUtility) && c.direct >= c.profileCost + c.glassCost + c.labor;
   } catch {
     calcOk = false;
   }
