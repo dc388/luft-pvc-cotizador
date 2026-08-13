@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
 import type { CompanySettings } from "@/lib/companySettings";
 import type { Brand, GlassSide, Marco, PaneSpec, Report, Side, Tab, Tool, ViewMode, ViewPreset3D } from "@/types/domain";
 import { catalog, EUR_MXN } from "@/data/catalog";
@@ -35,18 +35,80 @@ import { downloadFile, exportReportHtml, toCsv } from "@/lib/exportDoc";
 import { runSelfCheck, type SelfCheckResult } from "@/lib/selfCheck";
 import {
   bootstrap,
+  clearDraft,
+  clearProjectOutcomeApi,
   createComponent,
+  createProjectVersionApi,
   createProjectApi,
   deleteComponentApi,
+  deleteProjectApi,
+  downloadBackupFile,
+  downloadProjectFile,
+  duplicateProjectApi,
   fetchComponent,
+  fetchProjectOutcome,
+  importProjectFileApi,
+  listProjectVersionsApi,
   listProjects,
+  listTrashedProjects,
   openProject,
+  pendingDraftFor,
+  probeProjectFile,
   refetchProject,
   renameProjectApi,
+  restoreBackupApi,
+  restoreProjectApi,
+  restoreProjectVersionApi,
   saveComponent,
+  saveProjectOutcomeApi,
   setActiveComponentApi,
+  setProjectArchivedApi,
+  transferComponentsApi,
+  updateProjectApi,
+  writeDraft,
+  type ComponentDraft,
+  type SaveState,
 } from "@/lib/persistence";
-import type { ComponentRecord, ComponentSummary, ProjectRecord, ProjectSummary } from "@/types/project";
+import type {
+  ComponentConfigState,
+  ComponentPatch,
+  ComponentRecord,
+  ComponentSummary,
+  ProjectMeta,
+  ProjectOutcome,
+  ProjectRecord,
+  ProjectStatus,
+  ProjectSummary,
+  ProjectVersionRow,
+  Requester,
+} from "@/types/project";
+import {
+  buildRecommendations,
+  emptyLearningStats,
+  type LearningStats,
+  type QuoteTemplate,
+  type Recommendation,
+  type RecommendationContext,
+} from "@/lib/learningRules";
+import { clearLearning, fetchLearning, learningStore, recordEvent, setLearningEnabled } from "@/lib/learningClient";
+import {
+  announceClaimChange,
+  claimComponent,
+  componentKey,
+  isClaimedByAnotherTab,
+  newTabId,
+  releaseComponent,
+  subscribeToClaims,
+  takeOverComponent,
+  HEARTBEAT_MS,
+} from "@/lib/sessionLock";
+import { projectOriginLabel, projectStatusLabel } from "@/lib/projectStatus";
+import { ProjectExplorer } from "@/components/projects/ProjectExplorer";
+import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
+import { RequesterPanel } from "@/components/projects/RequesterPanel";
+import { ComponentList, type BulkAction } from "@/components/projects/ComponentList";
+import { QuoteInsights } from "@/components/projects/QuoteInsights";
+import { ProjectHistory, type OutcomeDraft } from "@/components/projects/ProjectHistory";
 import type { LuftAgentState } from "@/types/luft-ai";
 import { emptyLuftAgentState } from "@/types/luft-ai";
 import { normalizeAgentState, type LuftActor } from "@/lib/luft-ai";
@@ -85,6 +147,65 @@ const REPORTS: Report[] = ["Cotización", "Optimización de corte", "Pedido de v
 const PROJECT_SCOPED_REPORTS: Report[] = ["Cotización", "Optimización de corte", "Pedido de vidrio"];
 const VIEW_MODES: ViewMode[] = ["2D", "3D", "Sección"];
 const PRESETS_3D: ViewPreset3D[] = ["Frente", "Planta", "Perfil", "Isométrica"];
+
+// Cuál era el proyecto abierto la última vez. Se recuerda porque abrir la app donde la dejaste es
+// parte de poder trabajar en ella todos los días, y "el más reciente por fecha de modificación" no
+// siempre es el mismo proyecto: cualquier escritura (archivar otro, restaurar una copia) mueve esa
+// fecha. Con el id explícito, volver abre lo que estabas viendo.
+const LAST_PROJECT_KEY = "luft-pvc-cotizador:last-project:v1";
+
+function rememberLastProject(projectId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LAST_PROJECT_KEY, projectId);
+  } catch {
+    // Sin almacenamiento se abre el más reciente, que es el comportamiento anterior.
+  }
+}
+
+function readLastProject(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(LAST_PROJECT_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/** Nombre del sistema de una marca y un índice cualesquiera, acotado por si el catálogo cambió de
+ *  tamaño entre versiones. Fuera del componente a propósito: así se puede usar antes de que el
+ *  sistema del componente abierto esté resuelto, sin leer una variable declarada más abajo. */
+function systemNameOf(brand: Brand, systemIndex: number): string {
+  const systems = catalog[brand];
+  return systems[Math.min(systemIndex, systems.length - 1)]?.name ?? "";
+}
+
+/** Los metadatos del proyecto, sin el componente abierto, sin el espejo del nombre del cliente y sin
+ *  la lista de componentes: esas tres cosas viven en su propio estado porque cambian por su cuenta. */
+function projectMetaOf(project: ProjectRecord): ProjectMeta {
+  return {
+    id: project.id,
+    name: project.name,
+    folio: project.folio,
+    origin: project.origin,
+    source: project.source,
+    status: project.status,
+    requester: project.requester,
+    currency: project.currency,
+    pricingListId: project.pricingListId,
+    notes: project.notes,
+    estimatedDate: project.estimatedDate,
+    createdBy: project.createdBy,
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt,
+    importedAt: project.importedAt,
+    originalCreatedAt: project.originalCreatedAt,
+    archivedAt: project.archivedAt,
+    deletedAt: project.deletedAt,
+    duplicatedFromId: project.duplicatedFromId,
+    schemaVersion: project.schemaVersion,
+  };
+}
 
 // Recibe los datos de empresa ya resueltos por el server component de app/page.tsx. No los lee
 // por su cuenta: este archivo es "use client" y lib/companySettings.ts solo existe en servidor
@@ -250,6 +371,12 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
   const [selfCheck, setSelfCheck] = useState<SelfCheckResult | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [persistMode, setPersistMode] = useState<"db" | "offline">("offline");
+  // ---------- Estado REAL del autoguardado. Antes solo existía `savedAt`, y con eso un guardado
+  // fallido dejaba la insignia mostrando la hora del último éxito: la interfaz decía "Guardado
+  // 11:00" mientras nada se estaba guardando. Ahora el estado y el mensaje de error son parte del
+  // estado de la aplicación, y "guardado" solo se muestra cuando el servidor lo confirmó. ----------
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [saveError, setSaveError] = useState("");
 
   // ---------- Proyecto → Componente: the active component's own fields (width, tree, marco,
   // etc. above) are still flat state exactly as before a single-window app had them -- adding
@@ -263,14 +390,76 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
   // crea la suya. Antes la app abría siempre la más reciente y no había pantalla desde la que
   // llegar a las anteriores: quedaban escritas en la base pero invisibles. ----------
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [projectOrigin, setProjectOrigin] = useState<{ source: ProjectRecord["source"]; folio: string; client: string }>({
-    source: "interno",
-    folio: "",
-    client: "",
-  });
+  const [trashedProjects, setTrashedProjects] = useState<ProjectSummary[]>([]);
+  // Los metadatos del proyecto abierto: origen, etapa, folio, ficha del solicitante, preferencias
+  // comerciales y sus fechas. Antes solo se guardaban tres campos ({source, folio, client}), que era
+  // todo lo que la pantalla podía mostrar.
+  const [projectMeta, setProjectMeta] = useState<ProjectMeta | null>(null);
   const [switchingProject, setSwitchingProject] = useState(false);
   const [projectsError, setProjectsError] = useState("");
   const [luftAi, setLuftAi] = useState<LuftAgentState>(() => emptyLuftAgentState());
+
+  // ---------- Alta de proyecto ----------
+  const [showNewProject, setShowNewProject] = useState(false);
+  const [createError, setCreateError] = useState("");
+  // Se incrementa solo cuando un proyecto se creó de verdad: es la señal para que el formulario
+  // descarte lo capturado. Mientras no cambie, un fallo de red conserva todo lo escrito.
+  const [createdToken, setCreatedToken] = useState(0);
+
+  // ---------- Deshacer ----------
+  // Una sola acción reversible a la vez, la última. No es una pila de deshacer para todo: es la red
+  // de seguridad inmediata de archivar y borrar, que son las dos operaciones donde un clic
+  // accidental duele.
+  const [undoAction, setUndoAction] = useState<{ label: string; run: () => Promise<void> } | null>(null);
+
+  // ---------- Ficha del solicitante ----------
+  const [requesterSaving, setRequesterSaving] = useState(false);
+  const [requesterError, setRequesterError] = useState("");
+
+  // ---------- Importación ----------
+  // Cuando el archivo corresponde a un proyecto que ya existe aquí, no se decide sola: se pregunta.
+  const [importPrompt, setImportPrompt] = useState<{
+    text: string;
+    name: string;
+    folio: string;
+    componentCount: number;
+    warnings: string[];
+  } | null>(null);
+  const [fileMessage, setFileMessage] = useState("");
+
+  // ---------- Mejora continua ----------
+  const [learningStats, setLearningStats] = useState<LearningStats | null>(null);
+  const [learningTemplates, setLearningTemplates] = useState<QuoteTemplate[]>([]);
+  // Se marca cuando la respuesta llegó (bien o mal), para poder distinguir "cargando" de "sin datos"
+  // sin guardar un estado de carga que habría que poner en marcha desde el cuerpo de un efecto.
+  const [learningLoaded, setLearningLoaded] = useState(false);
+  // Se incrementa para pedir una relectura (tras borrar el historial). Es la forma de disparar de
+  // nuevo el efecto sin llamarlo a mano desde el manejador.
+  const [learningToken, setLearningToken] = useState(0);
+
+  // ---------- Historial y cierre de obra ----------
+  const [versions, setVersions] = useState<ProjectVersionRow[]>([]);
+  const [outcome, setOutcome] = useState<ProjectOutcome | null>(null);
+  const [historyError, setHistoryError] = useState("");
+
+  // ---------- Conflicto con otra sesión ----------
+  // Lo que hay en el servidor cuando otra sesión guardó después de nosotros. No se aplica ni se
+  // descarta solo: se muestra y se decide (ver el aviso más abajo).
+  const [conflict, setConflict] = useState<ComponentRecord | null>(null);
+  // Última fecha de modificación CONFIRMADA por el servidor, en un ref y no en estado: el guardado la
+  // lee desde un temporizador, y con un valor capturado del render podría enviar una versión vieja
+  // mientras otro guardado está en vuelo -- y provocar un conflicto que no existe.
+  const lastSavedAtRef = useRef<string | null>(null);
+
+  // ---------- Borradores y pestañas ----------
+  const [draftOffer, setDraftOffer] = useState<ComponentDraft | null>(null);
+  // Identidad de ESTA pestaña, estable mientras viva. Se crea en el inicializador de useState y no
+  // escribiendo un ref durante el render: lo segundo no es seguro con render concurrente, porque el
+  // render puede descartarse y repetirse.
+  const [tabId] = useState(newTabId);
+  // Cuándo se abrió el componente actual, para poder medir cuánto se tardó en configurarlo.
+  const componentOpenedAtRef = useRef<number>(0);
+  const dimensionEditsRef = useRef(0);
 
   // ---------- "Proyecto completo" report scope: Cotización/Optimización de corte/Pedido de
   // vidrio can either describe the active component alone (default) or aggregate every
@@ -308,20 +497,41 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
   const projectComponentsLoading =
     projectComponentsKey !== "" && projectComponentsResult.key !== projectComponentsKey;
 
-  // Aplica un proyecto recién cargado al estado de la carpeta abierta (nombre y procedencia).
+  // Aplica un proyecto recién cargado al estado del proyecto abierto.
   const applyProjectMeta = (project: ProjectRecord) => {
     setProjectId(project.id);
     setProjectName(project.name);
     setComponents(project.components);
-    setProjectOrigin({ source: project.source, folio: project.folio, client: project.client });
+    setProjectMeta(projectMetaOf(project));
+    rememberLastProject(project.id);
   };
 
   const refreshProjectList = async () => {
     try {
       setProjects(await listProjects());
     } catch {
-      // La lista de carpetas es de navegación, no de trabajo: si falla, la carpeta abierta
+      // La lista de proyectos es de navegación, no de trabajo: si falla, el proyecto abierto
       // sigue funcionando y autoguardando igual.
+    }
+  };
+
+  const refreshHistory = async (pid: string) => {
+    try {
+      const [nextVersions, nextOutcome] = await Promise.all([listProjectVersionsApi(pid), fetchProjectOutcome(pid)]);
+      setVersions(nextVersions);
+      setOutcome(nextOutcome);
+    } catch {
+      // El historial es información, no trabajo en curso: si no carga, el resto del proyecto sigue.
+      setVersions([]);
+      setOutcome(null);
+    }
+  };
+
+  const refreshTrash = async () => {
+    try {
+      setTrashedProjects(await listTrashedProjects());
+    } catch {
+      // Igual que la lista: si falla, la papelera se muestra vacía y se puede reintentar.
     }
   };
 
@@ -330,7 +540,7 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
       const project = await refetchProject(pid);
       setComponents(project.components);
       setProjectName(project.name);
-      setProjectOrigin({ source: project.source, folio: project.folio, client: project.client });
+      setProjectMeta(projectMetaOf(project));
     } catch {
       // offline / DB unreachable -- the outliner just won't reflect other components until
       // connectivity is back; the active component itself still autosaves via saveComponent's
@@ -339,7 +549,11 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
   };
 
   const loadComponentIntoState = (rec: {
-    id: string; code: string; designation: string; location: string; qty: number;
+    id: string;
+    /** Fecha de modificación del servidor, cuando el componente viene de él: es la versión contra la
+     *  que se comprobará el siguiente guardado. Ausente al recuperar un borrador local. */
+    updatedAt?: string;
+    code: string; designation: string; location: string; qty: number;
     widthMm: number; heightMm: number; brand: "Aluplast" | "Deceuninck"; systemIndex: number; colorIndex: number;
     data: { rail: number; glassIndex: number; face: string; margin: number; installation: number; transport: number; discount: number; client: string; clientAddress: string; deliveryDate: string; selectedId: string; tree: typeof tree; marco: Marco; termsHeader?: string; paymentTerms?: string; barLengthMm?: number; clientPhone?: string; clientEmail?: string; luftAi?: LuftAgentState };
   }) => {
@@ -383,6 +597,31 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
     setFocusPart(null);
     setFocusSide(null);
     setFocusScope("leaf");
+    // Reloj y contador de correcciones del componente que se acaba de abrir: alimentan "tiempo
+    // utilizado para cotizar" y "correcciones frecuentes" de las estadísticas de mejora.
+    componentOpenedAtRef.current = Date.now();
+    dimensionEditsRef.current = 0;
+    lastSavedAtRef.current = rec.updatedAt ?? null;
+    setConflict(null);
+    // Al cambiar de componente el estado del guardado vuelve a cero: lo que se muestre a partir de
+    // aquí es de ESTE componente, no un resto del anterior.
+    setSaveState("idle");
+    setSaveError("");
+    setDraftOffer(null);
+  };
+
+  /** Deja el editor sin componente abierto: un proyecto puede llegar vacío (recién importado, o del
+   *  cotizador público) y eso no es un error, es un estado con su propia pantalla. */
+  const clearActiveComponent = () => {
+    setComponentId(null);
+    setSaveState("idle");
+    setSaveError("");
+    setDraftOffer(null);
+    setSavedAt(null);
+    setConflict(null);
+    lastSavedAtRef.current = null;
+    // El aviso de "abierto en otra pestaña" no hace falta limpiarlo: se deriva de si hay un componente
+    // abierto, y sin componente no hay nada que anunciar (ver lockKey).
   };
 
   // ---------- Load (or create) a project + its active component from the database, once, on
@@ -396,35 +635,185 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
       const { project, component, projects: folders, mode } = await bootstrap();
       setPersistMode(mode);
       setProjects(folders);
+
+      // Si la última vez estabas en otro proyecto, se abre ese. Solo se pide si de verdad es otro y
+      // sigue existiendo en la lista: en el caso normal (el último modificado ES el último abierto)
+      // no cuesta ninguna petición extra.
+      const remembered = readLastProject();
+      if (mode === "db" && remembered && remembered !== project?.id && folders.some((entry) => entry.id === remembered)) {
+        try {
+          const reopened = await openProject(remembered);
+          applyProjectMeta(reopened.project);
+          await refreshHistory(reopened.project.id);
+          if (reopened.component) {
+            loadComponentIntoState(reopened.component);
+            setSavedAt(reopened.component.updatedAt);
+            setDraftOffer(pendingDraftFor(reopened.component));
+          } else {
+            clearActiveComponent();
+          }
+          setHydrated(true);
+          return;
+        } catch {
+          // El proyecto recordado no se pudo abrir: se sigue con el más reciente, que ya está aquí.
+        }
+      }
+
       if (project) applyProjectMeta(project);
-      loadComponentIntoState(component);
-      setSavedAt(component.updatedAt);
+      if (component) {
+        loadComponentIntoState(component);
+        setSavedAt(component.updatedAt);
+        setDraftOffer(pendingDraftFor(component));
+      } else {
+        clearActiveComponent();
+      }
+      if (project) await refreshHistory(project.id);
       setHydrated(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ---------- Mejora continua: el interruptor se lee como estado externo (localStorage) y el historial
+  // se pide cuando está encendido. Vive en un efecto y no en el arranque porque no es parte del camino
+  // crítico: la app tiene que poder cotizar aunque las estadísticas no carguen. ----------
+  const learningEnabled = useSyncExternalStore(
+    learningStore.subscribe,
+    learningStore.getSnapshot,
+    learningStore.getServerSnapshot
+  );
+
+  useEffect(() => {
+    if (!learningEnabled) return;
+    let cancelled = false;
+    void fetchLearning().then((payload) => {
+      if (cancelled) return;
+      setLearningStats(payload?.stats ?? null);
+      setLearningTemplates(payload?.templates ?? []);
+      setLearningLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [learningEnabled, learningToken]);
+
+  // Con el registro apagado no se muestran estadísticas aunque queden en memoria de una lectura
+  // anterior: se derivan del interruptor en vez de borrarlas al apagarlo.
+  const visibleStats = learningEnabled ? learningStats : null;
+  const visibleTemplates = learningEnabled ? learningTemplates : [];
+  const learningLoading = learningEnabled && !learningLoaded;
+
+  // ---------- Aviso de "abierto en otra pestaña".
+  //
+  // Se lee, no se guarda: quién tiene abierto qué es estado de un sistema externo (localStorage,
+  // compartido entre pestañas), así que se consulta con useSyncExternalStore. Antes esto vivía en un
+  // useState que un efecto corregía en cada latido -- un render extra cada cuatro segundos, y el aviso
+  // tardaba hasta un latido en aparecer. Ahora el evento `storage` lo hace inmediato.
+  //
+  // El efecto de abajo se queda solo con lo que sí es un efecto: anunciar y renovar el anuncio de esta
+  // pestaña, y retirarlo al salir. ----------
+  const lockKey = hydrated && projectId && componentId && persistMode !== "offline" ? componentKey(projectId, componentId) : "";
+  const lockedByOtherTab = useSyncExternalStore(
+    subscribeToClaims,
+    () => (lockKey ? isClaimedByAnotherTab(tabId, lockKey) : false),
+    // En servidor no hay pestañas que se pisen.
+    () => false
+  );
+
+  useEffect(() => {
+    if (!lockKey) return;
+    // Si otra pestaña lo tiene, esta no lo reclama: reclamarlo sería quitárselo sin que nadie lo pida.
+    if (!isClaimedByAnotherTab(tabId, lockKey)) claimComponent(tabId, lockKey);
+    const timer = window.setInterval(() => {
+      if (!isClaimedByAnotherTab(tabId, lockKey)) claimComponent(tabId, lockKey);
+    }, HEARTBEAT_MS);
+    return () => {
+      window.clearInterval(timer);
+      releaseComponent(tabId, lockKey);
+      announceClaimChange();
+    };
+  }, [lockKey, tabId]);
+
+  const handleTakeOver = () => {
+    if (!lockKey) return;
+    takeOverComponent(tabId, lockKey);
+    announceClaimChange();
+  };
+
+  // El resumen comercial del componente (tipología resuelta, estado de configuración, precio y
+  // subtotal) sale de `calc` y de las alertas, que se calculan más abajo en este mismo archivo. Se
+  // pasa por un ref en vez de leerlos directamente aquí porque este efecto está declarado antes que
+  // ellos: leer un `const` antes de su declaración sería un error en tiempo de ejecución. El ref
+  // siempre está al día cuando el guardado dispara, porque el guardado espera 400 ms y los efectos
+  // ya corrieron.
+  const derivedSaveRef = useRef<{ typology: string; configState: ComponentConfigState; unitPrice: number; total: number }>({
+    typology: "",
+    configState: "pendiente",
+    unitPrice: 0,
+    total: 0,
+  });
+
+  const buildComponentPatch = (): ComponentPatch => ({
+    code, designation, location, qty, widthMm: width, heightMm: height,
+    brand, systemIndex, colorIndex, glassIndex,
+    typology: derivedSaveRef.current.typology,
+    configState: derivedSaveRef.current.configState,
+    unitPrice: derivedSaveRef.current.unitPrice,
+    total: derivedSaveRef.current.total,
+    data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, clientPhone, clientEmail, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId, luftAi },
+  });
+
   // ---------- Autosave: debounced so dragging a divider or typing in a text field doesn't hit
   // the API on every keystroke. Gated on `hydrated` so the bootstrap effect above always gets
-  // first say over what the loaded component actually contains. ----------
+  // first say over what the loaded component actually contains.
+  //
+  // El indicador refleja lo que realmente pasó: "cambios pendientes" mientras corre la espera,
+  // "guardando" durante el envío y "guardado" SOLO si el servidor confirmó. Antes un fallo dejaba la
+  // insignia con la hora del último éxito, es decir mintiendo.
+  //
+  // Y no se guarda nada si otra pestaña tiene abierto el mismo componente: el autoguardado envía el
+  // estado completo, así que dos pestañas se pisarían en cada pulsación. ----------
   useEffect(() => {
     if (!hydrated || !componentId) return;
+    if (lockedByOtherTab) return;
     const pid = projectId ?? "offline";
     const cid = componentId;
+    // "Cambios pendientes" se marca en una microtarea y no en el cuerpo del efecto: llamar a setState
+    // de forma sincrónica ahí encadena renders (y el compilador de React lo rechaza). Se ve igual de
+    // inmediato, y cuando el estado ya es "pending" React no vuelve a renderizar.
+    queueMicrotask(() => setSaveState("pending"));
     const id = setTimeout(() => {
-      saveComponent(pid, cid, {
-        code, designation, location, qty, widthMm: width, heightMm: height,
-        brand, systemIndex, colorIndex,
-        data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, clientPhone, clientEmail, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId, luftAi },
-      }).then(({ savedAt: savedIso, mode }) => {
-        setPersistMode(mode);
-        if (savedIso) setSavedAt(savedIso);
+      const patch = buildComponentPatch();
+      // El borrador se escribe ANTES de intentar guardar: si el navegador se cierra justo aquí, al
+      // volver está el trabajo (ver pendingDraftFor en lib/persistence.ts).
+      writeDraft(pid, cid, patch);
+      setSaveState("saving");
+      saveComponent(pid, cid, patch, { expectedUpdatedAt: lastSavedAtRef.current }).then((result) => {
+        setPersistMode(result.mode);
+        if (result.ok) {
+          if (result.savedAt) {
+            setSavedAt(result.savedAt);
+            lastSavedAtRef.current = result.savedAt;
+          }
+          setSaveState("saved");
+          setSaveError("");
+          setConflict(null);
+          clearDraft(pid, cid);
+        } else if (result.conflict) {
+          // Otra sesión guardó después: NO se sobrescribió nada. El borrador local sigue escrito, así
+          // que lo de esta pantalla no se pierde mientras se decide.
+          setSaveState("error");
+          setSaveError("Alguien más guardó este componente desde otra sesión.");
+          setConflict(result.conflict);
+        } else {
+          setSaveState("error");
+          setSaveError(result.error ?? "No se pudo guardar.");
+        }
       });
     }, 400);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    hydrated, projectId, componentId, brand, systemIndex, rail, width, height, qty, glassIndex, colorIndex, face,
+    hydrated, projectId, componentId, lockedByOtherTab, brand, systemIndex, rail, width, height, qty, glassIndex, colorIndex, face,
     margin, installation, transport, discount, code, designation, location,
     client, clientAddress, clientPhone, clientEmail, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId, luftAi,
   ]);
@@ -433,11 +822,25 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
   // project. Switching flushes the outgoing component's pending edits immediately (instead of
   // waiting on the 400ms autosave debounce) so nothing typed right before switching is lost. ----------
   const flushActiveComponent = async () => {
-    if (!componentId) return;
-    await saveComponent(projectId ?? "offline", componentId, {
-      code, designation, location, qty, widthMm: width, heightMm: height, brand, systemIndex, colorIndex,
-      data: { rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress, clientPhone, clientEmail, deliveryDate, termsHeader, paymentTerms, barLengthMm, tree, marco, selectedId, luftAi },
+    if (!componentId || lockedByOtherTab) return;
+    const pid = projectId ?? "offline";
+    const result = await saveComponent(pid, componentId, buildComponentPatch(), {
+      expectedUpdatedAt: lastSavedAtRef.current,
     });
+    if (result.conflict) {
+      setConflict(result.conflict);
+      setSaveError(`No se pudo guardar "${designation}": otra sesión lo cambió.`);
+      setSaveState("error");
+      return;
+    }
+    if (result.ok) {
+      if (result.savedAt) lastSavedAtRef.current = result.savedAt;
+      clearDraft(pid, componentId);
+      // Se registra el componente guardado en las estadísticas de mejora al SALIR de él, no en cada
+      // autoguardado: así el histórico tiene una entrada por componente configurado y no una por
+      // pulsación, y el tiempo medido es el que de verdad se tardó en configurarlo.
+      recordComponentSaved();
+    }
   };
 
   // Drops the `data` payload from a full record so it can be merged straight into the
@@ -464,6 +867,9 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
     }
     loadComponentIntoState(rec);
     setSavedAt(rec.updatedAt);
+    // Si este componente tenía trabajo sin guardar de una sesión anterior, se ofrece recuperarlo al
+    // abrirlo -- no solo al arrancar la app.
+    setDraftOffer(pendingDraftFor(rec));
     await setActiveComponentApi(projectId, id).catch(() => {});
   };
 
@@ -475,25 +881,46 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
     loadComponentIntoState(rec);
     setSavedAt(rec.updatedAt);
     await refreshComponentList(projectId);
+    await refreshProjectList();
   };
 
   const handleDuplicateComponent = async (id: string) => {
     if (!projectId) return;
     await flushActiveComponent();
+    const source = components.find((component) => component.id === id);
     const rec = await createComponent(projectId, { duplicateFromId: id });
     setComponents((prev) => [...prev, toSummary(rec)]);
     loadComponentIntoState(rec);
     setSavedAt(rec.updatedAt);
     await refreshComponentList(projectId);
+    await refreshProjectList();
+    // Duplicar es la señal más clara de una configuración que se repite, y §9 la pide expresamente.
+    // El sistema que se registra es el DEL COMPONENTE DUPLICADO, resuelto de su propia marca e índice:
+    // duplicar desde la lista un componente que no es el abierto registraba antes el sistema del
+    // abierto, que es otro dato.
+    recordEvent("componente_duplicado", {
+      typology: source?.typology ?? "",
+      brand: source?.brand ?? brand,
+      systemName: source ? systemNameOf(source.brand, source.systemIndex) : "",
+    });
   };
 
-  const handleDeleteComponent = async (id: string) => {
+  const handleDeleteComponent = async (component: ComponentSummary) => {
     if (!projectId || components.length <= 1) return;
-    if (!window.confirm("¿Eliminar este componente del proyecto? Esta acción no se puede deshacer.")) return;
-    await deleteComponentApi(projectId, id);
-    setComponents((prev) => prev.filter((c) => c.id !== id));
-    if (id === componentId) {
-      const next = components.find((c) => c.id !== id);
+    // La confirmación nombra el componente exacto: "¿eliminar este?" no dice cuál, y con la lista
+    // desplazada o un menú abierto sobre otra fila es justo la duda que produce un borrado por error.
+    const label = `${component.code} · ${component.designation}`;
+    if (
+      !window.confirm(
+        `¿Eliminar el componente ${label} (${component.widthMm}×${component.heightMm} mm, ${component.qty} pieza(s)) de este proyecto?\n\nEsta acción no se puede deshacer.`
+      )
+    ) {
+      return;
+    }
+    await deleteComponentApi(projectId, component.id);
+    setComponents((prev) => prev.filter((c) => c.id !== component.id));
+    if (component.id === componentId) {
+      const next = components.find((c) => c.id !== component.id);
       if (next) {
         try {
           const rec = await fetchComponent(projectId, next.id);
@@ -508,64 +935,571 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
       }
     }
     await refreshComponentList(projectId);
+    await refreshProjectList();
   };
 
-  const handleRenameProject = async (name: string) => {
-    setProjectName(name);
+  /** Renombra un componente sin abrirlo. Si es el abierto, también mueve el estado en pantalla para
+   *  que el encabezado y el dibujo no queden con el nombre viejo. */
+  const handleRenameComponent = async (id: string, nextDesignation: string) => {
     if (!projectId) return;
+    if (id === componentId) {
+      setDesignation(nextDesignation);
+      return;
+    }
+    setComponents((prev) => prev.map((c) => (c.id === id ? { ...c, designation: nextDesignation } : c)));
     try {
-      await renameProjectApi(projectId, name);
-      // La carpeta abierta se renombra en la lista sin volver a pedirla: renombrar es escribir
-      // letra por letra y cada pulsación no puede costar una consulta.
-      setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, name } : p)));
+      await saveComponent(projectId, id, { designation: nextDesignation });
     } catch {
-      // offline -- name only lives in local state until connectivity is back
+      await refreshComponentList(projectId);
     }
   };
 
-  // ---------- Cambiar de carpeta. Sigue la misma disciplina que handleSwitchComponent: primero
+  const handleChangeComponentQty = async (id: string, nextQty: number) => {
+    if (!projectId) return;
+    if (id === componentId) {
+      // El abierto pasa por el estado normal, que ya recalcula el costo y autoguarda.
+      setQty(nextQty);
+      return;
+    }
+    setComponents((prev) => prev.map((c) => (c.id === id ? { ...c, qty: nextQty } : c)));
+    try {
+      await saveComponent(projectId, id, { qty: nextQty });
+      await refreshProjectList();
+    } catch {
+      await refreshComponentList(projectId);
+    }
+  };
+
+  /** Acciones sobre varios componentes seleccionados. */
+  const handleBulkComponents = async (action: BulkAction, ids: string[], targetProjectId?: string) => {
+    if (!projectId || ids.length === 0) return;
+    setProjectsError("");
+    setFileMessage("");
+
+    try {
+      if (action === "export") {
+        await downloadProjectFile(projectId, ids);
+        setFileMessage(`Se exportaron ${ids.length} componente(s) a un archivo.`);
+        return;
+      }
+
+      if (action === "duplicate") {
+        await flushActiveComponent();
+        for (const id of ids) await createComponent(projectId, { duplicateFromId: id });
+        await refreshComponentList(projectId);
+        await refreshProjectList();
+        setFileMessage(`Se duplicaron ${ids.length} componente(s).`);
+        return;
+      }
+
+      if (action === "delete") {
+        // Nunca se puede dejar un proyecto sin componentes por una acción masiva: eso convertiría un
+        // proyecto de trabajo en una carpeta vacía sin querer.
+        if (ids.length >= components.length) {
+          setProjectsError("No se pueden eliminar todos los componentes: un proyecto conserva al menos uno.");
+          return;
+        }
+        if (
+          !window.confirm(
+            `¿Eliminar ${ids.length} componente(s) de "${projectName}"?\n\nEsta acción no se puede deshacer.`
+          )
+        ) {
+          return;
+        }
+        for (const id of ids) await deleteComponentApi(projectId, id);
+        const remaining = components.filter((component) => !ids.includes(component.id));
+        setComponents(remaining);
+        if (componentId && ids.includes(componentId) && remaining[0]) {
+          const rec = await fetchComponent(projectId, remaining[0].id);
+          loadComponentIntoState(rec);
+          setSavedAt(rec.updatedAt);
+          await setActiveComponentApi(projectId, remaining[0].id).catch(() => {});
+        }
+        await refreshComponentList(projectId);
+        await refreshProjectList();
+        return;
+      }
+
+      if ((action === "move" || action === "copy") && targetProjectId) {
+        await flushActiveComponent();
+        const result = await transferComponentsApi(projectId, ids, targetProjectId, action);
+        applyProjectMeta(result.project);
+        // Mover puede haberse llevado el componente abierto; en ese caso se abre el que quede.
+        if (action === "move" && componentId && ids.includes(componentId)) {
+          const next = result.project.components[0];
+          if (next) {
+            const rec = await fetchComponent(result.project.id, next.id);
+            loadComponentIntoState(rec);
+            setSavedAt(rec.updatedAt);
+          } else {
+            clearActiveComponent();
+          }
+        }
+        await refreshProjectList();
+        setFileMessage(
+          `${result.moved} componente(s) ${action === "move" ? "movido(s)" : "copiado(s)"} a "${result.targetProject.name}".`
+        );
+      }
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : "No se pudo completar la acción.");
+    }
+  };
+
+  // Renombrar el proyecto abierto se escribe con retraso: es un campo de texto, y guardar en cada
+  // pulsación costaba una lectura y una escritura por letra. La lista se actualiza al instante y sin
+  // volver a pedirla, así que la pantalla no espera a la red.
+  const renameTimerRef = useRef<number | null>(null);
+  const handleRenameProject = (name: string) => {
+    setProjectName(name);
+    setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, name } : p)));
+    if (!projectId) return;
+    const pid = projectId;
+    if (renameTimerRef.current !== null) window.clearTimeout(renameTimerRef.current);
+    renameTimerRef.current = window.setTimeout(() => {
+      renameTimerRef.current = null;
+      void renameProjectApi(pid, name)
+        .then((updated) => setProjectMeta((current) => (current && current.id === pid ? { ...current, updatedAt: updated.updatedAt, name: updated.name } : current)))
+        .catch(() => {
+          // Sin conexión el nombre vive solo en el estado local hasta que vuelva la red.
+        });
+    }, 500);
+  };
+
+  // ---------- Cambiar de proyecto. Sigue la misma disciplina que handleSwitchComponent: primero
   // se vacía lo pendiente del componente que se abandona (el autoguardado tiene 400 ms de
   // retraso), y si la carga falla no se aplica un cambio a medias. ----------
+
+  /** Abre un proyecto ya cargado del servidor. Compartido por abrir, crear, duplicar e importar, para
+   *  que las cuatro dejen la pantalla exactamente en el mismo estado coherente. */
+  const adoptProject = async (project: ProjectRecord) => {
+    applyProjectMeta(project);
+    const activeId = project.activeComponentId ?? project.components[0]?.id;
+    if (activeId) {
+      const rec = await fetchComponent(project.id, activeId);
+      loadComponentIntoState(rec);
+      setSavedAt(rec.updatedAt);
+      setDraftOffer(pendingDraftFor(rec));
+    } else {
+      clearActiveComponent();
+    }
+    setReportScope("vano");
+    setProjectComponentsResult({ key: "", records: null });
+    setRequesterError("");
+    setHistoryError("");
+    await refreshHistory(project.id);
+  };
+
   const handleOpenProject = async (id: string) => {
     if (id === projectId || switchingProject) return;
     setSwitchingProject(true);
     setProjectsError("");
     try {
       await flushActiveComponent();
-      const { project, component } = await openProject(id);
-      applyProjectMeta(project);
-      loadComponentIntoState(component);
-      setSavedAt(component.updatedAt);
-      setReportScope("vano");
-      setProjectComponentsResult({ key: "", records: null });
+      const { project } = await openProject(id);
+      await adoptProject(project);
       await refreshProjectList();
     } catch {
-      setProjectsError("No pudimos abrir esa carpeta. Revisa tu conexión e inténtalo de nuevo.");
+      setProjectsError("No pudimos abrir ese proyecto. Revisa tu conexión e inténtalo de nuevo.");
     } finally {
       setSwitchingProject(false);
     }
   };
 
-  const handleNewProject = async () => {
+  /** Alta de proyecto. Si falla, el diálogo NO se cierra y conserva lo capturado: `createdToken` solo
+   *  avanza cuando el proyecto existe de verdad. */
+  const handleCreateProject = async (draft: Parameters<typeof createProjectApi>[0]) => {
     if (switchingProject) return;
+    setSwitchingProject(true);
+    setCreateError("");
+    try {
+      await flushActiveComponent();
+      const project = await createProjectApi(draft);
+      await adoptProject(project);
+      await refreshProjectList();
+      setCreatedToken((token) => token + 1);
+      setShowNewProject(false);
+      // Se abre en el editor y con el proyecto listo para agregar componentes, sin recargar nada.
+      setTab("Diseño");
+      recordEvent("proyecto_creado", { currency: project.currency, origin: project.origin });
+    } catch (error) {
+      setCreateError(
+        error instanceof Error
+          ? `No se pudo crear el proyecto: ${error.message}`
+          : "No se pudo crear el proyecto. Revisa tu conexión e inténtalo de nuevo."
+      );
+    } finally {
+      setSwitchingProject(false);
+    }
+  };
+
+  const handleDuplicateProject = async (project: ProjectSummary) => {
     setSwitchingProject(true);
     setProjectsError("");
     try {
       await flushActiveComponent();
-      const project = await createProjectApi();
-      const activeId = project.activeComponentId ?? project.components[0]?.id;
-      if (!activeId) throw new Error("El proyecto nuevo no trae componente.");
-      const rec = await fetchComponent(project.id, activeId);
-      applyProjectMeta(project);
-      loadComponentIntoState(rec);
-      setSavedAt(rec.updatedAt);
-      setReportScope("vano");
-      setProjectComponentsResult({ key: "", records: null });
+      const copy = await duplicateProjectApi(project.id);
+      await adoptProject(copy);
       await refreshProjectList();
-    } catch {
-      setProjectsError("No pudimos crear la carpeta. Revisa tu conexión e inténtalo de nuevo.");
+      setFileMessage(`Se duplicó "${project.name}" como "${copy.name}" con folio ${copy.folio || "sin folio"}.`);
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : "No se pudo duplicar el proyecto.");
     } finally {
       setSwitchingProject(false);
+    }
+  };
+
+  const handleRenameProjectFromList = async (project: ProjectSummary) => {
+    const next = window.prompt("Nombre del proyecto", project.name);
+    if (next === null) return;
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === project.name) return;
+    try {
+      const updated = await updateProjectApi(project.id, { name: trimmed });
+      setProjects((prev) => prev.map((entry) => (entry.id === project.id ? { ...entry, name: trimmed } : entry)));
+      if (project.id === projectId) {
+        setProjectName(updated.name);
+        applyProjectMeta(updated);
+      }
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : "No se pudo cambiar el nombre.");
+    }
+  };
+
+  const handleArchiveProject = async (project: ProjectSummary, archived: boolean) => {
+    setProjectsError("");
+    try {
+      await setProjectArchivedApi(project.id, archived);
+      await refreshProjectList();
+      // Deshacer inmediato: archivar es reversible y ofrecerlo aquí evita tener que ir a buscar el
+      // proyecto entre los archivados para devolverlo.
+      setUndoAction({
+        label: archived ? `Se archivó "${project.name}".` : `Se desarchivó "${project.name}".`,
+        run: async () => {
+          await setProjectArchivedApi(project.id, !archived);
+          await refreshProjectList();
+        },
+      });
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : "No se pudo archivar el proyecto.");
+    }
+  };
+
+  const handleDeleteProject = async (project: ProjectSummary) => {
+    // La confirmación dice el nombre EXACTO y cuántos componentes se llevan consigo. Es la diferencia
+    // entre confirmar a ciegas y saber qué se está borrando.
+    const detail = `${project.componentCount} componente(s) y ${project.pieceCount} pieza(s)`;
+    if (
+      !window.confirm(
+        `¿Eliminar el proyecto "${project.name}"${project.folio ? ` (${project.folio})` : ""}?\n\nSe va a la papelera con ${detail}. Podrás restaurarlo desde ahí.`
+      )
+    ) {
+      return;
+    }
+    setProjectsError("");
+    try {
+      await deleteProjectApi(project.id);
+      await refreshProjectList();
+      await refreshTrash();
+      setUndoAction({
+        label: `Se envió "${project.name}" a la papelera.`,
+        run: async () => {
+          const restored = await restoreProjectApi(project.id);
+          await refreshProjectList();
+          await refreshTrash();
+          if (restored.id === projectId) await adoptProject(restored);
+        },
+      });
+      // Si se borró el proyecto abierto, se abre otro: quedarse editando un proyecto que ya está en
+      // la papelera acabaría guardando cambios en algo borrado.
+      if (project.id === projectId) {
+        const next = projects.find((entry) => entry.id !== project.id && !entry.deletedAt);
+        if (next) {
+          const { project: reopened } = await openProject(next.id);
+          await adoptProject(reopened);
+        }
+      }
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : "No se pudo eliminar el proyecto.");
+    }
+  };
+
+  const handleRestoreProject = async (project: ProjectSummary) => {
+    try {
+      await restoreProjectApi(project.id);
+      await refreshProjectList();
+      await refreshTrash();
+      setFileMessage(`Se restauró "${project.name}".`);
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : "No se pudo restaurar el proyecto.");
+    }
+  };
+
+  const handlePurgeProject = async (project: ProjectSummary) => {
+    if (
+      !window.confirm(
+        `¿Eliminar DEFINITIVAMENTE "${project.name}" y sus ${project.componentCount} componente(s)?\n\nEsto no se puede deshacer.`
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteProjectApi(project.id, { purge: true });
+      await refreshTrash();
+      await refreshProjectList();
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : "No se pudo eliminar el proyecto.");
+    }
+  };
+
+  const handleExportProject = async (project: ProjectSummary) => {
+    setProjectsError("");
+    setFileMessage("");
+    try {
+      // Si es el proyecto abierto se vacía lo pendiente antes de exportar: el archivo debe llevar lo
+      // que está en pantalla, no la versión de hace 400 ms.
+      if (project.id === projectId) await flushActiveComponent();
+      await downloadProjectFile(project.id);
+      setFileMessage(`Se descargó el archivo de "${project.name}".`);
+      recordEvent("proyecto_exportado", { componentCount: project.componentCount });
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : "No se pudo exportar el proyecto.");
+    }
+  };
+
+  // ---------- Importar y respaldar ----------
+
+  /** Lee el archivo y pregunta al servidor si es válido. Si choca con un proyecto que ya existe aquí,
+   *  se pregunta antes de decidir; si no, se importa como proyecto nuevo. */
+  const handleImportFile = async (file: File) => {
+    setProjectsError("");
+    setFileMessage("");
+    setImportPrompt(null);
+    try {
+      const text = await file.text();
+      const probe = await probeProjectFile(text);
+      if (probe.conflictedWith) {
+        setImportPrompt({
+          text,
+          name: probe.name,
+          folio: probe.folio,
+          componentCount: probe.componentCount,
+          warnings: probe.warnings,
+        });
+        return;
+      }
+      await applyImport(text, "copy", probe.warnings);
+    } catch (error) {
+      setProjectsError(
+        error instanceof Error ? `No se pudo importar: ${error.message}` : "No se pudo importar ese archivo."
+      );
+    }
+  };
+
+  const applyImport = async (text: string, mode: "copy" | "replace", warnings: string[] = []) => {
+    setSwitchingProject(true);
+    try {
+      await flushActiveComponent();
+      const outcome = await importProjectFileApi(text, mode);
+      await adoptProject(outcome.project);
+      await refreshProjectList();
+      setImportPrompt(null);
+      const notes = [...warnings, ...outcome.warnings];
+      setFileMessage(
+        [
+          outcome.applied === "replaced"
+            ? `Se reemplazó "${outcome.project.name}" con el contenido del archivo.`
+            : `Se importó "${outcome.project.name}" con ${outcome.project.components.length} componente(s).`,
+          outcome.migratedFrom !== null ? `El archivo venía en formato ${outcome.migratedFrom} y se migró.` : "",
+          ...notes,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+    } catch (error) {
+      setProjectsError(error instanceof Error ? `No se pudo importar: ${error.message}` : "No se pudo importar el archivo.");
+    } finally {
+      setSwitchingProject(false);
+    }
+  };
+
+  const handleBackup = async () => {
+    setProjectsError("");
+    setFileMessage("");
+    try {
+      await flushActiveComponent();
+      await downloadBackupFile();
+      setFileMessage("Copia de seguridad descargada.");
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : "No se pudo crear la copia de seguridad.");
+    }
+  };
+
+  const handleRestoreBackup = async (file: File) => {
+    setProjectsError("");
+    setFileMessage("");
+    if (
+      !window.confirm(
+        "Restaurar AGREGA los proyectos de la copia a los que ya tienes aquí; no reemplaza ni borra nada.\n\n¿Continuar?"
+      )
+    ) {
+      return;
+    }
+    setSwitchingProject(true);
+    try {
+      const text = await file.text();
+      const result = await restoreBackupApi(text);
+      setProjects(result.projects);
+      setFileMessage(
+        [
+          `Se restauraron ${result.restored} proyecto(s).`,
+          result.failed.length > 0 ? `No se pudieron restaurar ${result.failed.length}: ${result.failed.join("; ")}` : "",
+          ...result.warnings,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+    } catch (error) {
+      setProjectsError(
+        error instanceof Error ? `No se pudo restaurar: ${error.message}` : "No se pudo restaurar esa copia."
+      );
+    } finally {
+      setSwitchingProject(false);
+    }
+  };
+
+  // ---------- Ficha del solicitante ----------
+  const handleSaveRequester = async (patch: {
+    requester: Requester;
+    status: ProjectStatus;
+    currency: string;
+    pricingListId: string;
+    estimatedDate: string;
+    notes: string;
+  }) => {
+    if (!projectId) return;
+    setRequesterSaving(true);
+    setRequesterError("");
+    try {
+      const updated = await updateProjectApi(projectId, patch);
+      applyProjectMeta(updated);
+      await refreshProjectList();
+    } catch (error) {
+      setRequesterError(
+        error instanceof Error ? `No se pudo guardar la ficha: ${error.message}` : "No se pudo guardar la ficha."
+      );
+    } finally {
+      setRequesterSaving(false);
+    }
+  };
+
+  // ---------- Conflicto con otra sesión ----------
+  // Las dos salidas posibles, y las dos las decide quien edita: traer lo del servidor (se pierde lo de
+  // esta pantalla, que queda en el borrador local) o imponer lo de aquí (`force`, después de haberlo
+  // visto). No hay una tercera automática: fusionar dos configuraciones de ventana sin criterio sería
+  // inventarse un diseño que nadie hizo.
+  const acceptServerVersion = () => {
+    if (!conflict) return;
+    loadComponentIntoState(conflict);
+    setSavedAt(conflict.updatedAt);
+    setSaveState("saved");
+    setSaveError("");
+    setConflict(null);
+  };
+
+  const overwriteWithMine = async () => {
+    if (!conflict || !projectId || !componentId) return;
+    setSaveState("saving");
+    const result = await saveComponent(projectId, componentId, buildComponentPatch(), { force: true });
+    if (result.ok && result.savedAt) {
+      setSavedAt(result.savedAt);
+      lastSavedAtRef.current = result.savedAt;
+      setSaveState("saved");
+      setSaveError("");
+      setConflict(null);
+      clearDraft(projectId, componentId);
+    } else {
+      setSaveState("error");
+      setSaveError(result.error ?? "No se pudo guardar.");
+    }
+  };
+
+  // ---------- Historial y cierre de obra ----------
+  const handleCreateVersion = async (label: string) => {
+    if (!projectId) return;
+    setHistoryError("");
+    try {
+      // Se vacía lo pendiente antes: el punto tiene que guardar lo que está en pantalla, no la versión
+      // de hace 400 ms.
+      await flushActiveComponent();
+      setVersions(await createProjectVersionApi(projectId, label));
+      setFileMessage("Punto de restauración creado.");
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : "No se pudo crear el punto de restauración.");
+    }
+  };
+
+  const handleRestoreVersion = async (version: ProjectVersionRow) => {
+    if (!projectId) return;
+    const when = new Date(version.createdAt).toLocaleString("es-MX");
+    if (
+      !window.confirm(
+        `Restaurar el punto "${version.label || when}" reemplaza los datos y TODOS los componentes de este proyecto por los de ese momento.\n\nAntes se guardará un punto con lo que hay ahora, así que se puede volver. ¿Continuar?`
+      )
+    ) {
+      return;
+    }
+    setSwitchingProject(true);
+    setHistoryError("");
+    try {
+      const result = await restoreProjectVersionApi(projectId, version.id);
+      await adoptProject(result.project);
+      setVersions(result.versions);
+      await refreshProjectList();
+      setFileMessage(
+        [`Proyecto restaurado al punto del ${when}.`, ...result.warnings].filter(Boolean).join(" ")
+      );
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : "No se pudo restaurar ese punto.");
+    } finally {
+      setSwitchingProject(false);
+    }
+  };
+
+  const handleSaveOutcome = async (draft: OutcomeDraft) => {
+    if (!projectId) return;
+    setHistoryError("");
+    try {
+      setOutcome(await saveProjectOutcomeApi(projectId, draft));
+      // El cierre alimenta las estadísticas de desviación, así que se vuelven a leer.
+      setLearningLoaded(false);
+      setLearningToken((token) => token + 1);
+      setFileMessage("Cierre de obra registrado.");
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : "No se pudo guardar el cierre.");
+    }
+  };
+
+  const handleClearOutcome = async () => {
+    if (!projectId) return;
+    if (!window.confirm("¿Borrar el cierre de obra de este proyecto? Las estadísticas ya registradas no se borran con esto.")) return;
+    setHistoryError("");
+    try {
+      await clearProjectOutcomeApi(projectId);
+      setOutcome(null);
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : "No se pudo borrar el cierre.");
+    }
+  };
+
+  // ---------- Deshacer ----------
+  const runUndo = async () => {
+    if (!undoAction) return;
+    const action = undoAction;
+    setUndoAction(null);
+    try {
+      await action.run();
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : "No se pudo deshacer.");
     }
   };
 
@@ -875,6 +1809,190 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
     ...leafRailWarnings,
   ];
 
+  // ---------- Resumen comercial del componente abierto, para las columnas de la lista y para las
+  // estadísticas. Se escribe en un ref porque el efecto de autoguardado está declarado más arriba
+  // (ver derivedSaveRef). ----------
+  const componentConfigState: ComponentConfigState = warnings.length > 0 ? "alertas" : "ok";
+  useEffect(() => {
+    derivedSaveRef.current = {
+      typology: configSummary,
+      configState: componentConfigState,
+      unitPrice: Math.round(calc.sale),
+      total: Math.round(calc.total),
+    };
+  }, [configSummary, componentConfigState, calc.sale, calc.total]);
+
+  /** Registra el componente configurado en las estadísticas de mejora. Solo datos del producto y del
+   *  precio: ni el proyecto, ni el cliente, ni ningún identificador (ver lib/learning.ts). */
+  const recordComponentSaved = () => {
+    if (!componentOpenedAtRef.current) return;
+    recordEvent("componente_guardado", {
+      typology: configSummary,
+      brand,
+      systemName: sys.name,
+      glassName: glass.name,
+      colorName: color.name,
+      hardware: selectedLeaf?.spec.hardware ?? "",
+      widthMm: width,
+      heightMm: height,
+      qty,
+      leafCount: calc.leaves.length,
+      railCount: rail,
+      marginPct: margin,
+      discountPct: discount,
+      unitPrice: Math.round(calc.sale),
+      total: Math.round(calc.total),
+      configState: componentConfigState,
+      editSeconds: Math.round((Date.now() - componentOpenedAtRef.current) / 1000),
+      dimensionEdits: dimensionEditsRef.current,
+    });
+  };
+
+  // ---------- Recomendaciones. Se construyen con una función pura sobre las estadísticas y el
+  // contexto de lo que se está cotizando (ver buildRecommendations en lib/learning.ts), así que lo que
+  // se muestra en pantalla es exactamente lo que esa función decide -- y se puede probar sin
+  // navegador. ----------
+  const identicalSiblings = useMemo(
+    () =>
+      components.filter(
+        (component) =>
+          component.id !== componentId &&
+          component.widthMm === width &&
+          component.heightMm === height &&
+          component.systemIndex === systemIndex &&
+          component.brand === brand &&
+          component.typology === configSummary
+      ).length,
+    [components, componentId, width, height, systemIndex, brand, configSummary]
+  );
+
+  const recommendationContext: RecommendationContext = useMemo(
+    () => ({
+      typology: configSummary,
+      systemName: sys.name,
+      glassName: glass.name,
+      widthMm: width,
+      heightMm: height,
+      qty,
+      marginPct: margin,
+      discountPct: discount,
+      hasClientName: !!(projectMeta?.requester.fullName || client),
+      hasClientContact: !!(projectMeta?.requester.phone || projectMeta?.requester.email || clientPhone || clientEmail),
+      hasLocation: !!location.trim(),
+      identicalSiblings,
+    }),
+    [
+      configSummary, sys.name, glass.name, width, height, qty, margin, discount,
+      projectMeta, client, clientPhone, clientEmail, location, identicalSiblings,
+    ]
+  );
+
+  // Sin historial se evalúan igual las reglas que solo miran el proyecto abierto (campos sin llenar,
+  // componentes repetidos): no dependen de estadística alguna, y son útiles desde el primer proyecto.
+  const recommendations: Recommendation[] = useMemo(
+    () => buildRecommendations(visibleStats ?? emptyLearningStats(), recommendationContext),
+    [visibleStats, recommendationContext]
+  );
+
+  // Encender o apagar el registro solo escribe la preferencia: el valor que se muestra sale del
+  // almacén, y el efecto de arriba se encarga de pedir el historial cuando corresponde.
+  const handleToggleLearning = (enabled: boolean) => {
+    setLearningEnabled(enabled);
+  };
+
+  const handleClearLearning = async () => {
+    try {
+      await clearLearning();
+      setLearningLoaded(false);
+      setLearningToken((token) => token + 1);
+      setFileMessage("Historial de mejora borrado. Tus proyectos y clientes no se tocaron.");
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : "No se pudo borrar el historial.");
+    }
+  };
+
+  /** Aplica una recomendación, y solo cuando alguien la pide. Nada de esto ocurre solo: es la
+   *  contraparte del botón "Aplicar" del panel de recomendaciones. */
+  const handleApplyRecommendation = (recommendation: Recommendation) => {
+    const suggestion = recommendation.suggestion;
+    if (!suggestion) return;
+    if (suggestion.field === "glassName") {
+      const index = glassCatalog.findIndex((entry) => entry.name === suggestion.value);
+      if (index >= 0) setGlassIndex(index);
+      return;
+    }
+    if (suggestion.field === "systemName") {
+      const index = catalog[brand].findIndex((entry) => entry.name === suggestion.value);
+      if (index >= 0) changeSystem(index);
+      return;
+    }
+    if (suggestion.field === "marginPct" && typeof suggestion.value === "number") {
+      setMargin(suggestion.value);
+      return;
+    }
+    if (suggestion.field === "qty" && typeof suggestion.value === "number") {
+      setQty(Math.max(1, Math.round(suggestion.value)));
+    }
+    // "typology" no se aplica desde aquí: cambiar la tipología reemplaza la composición completa, y
+    // eso se hace desde el selector de tipologías, donde se ve qué se va a reemplazar.
+  };
+
+  const handleUseTemplate = (template: QuoteTemplate) => {
+    if (template.widthMm > 0) setWidth(template.widthMm);
+    if (template.heightMm > 0) setHeight(template.heightMm);
+    const glassIdx = glassCatalog.findIndex((entry) => entry.name === template.glassName);
+    if (glassIdx >= 0) setGlassIndex(glassIdx);
+    const systemIdx = catalog[brand].findIndex((entry) => entry.name === template.systemName);
+    if (systemIdx >= 0) changeSystem(systemIdx);
+  };
+
+  // ---------- Recuperación de borradores ----------
+  const applyDraft = () => {
+    const patch = draftOffer?.patch;
+    if (!patch || !componentId || !patch.data?.tree) {
+      setDraftOffer(null);
+      return;
+    }
+    loadComponentIntoState({
+      id: componentId,
+      code: patch.code ?? code,
+      designation: patch.designation ?? designation,
+      location: patch.location ?? location,
+      qty: patch.qty ?? qty,
+      widthMm: patch.widthMm ?? width,
+      heightMm: patch.heightMm ?? height,
+      brand: patch.brand ? (patch.brand as Brand) : brand,
+      systemIndex: patch.systemIndex ?? systemIndex,
+      colorIndex: patch.colorIndex ?? colorIndex,
+      data: {
+        rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress,
+        deliveryDate, selectedId,
+        ...patch.data,
+        // El árbol y el marco se fijan DESPUÉS del volcado: el borrador es parcial por tipo, y estos
+        // dos son obligatorios para poder dibujar. El árbol ya se comprobó arriba.
+        tree: patch.data.tree,
+        marco: patch.data.marco ?? marco,
+      },
+    });
+    setDraftOffer(null);
+  };
+
+  const discardDraft = () => {
+    if (projectId && componentId) clearDraft(projectId, componentId);
+    setDraftOffer(null);
+  };
+
+  // Las medidas se cuentan al confirmarse (no en cada tecla: DimensionField solo confirma al salir
+  // del campo o con Enter). Es la señal de "correcciones frecuentes" de las estadísticas.
+  const commitWidth = (value: number) => {
+    dimensionEditsRef.current += 1;
+    setWidth(value);
+  };
+  const commitHeight = (value: number) => {
+    dimensionEditsRef.current += 1;
+    setHeight(value);
+  };
+
   const toolHint =
     activeTool.mode === "select"
       ? "Haz clic en el marco, la hoja, el vidrio o el herraje para seleccionar esa parte"
@@ -896,6 +2014,11 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
     brand,
     systemIndex,
     colorIndex,
+    glassIndex,
+    typology: configSummary,
+    configState: componentConfigState,
+    unitPrice: Math.round(calc.sale),
+    total: Math.round(calc.total),
     data: {
       rail, glassIndex, face, margin, installation, transport, discount, client, clientAddress,
       clientPhone, clientEmail, deliveryDate, selectedId, tree, marco, termsHeader, paymentTerms,
@@ -922,8 +2045,73 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
 
   return (
     <main className="internalApp">
-      <TopBar code={code} designation={designation} location={location} onPrint={handlePrint} selfCheck={selfCheck} savedAt={savedAt} />
+      <TopBar
+        code={code}
+        designation={designation}
+        location={location}
+        projectName={projectName}
+        onPrint={handlePrint}
+        selfCheck={selfCheck}
+        savedAt={savedAt}
+        saveState={lockedByOtherTab ? "locked" : saveState}
+        saveError={saveError}
+      />
       <ModuleNav tabs={TABS} active={tab} onChange={changeTab} />
+
+      {/* Avisos que valen para toda la pantalla, no para una pestaña: se muestran encima del área de
+          trabajo para que no dependan de en qué sección estés. */}
+      {lockedByOtherTab && (
+        <div className="workspaceBanner warn" role="alert">
+          <span>
+            Este componente está abierto en otra pestaña. Para no sobrescribir lo que se haga allí, aquí
+            no se está guardando.
+          </span>
+          <button type="button" onClick={handleTakeOver}>Editar desde aquí</button>
+        </div>
+      )}
+      {draftOffer && (
+        <div className="workspaceBanner info" role="alert">
+          <span>
+            Se encontró trabajo sin guardar de este componente, de{" "}
+            {new Date(draftOffer.savedAt).toLocaleString("es-MX")}, más reciente que lo guardado en el
+            servidor.
+          </span>
+          <button type="button" onClick={applyDraft}>Recuperarlo</button>
+          <button type="button" onClick={discardDraft}>Descartar</button>
+        </div>
+      )}
+      {conflict && (
+        <div className="workspaceBanner error" role="alert">
+          <span>
+            Otra sesión guardó este componente el{" "}
+            {new Date(conflict.updatedAt).toLocaleString("es-MX")}. No se sobrescribió nada: lo que tienes
+            aquí sigue en pantalla y guardado en este navegador.
+          </span>
+          <button type="button" onClick={acceptServerVersion}>Traer la del servidor</button>
+          <button type="button" onClick={() => void overwriteWithMine()}>Guardar la mía</button>
+        </div>
+      )}
+      {saveState === "error" && !conflict && (
+        <div className="workspaceBanner error" role="alert">
+          <span>No se pudo guardar: {saveError} Tu trabajo sigue en pantalla y guardado en este navegador.</span>
+        </div>
+      )}
+      {undoAction && (
+        <div className="workspaceBanner info" role="status">
+          <span>{undoAction.label}</span>
+          <button type="button" onClick={() => void runUndo()}>Deshacer</button>
+          <button type="button" onClick={() => setUndoAction(null)}>Cerrar</button>
+        </div>
+      )}
+
+      <NewProjectDialog
+        open={showNewProject}
+        busy={switchingProject}
+        error={createError}
+        resetToken={createdToken}
+        onCancel={() => setShowNewProject(false)}
+        onCreate={(draft) => void handleCreateProject(draft)}
+      />
 
       <section className="workspace" id="top">
         <aside className="configPanel">
@@ -933,45 +2121,120 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
 
           {tab === "Proyecto" && (
             <>
-              <Block n="01" title="Carpetas" sub="Cada proyecto es una carpeta. Las cotizaciones que tus clientes envían desde el cotizador público entran aquí solas." />
-              <div className="projectFolders">
-                {projects.map((p) => (
-                  <button
-                    key={p.id}
-                    className={`projectFolder ${p.id === projectId ? "active" : ""} ${p.source === "web" ? "isWeb" : ""}`}
-                    onClick={() => handleOpenProject(p.id)}
-                    disabled={switchingProject}
-                  >
-                    <i aria-hidden="true">{p.source === "web" ? "🌐" : "📁"}</i>
-                    <span>
-                      <b>{p.name}</b>
-                      <small>
-                        {p.source === "web" ? `${p.folio || "Sin folio"} · ${p.client || "Sin cliente"} · ` : ""}
-                        {p.componentCount} {p.componentCount === 1 ? "componente" : "componentes"}
-                        {p.pieceCount !== p.componentCount ? ` · ${p.pieceCount} piezas` : ""}
-                      </small>
-                    </span>
-                    {p.source === "web" && <em>WEB</em>}
-                  </button>
-                ))}
-                {projects.length === 0 && (
-                  <p className="notice">
-                    {persistMode === "offline"
-                      ? "Sin conexión con la base de datos: la lista de carpetas no está disponible."
-                      : "Todavía no hay carpetas guardadas."}
-                  </p>
-                )}
-              </div>
-              {projectsError && <p className="sourceNote">⚠ {projectsError}</p>}
-              <button className="fullButton" onClick={handleNewProject} disabled={switchingProject || persistMode === "offline"}>
-                + Nueva carpeta
-              </button>
+              <Block
+                n="01"
+                title="Proyectos"
+                sub="Separados por origen: los que entraron desde un archivo, un respaldo o el cotizador público, y los que se crearon aquí."
+              />
+              <ProjectExplorer
+                projects={projects}
+                trashed={trashedProjects}
+                activeProjectId={projectId}
+                busy={switchingProject}
+                offline={persistMode === "offline"}
+                error={projectsError}
+                onNeedTrash={refreshTrash}
+                onOpen={handleOpenProject}
+                onCreate={() => {
+                  setCreateError("");
+                  setShowNewProject(true);
+                }}
+                onRename={handleRenameProjectFromList}
+                onEditInfo={async (project) => {
+                  // "Editar información" abre el proyecto y lleva a su ficha, que es donde se edita.
+                  if (project.id !== projectId) await handleOpenProject(project.id);
+                  document.getElementById("fichaSolicitante")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                onDuplicate={handleDuplicateProject}
+                onExport={handleExportProject}
+                onArchive={handleArchiveProject}
+                onDelete={handleDeleteProject}
+                onRestore={handleRestoreProject}
+                onPurge={handlePurgeProject}
+                onImportFile={handleImportFile}
+                onBackup={handleBackup}
+                onRestoreBackup={handleRestoreBackup}
+              />
 
-              <Block n="02" title="Proyecto abierto" sub="Un proyecto agrupa varias ventanas/puertas (componentes) que se cotizan y fabrican juntas." />
-              {projectOrigin.source === "web" && (
+              {fileMessage && <p className="explorerNotice" role="status">{fileMessage}</p>}
+
+              {importPrompt && (
+                <div className="importPrompt" role="alertdialog" aria-label="Ese proyecto ya existe aquí">
+                  <p>
+                    <b>“{importPrompt.name}”</b>
+                    {importPrompt.folio ? ` (${importPrompt.folio})` : ""} ya existe en esta plataforma. El archivo trae{" "}
+                    {importPrompt.componentCount} componente(s).
+                  </p>
+                  {importPrompt.warnings.map((warning) => (
+                    <p key={warning} className="importPromptWarning">⚠ {warning}</p>
+                  ))}
+                  <div className="importPromptActions">
+                    <button type="button" onClick={() => void applyImport(importPrompt.text, "copy", importPrompt.warnings)}>
+                      Crear una copia
+                    </button>
+                    <button
+                      type="button"
+                      className="explorerDanger"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Reemplazar sustituye los datos y TODOS los componentes de "${importPrompt.name}" por los del archivo. ¿Continuar?`
+                          )
+                        ) {
+                          void applyImport(importPrompt.text, "replace", importPrompt.warnings);
+                        }
+                      }}
+                    >
+                      Reemplazar el existente
+                    </button>
+                    <button type="button" onClick={() => setImportPrompt(null)}>Cancelar</button>
+                  </div>
+                </div>
+              )}
+
+              <Block
+                n="02"
+                title="Proyecto abierto"
+                sub="Un proyecto agrupa varias ventanas/puertas (componentes) que se cotizan y fabrican juntas."
+              />
+              {projectMeta && (
+                <div className="openProjectMeta">
+                  <span>
+                    Folio<b>{projectMeta.folio || "Sin folio"}</b>
+                  </span>
+                  <span>
+                    Origen<b>{projectOriginLabel(projectMeta.origin)}</b>
+                  </span>
+                  <span>
+                    Estado<b>{projectStatusLabel(projectMeta.status)}</b>
+                  </span>
+                  <span>
+                    Creado<b>{new Date(projectMeta.createdAt).toLocaleString("es-MX")}</b>
+                  </span>
+                  <span>
+                    Modificado<b>{new Date(projectMeta.updatedAt).toLocaleString("es-MX")}</b>
+                  </span>
+                  {projectMeta.importedAt && (
+                    <span>
+                      Importado<b>{new Date(projectMeta.importedAt).toLocaleString("es-MX")}</b>
+                    </span>
+                  )}
+                  {projectMeta.originalCreatedAt && projectMeta.originalCreatedAt !== projectMeta.createdAt && (
+                    <span>
+                      Creación original<b>{new Date(projectMeta.originalCreatedAt).toLocaleString("es-MX")}</b>
+                    </span>
+                  )}
+                  {projectMeta.duplicatedFromId && (
+                    <span>
+                      Duplicado de<b>otro proyecto</b>
+                    </span>
+                  )}
+                </div>
+              )}
+              {projectMeta?.source === "web" && (
                 <p className="sourceNote">
-                  🌐 Llegó del cotizador público · Folio {projectOrigin.folio || "—"}
-                  {projectOrigin.client ? ` · ${projectOrigin.client}` : ""}
+                  🌐 Llegó del cotizador público · Folio {projectMeta.folio || "—"}
+                  {projectMeta.requester.fullName ? ` · ${projectMeta.requester.fullName}` : ""}
                 </p>
               )}
               <label>Nombre del proyecto
@@ -980,23 +2243,98 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
               {persistMode === "offline" && (
                 <p className="sourceNote">⚠ Sin conexión con la base de datos — guardando solo en este navegador. Los componentes de otros dispositivos no aparecerán hasta reconectar.</p>
               )}
-              <Block n="03" title="Componentes" sub="Cada uno es una ventana o puerta independiente dentro del proyecto." />
-              <div className="componentOutliner">
-                {components.map((c) => (
-                  <div key={c.id} className={`componentRow ${c.id === componentId ? "active" : ""}`}>
-                    <button className="componentMain" onClick={() => handleSwitchComponent(c.id)}>
-                      <b>{c.code} · {c.designation}</b>
-                      <span>{c.location || "Sin ubicación"} · {c.widthMm}×{c.heightMm} mm · {c.brand} · cant. {c.qty}</span>
-                    </button>
-                    <div className="componentActions">
-                      <button title="Duplicar" onClick={() => handleDuplicateComponent(c.id)}>⧉</button>
-                      <button title="Eliminar" disabled={components.length <= 1} onClick={() => handleDeleteComponent(c.id)}>✕</button>
-                    </div>
-                  </div>
-                ))}
-                {components.length === 0 && <p className="notice">Este componente aún no se ha guardado en un proyecto (modo sin conexión).</p>}
+
+              <div id="fichaSolicitante">
+                <Block
+                  n="03"
+                  title="Solicitante"
+                  sub="Los datos de quien pide la cotización. Van dentro del archivo del proyecto y se recuperan al importarlo."
+                />
+                {projectMeta ? (
+                  // key por proyecto: cambiar de proyecto remonta la ficha, que es cómo se reinicia
+                  // su borrador sin un efecto de sincronización (ver RequesterPanel).
+                  <RequesterPanel
+                    key={projectMeta.id}
+                    requester={projectMeta.requester}
+                    status={projectMeta.status}
+                    currency={projectMeta.currency}
+                    pricingListId={projectMeta.pricingListId}
+                    estimatedDate={projectMeta.estimatedDate}
+                    notes={projectMeta.notes}
+                    folio={projectMeta.folio}
+                    saving={requesterSaving}
+                    error={requesterError}
+                    readOnly={persistMode === "offline"}
+                    onSave={handleSaveRequester}
+                  />
+                ) : (
+                  <p className="notice">
+                    Sin proyecto en la base de datos: la ficha del solicitante no está disponible en modo sin conexión.
+                  </p>
+                )}
               </div>
-              <button className="fullButton" onClick={handleAddComponent} disabled={!projectId}>+ Agregar componente</button>
+
+              <Block n="04" title="Componentes" sub="Cada uno es una ventana o puerta independiente dentro del proyecto." />
+              <ComponentList
+                components={components}
+                activeComponentId={componentId}
+                projects={projects}
+                currentProjectId={projectId}
+                busy={switchingProject}
+                readOnly={!projectId}
+                onSelect={handleSwitchComponent}
+                onAdd={handleAddComponent}
+                onDuplicate={handleDuplicateComponent}
+                onRename={handleRenameComponent}
+                onChangeQty={handleChangeComponentQty}
+                onDelete={handleDeleteComponent}
+                onBulk={handleBulkComponents}
+              />
+
+              <Block
+                n="05"
+                title="Historial y cierre de obra"
+                sub="Puntos de restauración del proyecto, y lo que costó y se cobró de verdad."
+              />
+              {projectMeta ? (
+                <ProjectHistory
+                  key={projectMeta.id}
+                  versions={versions}
+                  outcome={outcome}
+                  quotedTotal={components.reduce((sum, component) => sum + component.total, 0)}
+                  quotedPieces={components.reduce((sum, component) => sum + component.qty, 0)}
+                  busy={switchingProject}
+                  readOnly={persistMode === "offline"}
+                  error={historyError}
+                  onCreateVersion={(label) => void handleCreateVersion(label)}
+                  onRestoreVersion={(version) => void handleRestoreVersion(version)}
+                  onSaveOutcome={(draft) => void handleSaveOutcome(draft)}
+                  onClearOutcome={() => void handleClearOutcome()}
+                />
+              ) : (
+                <p className="notice">
+                  Sin proyecto en la base de datos: el historial y el cierre de obra no están disponibles
+                  en modo sin conexión.
+                </p>
+              )}
+
+              <Block
+                n="06"
+                title="Mejora continua"
+                sub="Sugerencias y avisos con el dato que los respalda. Nada se aplica sin que lo pidas."
+              />
+              <QuoteInsights
+                enabled={learningEnabled}
+                loading={learningLoading}
+                stats={visibleStats}
+                templates={visibleTemplates}
+                recommendations={recommendations}
+                onToggle={handleToggleLearning}
+                onApply={handleApplyRecommendation}
+                onUseTemplate={handleUseTemplate}
+                onClearHistory={handleClearLearning}
+              />
+
               {hydrated && (
                 <LuftAiPanel
                   actor={agentActor}
@@ -1066,8 +2404,8 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
             <>
               <Block n="01" title="Marca y sistema" sub="Catálogo técnico del proyecto." />
               <div className="segmented">
-                <button className={brand === "Aluplast" ? "selected" : ""} style={brand === "Aluplast" ? { background: brandAccent.Aluplast } : undefined} onClick={() => changeBrand("Aluplast")}>ALUPLAST</button>
-                <button className={brand === "Deceuninck" ? "selected" : ""} style={brand === "Deceuninck" ? { background: brandAccent.Deceuninck } : undefined} onClick={() => changeBrand("Deceuninck")}>DECEUNINCK</button>
+                <button className={brand === "Aluplast" ? "selected brandPill" : ""} style={brand === "Aluplast" ? { background: brandAccent.Aluplast } : undefined} onClick={() => changeBrand("Aluplast")}>ALUPLAST</button>
+                <button className={brand === "Deceuninck" ? "selected brandPill" : ""} style={brand === "Deceuninck" ? { background: brandAccent.Deceuninck } : undefined} onClick={() => changeBrand("Deceuninck")}>DECEUNINCK</button>
               </div>
               <label>Sistema
                 <select value={systemIndex} onChange={(e) => changeSystem(Number(e.target.value))}>
@@ -1107,8 +2445,8 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
                     never touches width/height/qty state mid-edit, so clearing the field, retyping,
                     or a momentarily invalid value never snaps to 0, fights the cursor, or forces a
                     calc/2D/3D recompute per keystroke (see components/editor/DimensionField.tsx). */}
-                <label>Ancho<DimensionField value={width} min={MIN_OPENING_MM} onCommit={setWidth} /></label>
-                <label>Alto<DimensionField value={height} min={MIN_OPENING_MM} onCommit={setHeight} /></label>
+                <label>Ancho<DimensionField value={width} min={MIN_OPENING_MM} onCommit={commitWidth} /></label>
+                <label>Alto<DimensionField value={height} min={MIN_OPENING_MM} onCommit={commitHeight} /></label>
                 <label>Cant.<DimensionField value={qty} min={1} onCommit={setQty} /></label>
               </div>
               <Block n="05" title="Materiales" sub="Color, aplicación y vidrio." />
@@ -1245,17 +2583,29 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
               />
             )}
             <div className="canvasStage" onClick={(e) => { if (e.target === e.currentTarget) clearFocus(); }}>
+              {/* Un proyecto puede llegar sin componentes (recién importado, o del cotizador público).
+                  Se dice con claridad en vez de dibujar la ventana genérica del estado inicial, que
+                  parecería un componente real que nadie creó. */}
+              {hydrated && !componentId && (
+                <div className="canvasEmpty">
+                  <b>Este proyecto no tiene componentes</b>
+                  <p>Cada componente es una ventana o puerta independiente que se cotiza y fabrica con el proyecto.</p>
+                  <button type="button" onClick={handleAddComponent} disabled={!projectId || switchingProject}>
+                    + Agregar el primer componente
+                  </button>
+                </div>
+              )}
               {view === "Sección" && (
                 <>
-                  <div className="dim top"><EditableDim label="W" valueMm={width} min={MIN_OPENING_MM} onCommit={setWidth} /></div>
-                  <div className="dim side"><EditableDim label="H" valueMm={height} min={MIN_OPENING_MM} onCommit={setHeight} /></div>
+                  <div className="dim top"><EditableDim label="W" valueMm={width} min={MIN_OPENING_MM} onCommit={commitWidth} /></div>
+                  <div className="dim side"><EditableDim label="H" valueMm={height} min={MIN_OPENING_MM} onCommit={commitHeight} /></div>
                   <SectionRender depth={sys.depth} rail={rail} glazing={glass.thickness} />
                 </>
               )}
               {view === "2D" && (
-                <PanZoomViewport onBackgroundClick={clearFocus}>
-                  <div className="dim top"><EditableDim label="W" valueMm={width} min={MIN_OPENING_MM} onCommit={setWidth} /></div>
-                  <div className="dim side"><EditableDim label="H" valueMm={height} min={MIN_OPENING_MM} onCommit={setHeight} /></div>
+                <PanZoomViewport onBackgroundClick={clearFocus} aspect={width / height}>
+                  <div className="dim top"><EditableDim label="W" valueMm={width} min={MIN_OPENING_MM} onCommit={commitWidth} /></div>
+                  <div className="dim side"><EditableDim label="H" valueMm={height} min={MIN_OPENING_MM} onCommit={commitHeight} /></div>
                   <FrameCanvas
                     tree={tree}
                     width={width}
@@ -1263,6 +2613,7 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
                     selectedId={selectedId}
                     color={color}
                     system={sys}
+                    railCount={rail}
                     focusScope={focusScope}
                     focusPart={focusPart}
                     focusSide={focusSide}

@@ -3,6 +3,7 @@ import { flattenToLeafFrames } from "@/lib/tree";
 import { FrameNodeView } from "./FrameNodeView";
 import { CentralLocks } from "./CentralLocks";
 import { AssemblyMarcoHits } from "./AssemblyMarcoHits";
+import { RailGuides } from "./RailGuides";
 
 type Props = {
   tree: FrameNode;
@@ -38,6 +39,7 @@ export function WindowDiagram({ tree, width, height, color, system }: Props) {
           onPartClick={noop}
         />
       ))}
+      <RailGuides tree={tree} />
       <CentralLocks tree={tree} widthMm={width} heightMm={height} onCentralLockClick={noop} />
       <AssemblyMarcoHits showFocus={false} focusScope="leaf" focusPart={null} focusSide={null} onClick={noop} />
     </div>

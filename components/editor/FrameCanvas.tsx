@@ -6,6 +6,7 @@ import { flattenToLeafFrames } from "@/lib/tree";
 import { FrameNodeView } from "./FrameNodeView";
 import { CentralLocks } from "./CentralLocks";
 import { AssemblyMarcoHits } from "./AssemblyMarcoHits";
+import { RailGuides } from "./RailGuides";
 import type { PartKind, SideKey } from "./frameTypes";
 
 type Props = {
@@ -20,6 +21,8 @@ type Props = {
   focusScope: FocusScope;
   focusPart: PartKind | null;
   focusSide: SideKey | null;
+  // Tipo de riel elegido para el conjunto, para dibujar las guías del marco inferior.
+  railCount?: number;
   // false for the static report diagram -- it must never reflect the live editor's selection.
   showFocus?: boolean;
   onPartClick: (id: string, part: PartKind, side: SideKey | null, e: MouseEvent<HTMLButtonElement>) => void;
@@ -37,6 +40,7 @@ export function FrameCanvas({
   focusScope,
   focusPart,
   focusSide,
+  railCount = 0,
   showFocus = true,
   onPartClick,
   onAssemblyMarcoClick,
@@ -61,6 +65,7 @@ export function FrameCanvas({
             onPartClick={onPartClick}
           />
         ))}
+        <RailGuides tree={tree} railCount={railCount} />
         <CentralLocks tree={tree} widthMm={width} heightMm={height} onCentralLockClick={onCentralLockClick} />
         <AssemblyMarcoHits showFocus={showFocus} focusScope={focusScope} focusPart={focusPart} focusSide={focusSide} onClick={onAssemblyMarcoClick} />
       </div>
