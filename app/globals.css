@@ -6,25 +6,67 @@
    independent per-side hit zones, the toolbox-as-flex-sibling layout (not an overlay), the
    explorer tree, side/marco/vidrio editors, and the printable report documents. */
 
+/* ---------- Tokens de color ----------
+   Una sola escala para los dos temas. Las reglas de abajo NO vuelven a escribir un color
+   literal: piden un token y el bloque `prefers-color-scheme: dark` lo baja de tono. Eso es
+   lo que evita que el modo oscuro se arregle componente por componente.
+
+   Cuatro niveles de texto, no uno: --ink (principal), --text-2 (secundario), --muted (tenue)
+   y --disabled-fg. El blanco puro solo aparece sobre relleno de acento (--accent-contrast).
+
+   --accent y --accent-text son tokens distintos a propósito: el primero es relleno/borde y
+   lleva texto blanco encima; el segundo es el acento usado COMO texto sobre un panel, y en
+   oscuro tiene que aclararse mucho más para llegar a 4.5:1 (WCAG AA). Un solo token no puede
+   cumplir las dos cosas: lo bastante oscuro para que el blanco resalte encima y lo bastante
+   claro para leerse sobre el panel. */
 :root{
-  --paper:#eef1f2; --surface:#ffffff; --ink:#171b1e;
-  --line:#d7dee1; --muted:#5c6b72; --warn-bg:#fff5dc; --warn-fg:#795b1a; --warn-line:#f1d792;
-  --ok-bg:#e8f2e7; --ok-fg:#367558; --shadow:#14231c1f; --accent:#1D6CA6;
+  color-scheme:light;
+  --paper:#eef1f2; --surface:#ffffff; --ink:#171b1e; --text-2:#3a474e;
+  --line:#cbd5d9; --muted:#55636a; --disabled-fg:#7c8a90;
+  --warn-bg:#fff5dc; --warn-fg:#6d5215; --warn-line:#e6c87c;
+  --ok-bg:#e8f2e7; --ok-fg:#2c6349;
+  --danger-bg:#fdecee; --danger-fg:#993040; --danger-line:#eab8c0;
+  --shadow:#14231c1f; --accent:#1D6CA6; --accent-text:#155a8c;
+  --accent-contrast:#fff;
+  --field-bg:#f6f8f9; --field-border:#c2ced3; --field-text:#171b1e; --field-placeholder:#6f7d84;
+  --focus-ring:#1D6CA6;
+  --hover-bg:rgba(29,108,166,.09); --selected-bg:rgba(29,108,166,.14);
+  --disabled-bg:#e9edee; --disabled-line:#cfd7da;
+  --grid-line:rgba(23,27,30,.06);
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --paper:#12161a; --surface:#1b2126; --ink:#e6ecef;
-    --line:#2b3339; --muted:#8fa0a8; --warn-bg:#3a2f10; --warn-fg:#f0cf7a; --warn-line:#5b4a1c;
-    --ok-bg:#183828; --ok-fg:#7fd8ab; --shadow:#00000055;
+    color-scheme:dark;
+    --paper:#12161a; --surface:#1b2126; --ink:#eef3f6; --text-2:#c8d3d9;
+    --line:#3a454c; --muted:#a4b2ba; --disabled-fg:#7b888f;
+    --warn-bg:#3a2f10; --warn-fg:#f3d68b; --warn-line:#6a5623;
+    --ok-bg:#183828; --ok-fg:#8ee0b6;
+    --danger-bg:#3b1a20; --danger-fg:#ffa3b0; --danger-line:#6d2b36;
+    --shadow:#00000055; --accent-text:#7cc0f2;
+    --field-bg:#0d1115; --field-border:#465259; --field-placeholder:#8f9ca3; --field-text:#eef3f6;
+    --focus-ring:#7cc0f2;
+    --hover-bg:rgba(124,192,242,.14); --selected-bg:rgba(124,192,242,.2);
+    --disabled-bg:#20272c; --disabled-line:#39434a;
+    --grid-line:rgba(238,243,246,.07);
   }
 }
 *{box-sizing:border-box}
 html{background:var(--paper)}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased}
 button{font:inherit;cursor:pointer;color:inherit}
-button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-select,input[type=number],input[type=text],input[type=date]{width:100%;height:40px;border:1px solid var(--line);background:var(--paper);border-radius:7px;padding:0 10px;color:var(--ink);font-size:12px}
-textarea{background:var(--paper);color:var(--ink)}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+/* email/tel/search entran en la misma lista que text/number/date: la ficha del solicitante y el
+   buscador del explorador los usan, y sin estar aquí quedaban con el aspecto nativo del navegador
+   -- en modo oscuro, un campo blanco en medio de un panel oscuro. */
+select,input[type=number],input[type=text],input[type=date],input[type=email],input[type=tel],input[type=search]{width:100%;height:40px;border:1px solid var(--field-border);background:var(--field-bg);border-radius:7px;padding:0 10px;color:var(--field-text);font-size:12px}
+textarea{background:var(--field-bg);border-color:var(--field-border);color:var(--field-text)}
+/* Los controles nativos (menú del select, casilla, selector de fecha, barra de rango) los pinta
+   el navegador, no esta hoja: sin color-scheme/accent-color salen en claro dentro del tema oscuro. */
+input,select,textarea{accent-color:var(--accent)}
+::placeholder{color:var(--field-placeholder);opacity:1}
+/* Deshabilitado = color propio, no opacidad global: bajarle el alfa a todo el control apaga
+   también el borde y el fondo, y el texto deja de ser legible (ver §"estados" del encargo). */
+input:disabled,select:disabled,textarea:disabled{background:var(--disabled-bg);border-color:var(--disabled-line);color:var(--disabled-fg);cursor:not-allowed}
 a{color:inherit}
 .appUpdateToast{
   position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));z-index:1000;transform:translateX(-50%);
@@ -35,7 +77,7 @@ a{color:inherit}
 
 .topbar{height:76px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:20;gap:12px}
 .brand{color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:12px;letter-spacing:.08em;font-size:18px}
-.brand b{color:var(--accent);transition:color .2s}
+.brand b{color:var(--accent-text);transition:color .2s}
 .brandMark{width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:900;transition:background .2s}
 .projectName{display:flex;flex-direction:column;text-align:center;gap:2px}
 .projectName span,.eyebrow,.quoteHead span,.metricRow span,.totalBox span,.priceNote{font-size:10px;letter-spacing:.12em;color:var(--muted)}
@@ -48,22 +90,26 @@ a{color:inherit}
 
 .moduleNav{height:42px;display:flex;justify-content:center;gap:4px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:76px;z-index:19}
 .moduleNav button{border:0;background:transparent;padding:0 24px;font-size:11px;color:var(--muted);border-bottom:2px solid transparent}
-.moduleNav button.active{color:var(--accent);font-weight:bold;border-bottom-color:var(--accent)}
+.moduleNav button.active{color:var(--accent-text);font-weight:bold;border-bottom-color:var(--accent)}
 
 .workspace{display:grid;grid-template-columns:360px minmax(460px,1fr) 390px;min-height:calc(100vh - 76px)}
 .configPanel,.quotePanel{background:var(--surface);padding:28px;border-right:1px solid var(--line);overflow:auto}
 .quotePanel{border-right:0;border-left:1px solid var(--line);padding:0 26px 24px}
-.eyebrow{color:var(--accent);font-weight:bold;margin-bottom:10px}
+.eyebrow{color:var(--accent-text);font-weight:bold;margin-bottom:10px}
 .configPanel h1{font-family:Georgia,serif;font-size:40px;line-height:1.02;margin:0 0 12px;letter-spacing:-.04em;text-wrap:balance}
 .lead{font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:24px}
 .step{display:flex;gap:12px;border-top:1px solid var(--line);padding-top:18px;margin-top:20px}
-.step>span{color:var(--accent);font-size:11px;font-weight:bold}
+.step>span{color:var(--accent-text);font-size:11px;font-weight:bold}
 .step div{display:flex;flex-direction:column;gap:3px}
 .step b{font-size:13px}
 .step small{color:var(--muted);font-size:11px}
 .segmented{display:grid;grid-template-columns:1fr 1fr;margin:14px 0 12px;border:1px solid var(--line);border-radius:9px;padding:3px}
 .segmented button{border:0;background:transparent;padding:10px;font-size:10px;font-weight:800;color:var(--muted);border-radius:6px}
-.segmented button.selected{background:var(--accent);color:#fff}
+.segmented button.selected{background:var(--accent);color:var(--accent-contrast)}
+/* El botón de marca activa lleva el color real de la marca como fondo (rojo Aluplast). El texto
+   tiene que ser blanco pase lo que pase: heredar el color de acento del tema dejaba morado
+   sobre rojo, ilegible, y solo se notaba en modo claro porque el bloque oscuro sí lo forzaba. */
+.segmented button.selected.brandPill,.internalApp .segmented button.selected.brandPill{color:#fff}
 .configPanel label,.additional label{display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--muted);font-weight:bold;margin-top:10px}
 .inputGrid{display:grid;grid-template-columns:1fr 1fr 80px;gap:8px}
 .inputGrid.two{grid-template-columns:1fr 1fr}
@@ -90,31 +136,62 @@ a{color:inherit}
 .scene3dHint{position:absolute;bottom:14px;right:14px;font-size:8px;color:var(--muted);background:var(--surface);border:1px solid var(--line);padding:5px 9px;border-radius:20px;pointer-events:none}
 .canvas{position:relative;flex:1;min-height:500px;display:flex;align-items:stretch;gap:16px;padding:16px;background-color:var(--paper)}
 .canvasStage{position:relative;flex:1;min-width:0;display:grid;place-items:center;padding:54px;overflow:hidden}
-.panZoomViewport{position:absolute;inset:0;touch-action:none;cursor:grab;background-image:linear-gradient(color-mix(in srgb, var(--ink) 6%, transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb, var(--ink) 6%, transparent) 1px,transparent 1px);background-size:var(--viewport-grid-size,28px) var(--viewport-grid-size,28px);background-position:var(--viewport-pan-x,0) var(--viewport-pan-y,0)}
+.panZoomViewport{position:absolute;inset:0;touch-action:none;cursor:grab;background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:var(--viewport-grid-size,28px) var(--viewport-grid-size,28px);background-position:var(--viewport-pan-x,0) var(--viewport-pan-y,0)}
 .panZoomViewport.isPanning,.panZoomViewport.isPanning *{cursor:grabbing!important}
 .panZoomLayer{position:absolute;inset:0;box-sizing:border-box;padding:54px;display:grid;place-items:center;transform-origin:center;will-change:transform;pointer-events:none}
 .panZoomLayer>.modelStage,.panZoomLayer>.dim{pointer-events:auto}
 .viewportControls{position:absolute;top:18px;right:18px;z-index:9;display:flex;align-items:center;overflow:hidden;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:0 5px 16px var(--shadow)}
 .viewportControls button{height:30px;min-width:32px;padding:0 9px;border:0;border-right:1px solid var(--line);background:transparent;color:var(--ink);font-size:11px;cursor:pointer}
-.viewportControls button:hover{background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent)}
+.viewportControls button:hover{background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent-text)}
 .viewportControls button:last-child{border-right:0}
 .viewportControls .viewportScale{min-width:52px;font-variant-numeric:tabular-nums}
 .viewportControls .viewportCenter{font-size:8px;letter-spacing:.05em;text-transform:uppercase}
 .viewportHint{position:absolute;right:18px;bottom:20px;z-index:6;max-width:45%;padding:6px 9px;border:1px solid var(--line);border-radius:20px;background:color-mix(in srgb,var(--surface) 92%,transparent);color:var(--muted);font-size:8px;text-align:center;pointer-events:none}
-.modelStage{width:min(76%,650px,calc(420px * var(--ar,1.818)));aspect-ratio:var(--ar,1.818);perspective:1100px;position:relative;display:grid;place-items:center}
+/* El tamaño del dibujo lo mide PanZoomViewport y lo entrega en --fit-w/--fit-h: el rectángulo
+   más grande con la proporción REAL de la ventana que cabe en el lienzo disponible. Los topes
+   fijos que había aquí (650px de ancho y un presupuesto de alto de 420px) no eran un ajuste sino
+   un supuesto: en un lienzo más grande que ese supuesto la ventana se quedaba diminuta en una
+   esquina, ocupando una fracción del espacio. El valor de reserva conserva el cálculo anterior
+   para los diagramas de informe, que se dibujan sin viewport que los mida. */
+.modelStage{width:var(--fit-w,min(76%,650px,calc(420px * var(--ar,1.818))));height:var(--fit-h,auto);aspect-ratio:var(--ar,1.818);perspective:1100px;position:relative;display:grid;place-items:center}
 .modelStage .window{width:100%;height:100%}
 .view-3D .modelStage{transform-style:preserve-3d;transform:rotateY(-24deg) rotateX(3deg);filter:drop-shadow(28px 28px 24px var(--shadow))}
 .view-3D .window{transform-style:preserve-3d;box-shadow:none}
 .modelSide{position:absolute;top:0;right:-22px;width:24px;height:100%;background:linear-gradient(90deg,#0c1713,#35473f);transform-origin:left;transform:rotateY(90deg);border:1px solid #08100d}
 .modelSill{position:absolute;left:0;right:0;bottom:-20px;height:22px;background:linear-gradient(#23332c,#0d1814);transform-origin:top;transform:rotateX(-90deg)}
-.window{width:min(76%,650px);aspect-ratio:var(--ar,1.818);border:15px solid #1d2924;background:linear-gradient(135deg,#b9d5d7,#e5eeee 45%,#afcdd0);display:flex;box-shadow:0 24px 40px var(--shadow);position:relative;min-height:0}
-.window.whiteFrame{border-color:#f7f7f2;box-shadow:0 0 0 1px #aeb8b1,0 24px 40px var(--shadow)}
+/* La ventana flota sobre el lienzo. Aquí había un borde de 15px en verde oscuro (#1d2924) que no
+   era ningún perfil del sistema: era un vano de instalación dibujado alrededor del producto, y
+   por eso se leía como un segundo marco por fuera del marco real -- el real sí sale del folio
+   elegido y cambia de color con él, el falso no cambiaba nunca. Con el vano fuera, el marco
+   visible es el del sistema y nada más.
+   El fondo pasa de un degradado azul de vidrio al color del folio: en los sistemas de corredera
+   la hoja se encaja en el marco (frameSeatMm, ver flattenToLeafFrames) y deja a la vista una
+   franja perimetral que ES el marco real, proporcional a los milímetros reales. Como vidrio azul
+   estaba mal pintada, y transparente se vería un hueco.
+   --marco-hit es el ancho de las zonas de clic del marco de conjunto, que antes coincidía con
+   ese borde; ahora es una franja transparente en el margen (ver .hitAssemblyMarco*).
+   La sombra queda suave y hacia abajo: separa el producto del fondo sin volver a insinuar un
+   hueco de muro. */
+.window{--marco-hit:14px;width:min(76%,650px);aspect-ratio:var(--ar,1.818);border:0;background:var(--frame,#dfe2dc);display:flex;box-shadow:inset 0 0 0 1px rgba(0,0,0,.22),0 10px 20px -10px var(--shadow);position:relative;min-height:0}
 .splitNode{display:flex;min-width:0;min-height:0;position:relative}
 .splitNode.axisCol{flex-direction:row}
 .splitNode.axisRow{flex-direction:column}
-.pane{flex:1;position:relative;border-style:solid;border-color:#24352e;background:var(--frame,#dfe2dc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);overflow:hidden;min-width:0;--ring:max(9%,12px)}
+/* --ring = ancho del perfil de hoja; --stile = eje del montante, donde se monta la herrajería
+   (a media madera entre el canto de la hoja y el vidrio). Todo el dibujo de manillas, bisagras
+   y cierres se posiciona contra --stile, así que sigue cuadrando a cualquier tamaño de hoja. */
+.pane{flex:1;position:relative;border-style:solid;border-color:#24352e;background:var(--frame,#dfe2dc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);overflow:hidden;min-width:0;--ring:max(9%,12px);--stile:max(13%,17px)}
 .whiteFrame .pane{border-color:#e8eae5}
-.pane.selectedPane{outline:4px solid var(--accent);outline-offset:-4px;box-shadow:inset 0 0 0 2px #14231c}
+/* Selección: una línea separada del producto por unos píxeles de fondo, no un anillo metido
+   dentro de la hoja. El anillo interior anterior (con su reflejo blanco y su filo oscuro) se
+   leía como un perfil más de la ventana en vez de como una marca de la interfaz; el velo
+   translúcido que hubo antes apagaba justo lo que hay que ver al seleccionar (manilla, flechas,
+   cotas de la hoja). El desplazamiento hacia fuera es lo que la hace inequívocamente anotación. */
+.pane.selectedPane{outline:2px solid var(--focus-ring);outline-offset:3px}
+.pane:hover:not(.selectedPane){outline:2px dashed color-mix(in srgb,var(--focus-ring) 65%,transparent);outline-offset:2px}
+/* Fija vs móvil: la hoja fija no lleva perfil de hoja, y además se trama para distinguirla de
+   un vistazo cuando conviven las dos en la misma composición. */
+.paneFixed .glassFill{background:linear-gradient(145deg,#a7c3c8cc,#dde8e7cc 55%,#9dbfc6cc)}
+.paneFixed .glassFill::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 9px,rgba(40,70,80,.09) 9px,rgba(40,70,80,.09) 10px)}
 .sashRing{position:absolute;inset:var(--ring);background:var(--frame,#dfe2dc);filter:brightness(.82);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.2);pointer-events:none}
 .glassFill{position:absolute;inset:max(17%,22px);background:linear-gradient(145deg,#9cbec4cc,#e9f2f0cc 55%,#91b8c2cc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);pointer-events:none;overflow:hidden}
 .glassFill:after{content:"";position:absolute;width:160%;height:14px;background:#ffffff44;transform:rotate(-35deg);top:24%;left:-30%}
@@ -134,29 +211,101 @@ a{color:inherit}
 .hitVidrioLeft{top:max(17%,22px);bottom:max(17%,22px);left:max(17%,22px);width:10px}
 .hitVidrioRight{top:max(17%,22px);bottom:max(17%,22px);right:max(17%,22px);width:10px}
 .hitHerraje{position:absolute;z-index:5;bottom:6px;left:6px;width:24px;height:24px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:12px;display:grid;place-items:center}
-.hitAssemblyMarco{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer;z-index:8}
-.hitAssemblyMarco:hover{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent)}
-.hitAssemblyMarco.marcoSideFocus{background:color-mix(in srgb, var(--accent) 55%, transparent);box-shadow:inset 0 0 0 2px var(--accent)}
-.hitAssemblyMarcoTop{top:-15px;left:-15px;right:-15px;height:15px}
-.hitAssemblyMarcoBottom{bottom:-15px;left:-15px;right:-15px;height:15px}
-.hitAssemblyMarcoLeft{top:-15px;bottom:-15px;left:-15px;width:15px}
-.hitAssemblyMarcoRight{top:-15px;bottom:-15px;right:-15px;width:15px}
-.cierreCentral{position:absolute;top:50%;transform:translate(-50%,-50%);z-index:6;width:22px;height:22px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:11px;border:0;padding:0;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}
-.motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#2870a2;font-size:18px;pointer-events:none}
-.pane em{position:absolute;z-index:4;bottom:4px;right:34px;font-size:8px;font-style:normal;color:#325248;pointer-events:none}
-.openingLines{position:absolute;inset:0;display:block;background:linear-gradient(32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%),linear-gradient(-32deg,transparent 49.7%,#ffffffaa 50%,transparent 50.4%);pointer-events:none}
-.paneHardware{position:absolute;z-index:4;top:5px;left:5px;background:#ffffffd9;color:#274d3e;padding:3px 5px;border-radius:4px;font-size:7px;pointer-events:none}
-.paneDim{position:absolute;z-index:4;bottom:5px;right:5px;background:#ffffffd9;color:#274d3e;padding:3px 5px;border-radius:4px;font-size:7px;font-weight:normal;font-style:normal;pointer-events:none}
+/* Zonas de clic del marco de conjunto. Viven en el margen, sobre el fondo del lienzo y no sobre
+   el producto: son transparentes salvo al apuntarlas o al quedar seleccionadas, así que ya no
+   pintan ninguna franja permanente alrededor de la ventana. Cuando se marcan, el relleno tenue
+   más el filo de 1px se leen como una anotación en el margen, no como un perfil de la ventana.
+   Llegar al marco de conjunto también es posible desde el árbol de Composición, que lo lista con
+   nombre -- de ahí que estas franjas puedan ser invisibles sin volverse inalcanzables. */
+.hitAssemblyMarco{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer;z-index:210}
+.hitAssemblyMarco:hover{background:color-mix(in srgb, var(--accent) 14%, transparent)}
+.hitAssemblyMarco.marcoSideFocus{background:color-mix(in srgb, var(--accent) 26%, transparent);box-shadow:inset 0 0 0 1px var(--accent)}
+.hitAssemblyMarcoTop{top:calc(-1 * var(--marco-hit,14px));left:calc(-1 * var(--marco-hit,14px));right:calc(-1 * var(--marco-hit,14px));height:var(--marco-hit,14px)}
+.hitAssemblyMarcoBottom{bottom:calc(-1 * var(--marco-hit,14px));left:calc(-1 * var(--marco-hit,14px));right:calc(-1 * var(--marco-hit,14px));height:var(--marco-hit,14px)}
+.hitAssemblyMarcoLeft{top:calc(-1 * var(--marco-hit,14px));bottom:calc(-1 * var(--marco-hit,14px));left:calc(-1 * var(--marco-hit,14px));width:var(--marco-hit,14px)}
+.hitAssemblyMarcoRight{top:calc(-1 * var(--marco-hit,14px));bottom:calc(-1 * var(--marco-hit,14px));right:calc(-1 * var(--marco-hit,14px));width:var(--marco-hit,14px)}
+/* Las capas de anotación (cierre central y zonas del marco de conjunto) van por encima de
+   cualquier hoja: la hoja seleccionada se eleva sobre sus vecinas para que su marca de selección
+   no quede tapada en el traslape (ver FrameNodeView), y sin este margen de altura acabaría
+   tapando ella el marcador del cierre. */
+.cierreCentral{position:absolute;top:50%;transform:translate(-50%,-50%);z-index:200;width:22px;height:22px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:11px;border:0;padding:0;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#1d4f74;font-size:18px;font-weight:bold;text-shadow:0 1px 0 rgba(255,255,255,.75);pointer-events:none}
+/* El nombre de la hoja cae sobre la banda de perfil, que puede ser un folio oscuro (nogal,
+   antracita): sin fondo propio desaparecía. Mismo tratamiento de placa que las demás etiquetas. */
+.pane em{position:absolute;z-index:6;bottom:4px;right:34px;font-size:8px;font-style:normal;background:#ffffffe8;color:#1f4034;padding:2px 4px;border-radius:4px;pointer-events:none}
+.paneHardware{position:absolute;z-index:6;top:5px;left:5px;background:#ffffffe8;color:#1f4034;padding:3px 5px;border-radius:4px;font-size:7px;pointer-events:none}
+.paneRail{position:absolute;z-index:6;top:5px;right:5px;background:#ffffffe8;color:#1f4034;padding:3px 5px;border-radius:4px;font-size:7px;font-weight:bold;pointer-events:none}
+.paneDim{position:absolute;z-index:6;bottom:5px;right:5px;background:#ffffffe8;color:#1f4034;padding:3px 5px;border-radius:4px;font-size:7px;font-weight:normal;font-style:normal;pointer-events:none}
+
+/* ---------- Herrajería dibujada ----------
+   Manilla, bisagras, pivotes, puntos de cierre y símbolo de apertura de cada hoja. La posición
+   la calcula lib/hardware.ts a partir de la configuración; aquí solo está la forma. Los colores
+   son fijos en los dos temas a propósito: representan piezas físicas sobre un vidrio que
+   siempre es claro, no cromo de la interfaz. */
+.sashSymbol{position:absolute;inset:max(17%,22px);z-index:4;color:rgba(24,58,78,.5);pointer-events:none}
+.mallorquinaLouvres{position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(35,60,70,.34) 0 2px,transparent 2px 9px);pointer-events:none}
+
+.hingeSet{position:absolute;z-index:5;display:flex;pointer-events:none}
+.hingeSet-left,.hingeSet-right{top:8%;bottom:8%;width:0;flex-direction:column;justify-content:space-between;align-items:center}
+.hingeSet-left{left:var(--stile)}
+.hingeSet-right{right:var(--stile)}
+.hingeSet-top,.hingeSet-bottom{left:8%;right:8%;height:0;flex-direction:row;justify-content:space-between;align-items:center}
+.hingeSet-top{top:var(--stile)}
+.hingeSet-bottom{bottom:var(--stile)}
+.hinge{width:5px;height:13px;border-radius:2px;background:linear-gradient(180deg,#4e5b63,#232c33);box-shadow:0 0 0 1px rgba(255,255,255,.4)}
+.hingeSet-top .hinge,.hingeSet-bottom .hinge{width:13px;height:5px;background:linear-gradient(90deg,#4e5b63,#232c33)}
+
+.pivotSet{position:absolute;z-index:5;left:50%;top:0;bottom:0;pointer-events:none}
+.pivotPoint{position:absolute;left:0;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:#2b343b;box-shadow:0 0 0 2px rgba(255,255,255,.6)}
+.pivotPoint-top{top:var(--stile)}
+.pivotPoint-bottom{bottom:var(--stile)}
+
+.lockSet{position:absolute;z-index:5;display:flex;pointer-events:none}
+.lockSet-left,.lockSet-right{top:12%;bottom:12%;width:0;flex-direction:column;justify-content:space-between;align-items:center}
+.lockSet-left{left:var(--stile)}
+.lockSet-right{right:var(--stile)}
+.lockSet-top,.lockSet-bottom{left:12%;right:12%;height:0;flex-direction:row;justify-content:space-between;align-items:center}
+.lockSet-top{top:var(--stile)}
+.lockSet-bottom{bottom:var(--stile)}
+.lockPoint{width:5px;height:5px;border-radius:50%;background:#3a4750;box-shadow:0 0 0 1.5px rgba(255,255,255,.55)}
+
+/* La manilla es el control de "Herraje" de la hoja: es clicable y tiene foco propio. */
+.sashHandle{position:absolute;z-index:7;appearance:none;border:0;padding:0;background:transparent;cursor:pointer;display:block;line-height:0}
+.sashHandle-left{transform:translate(-50%,50%)}
+.sashHandle-right{transform:translate(50%,50%)}
+.sashHandle-top{transform:translate(-50%,-50%)}
+.sashHandle-bottom{transform:translate(-50%,50%)}
+.sashHandleRose{display:block;width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 34% 30%,#fdfdfd,#c3ccd2 58%,#8d979e);box-shadow:0 1px 3px rgba(0,0,0,.45),0 0 0 1px rgba(30,40,48,.5)}
+.sashHandleLever{display:block;position:absolute;border-radius:2px;background:linear-gradient(180deg,#f2f5f7,#9aa4ab);box-shadow:0 1px 3px rgba(0,0,0,.4),0 0 0 1px rgba(30,40,48,.45)}
+/* La palanca apunta hacia el centro de la hoja, como una manilla cerrada. */
+.sashHandle-left .sashHandleLever{width:16px;height:5px;left:9px;top:4px}
+.sashHandle-right .sashHandleLever{width:16px;height:5px;right:9px;top:4px}
+.sashHandle-top .sashHandleLever{width:5px;height:16px;top:9px;left:4px}
+.sashHandle-bottom .sashHandleLever{width:5px;height:16px;bottom:9px;left:4px}
+/* Manillón doble: barra larga en lugar de palanca. */
+.sashHandle-bar .sashHandleRose{width:7px;height:34px;border-radius:4px;background:linear-gradient(90deg,#f2f5f7,#98a2a9)}
+.sashHandle-bar .sashHandleLever{display:none}
+.sashHandle-bar.sashHandleH .sashHandleRose{width:34px;height:7px;background:linear-gradient(180deg,#f2f5f7,#98a2a9)}
+/* Cierre embutido: sin palanca, un embutido ovalado a ras del perfil. */
+.sashHandle-flush .sashHandleRose{width:9px;height:20px;border-radius:5px;background:linear-gradient(180deg,#aeb7bd,#e8ecee)}
+.sashHandle-flush .sashHandleLever{display:none}
+/* Manivela: palanca corta acodada. */
+.sashHandle-crank .sashHandleLever{width:13px;height:4px;border-radius:2px;transform:rotate(38deg);transform-origin:0 50%}
+.sashHandle:hover .sashHandleRose,.sashHandle:focus-visible .sashHandleRose{box-shadow:0 1px 3px rgba(0,0,0,.45),0 0 0 2px var(--focus-ring)}
+
+/* Rieles del marco inferior, uno por carril en uso (ver components/editor/RailGuides.tsx). */
+.railGuides{position:absolute;left:0;right:0;bottom:0;z-index:5;height:max(4%,7px);display:flex;flex-direction:column;justify-content:space-evenly;pointer-events:none}
+.railGuide{height:2px;background:rgba(24,36,44,.5);box-shadow:0 1px 0 rgba(255,255,255,.35)}
 .dim{position:absolute;color:var(--muted);font-size:10px;letter-spacing:.07em}
 .dim.top{top:40px;left:19%;right:19%;border-top:1px solid var(--line);text-align:center}
 .dim.top .dimLabel{background:var(--paper);padding:0 8px;position:relative;top:-7px}
 .dim.side{left:42px;top:20%;bottom:20%;border-left:1px solid var(--line);display:flex;align-items:center}
 .dim.side .dimLabel{background:var(--paper);padding:6px;transform:rotate(-90deg);margin-left:-24px}
 button.dimLabel{border:0;font:inherit;letter-spacing:inherit;color:inherit;cursor:pointer;border-radius:4px}
-button.dimLabel:hover{color:var(--accent);outline:1px dashed color-mix(in srgb, var(--accent) 50%, transparent)}
+button.dimLabel:hover{color:var(--accent-text);outline:1px dashed color-mix(in srgb, var(--accent) 50%, transparent)}
 input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;letter-spacing:inherit;width:6.5em;text-align:center;border-radius:4px}
 .dim.side input.dimLabel{transform:rotate(-90deg)}
-.editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--accent);border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));padding:7px 11px;border-radius:20px;font-size:8px;letter-spacing:.06em;text-align:center;max-width:70%;z-index:7;box-shadow:0 4px 14px var(--shadow)}
+.editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--accent-text);border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));padding:7px 11px;border-radius:20px;font-size:8px;letter-spacing:.06em;text-align:center;max-width:70%;z-index:7;box-shadow:0 4px 14px var(--shadow)}
 .specChip{position:absolute;left:24px;bottom:22px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 13px;display:flex;flex-direction:column;font-size:10px;gap:3px;box-shadow:0 6px 18px var(--shadow)}
 .specChip span{color:var(--muted)}
 .metricRow{height:74px;display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line)}
@@ -166,11 +315,11 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .toolbox{position:relative;flex:0 0 auto;align-self:flex-start;margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 24px var(--shadow);max-height:calc(100% - 32px);overflow:auto}
 .explorerTree{display:flex;flex-direction:column;gap:2px;margin-top:6px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .explorerLeaf{text-align:left;padding:7px 10px;font-size:9px;font-weight:bold;background:var(--paper);border:0;border-bottom:1px solid var(--line);color:var(--ink);cursor:pointer}
-.explorerLeaf.active{background:color-mix(in srgb, var(--accent) 16%, var(--paper));color:var(--accent)}
+.explorerLeaf.active{background:color-mix(in srgb, var(--accent) 16%, var(--paper));color:var(--accent-text)}
 .explorerMarco{text-align:left;padding:8px 10px;font-size:9.5px;font-weight:800;letter-spacing:.04em;background:color-mix(in srgb, var(--accent) 8%, var(--paper));border:0;border-bottom:1px solid var(--line);color:var(--ink);cursor:pointer}
-.explorerMarco.active{background:color-mix(in srgb, var(--accent) 22%, var(--paper));color:var(--accent)}
+.explorerMarco.active{background:color-mix(in srgb, var(--accent) 22%, var(--paper));color:var(--accent-text)}
 .explorerGancho{text-align:left;padding:6px 10px 6px 18px;font-size:8.5px;background:var(--surface);border:0;border-bottom:1px solid var(--line);color:var(--muted);cursor:pointer}
-.explorerGancho.active{background:color-mix(in srgb, var(--accent) 16%, var(--surface));color:var(--accent)}
+.explorerGancho.active{background:color-mix(in srgb, var(--accent) 16%, var(--surface));color:var(--accent-text)}
 .explorerVidrioHeader{padding:6px 10px 4px 18px;font-size:7.5px;letter-spacing:.08em;font-weight:bold;color:var(--muted);background:var(--surface)}
 .explorerSides{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
 .explorerSide{padding:6px 4px;font-size:7.5px;letter-spacing:.02em;background:var(--surface);border:0;border-right:1px solid var(--line);color:var(--muted);cursor:pointer}
@@ -182,21 +331,21 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .explorerChevron{display:inline-block;font-size:8px;transition:transform .12s;color:var(--muted)}
 .explorerChevron.open{transform:rotate(90deg)}
 .sideEditor{border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:8px;display:flex;flex-direction:column;gap:8px}
-.sideEditor b{font-size:9px;letter-spacing:.06em;color:var(--accent)}
+.sideEditor b{font-size:9px;letter-spacing:.06em;color:var(--accent-text)}
 .sideEditor label{display:flex;flex-direction:column;gap:4px;font-size:9px;color:var(--muted)}
 .sideEditor .checkRow{flex-direction:row;align-items:center;gap:6px}
 .toolboxGroup{display:flex;flex-direction:column;gap:6px}
 .toolboxGroup>span{font-size:8px;letter-spacing:.08em;color:var(--muted);font-weight:bold}
 .toolboxGrid{display:grid;grid-template-columns:repeat(4,28px);gap:5px}
-.toolboxGrid button{width:28px;height:28px;border:1px solid var(--line);background:var(--paper);border-radius:6px;font-size:14px;color:var(--accent);display:grid;place-items:center;padding:0}
+.toolboxGrid button{width:28px;height:28px;border:1px solid var(--line);background:var(--paper);border-radius:6px;font-size:14px;color:var(--accent-text);display:grid;place-items:center;padding:0}
 .toolboxGrid button.active{border-color:var(--accent);background:var(--accent);color:#fff}
 .toolboxAction{width:100%;border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:7px 8px;font-size:9px;text-align:left;color:var(--ink)}
-.toolboxAction:disabled{opacity:.4;cursor:not-allowed}
+.toolboxAction:disabled{background:var(--disabled-bg);border-color:var(--disabled-line);color:var(--disabled-fg);cursor:not-allowed}
 
 .typologyGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
 .typologyButton{display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:8px 4px;cursor:pointer;color:var(--ink)}
 .typologyButton:hover{border-color:var(--accent)}
-.typologyIcon{font-size:16px;letter-spacing:-.05em;color:var(--accent)}
+.typologyIcon{font-size:16px;letter-spacing:-.05em;color:var(--accent-text)}
 .typologyName{font-size:7.5px;letter-spacing:.02em;text-align:center;line-height:1.25}
 
 .sectionRender{width:70%;display:grid;grid-template-columns:220px 1fr;gap:25px;align-items:center}
@@ -214,27 +363,27 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .badge.warning{background:var(--warn-bg)!important;color:var(--warn-fg)!important}
 .warnings{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;margin:10px 0;padding:8px}
 .warnings p{margin:3px;font-size:9px;color:var(--warn-fg)}
-.fieldWarning{display:block;margin-top:3px;font-size:8.5px;color:var(--warn-fg)}
+.fieldWarning{display:block;margin-top:3px;font-size:9px;font-weight:700;color:var(--warn-fg)}
 
 .componentEditor{border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:10px 0 14px}
 .componentTitle{background:var(--accent);color:#fff;padding:12px;display:grid;grid-template-columns:1fr auto;gap:3px;transition:background .2s}
-.componentTitle span{grid-column:1/3;font-size:7px;letter-spacing:.14em;color:#ffffffbb}
+.componentTitle span{grid-column:1/3;font-size:8px;letter-spacing:.14em;color:#ffffffe0}
 .componentTitle b{font-size:15px}
 .componentTitle small{font-size:8px;align-self:center}
 .componentGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px}
-.componentGrid label{font-size:8px;color:var(--muted);border-radius:6px;padding:3px;transition:background .25s,box-shadow .25s}
-.componentGrid select{height:32px;font-size:9px}
+.componentGrid label{font-size:9.5px;color:var(--text-2);border-radius:6px;padding:3px;transition:background .25s,box-shadow .25s}
+.componentGrid select{height:34px;font-size:10px}
 .componentGrid .wide{grid-column:1/3}
-.componentGrid textarea{width:100%;min-height:55px;border:1px solid var(--line);border-radius:6px;padding:7px;font:9px Arial}
+.componentGrid textarea{width:100%;min-height:55px;border:1px solid var(--field-border);border-radius:6px;padding:7px;font:10px/1.4 inherit}
 .componentGrid .checkRow{grid-column:1/3;flex-direction:row!important;align-items:center;gap:7px;padding:7px 3px}
 .componentGrid .checkRow input{width:auto;height:auto}
 .partFocus{outline:2px solid var(--accent);outline-offset:1px;background:color-mix(in srgb, var(--accent) 10%, transparent)}
 .componentNote{font-size:8px;line-height:1.45;color:var(--warn-fg);background:var(--warn-bg);margin:0;padding:9px}
-.fullButton{width:100%;border:1.5px solid var(--accent);background:transparent;padding:12.5px 14px;border-radius:8px;color:var(--accent);font-size:11px;font-weight:bold;display:flex;justify-content:space-between;margin-top:10px;transition:background .15s,color .15s}
+.fullButton{width:100%;border:1.5px solid var(--accent);background:transparent;padding:12.5px 14px;border-radius:8px;color:var(--accent-text);font-size:11px;font-weight:bold;display:flex;justify-content:space-between;margin-top:10px;transition:background .15s,color .15s}
 .fullButton:hover{background:var(--accent);color:#fff}
 
 .propertyGroup{margin-bottom:14px}
-.propertyGroup h2,.costSummary h2{font-size:11px;background:color-mix(in srgb, var(--accent) 12%, var(--surface));padding:7px 8px;margin:0;color:var(--accent)}
+.propertyGroup h2,.costSummary h2{font-size:11px;background:color-mix(in srgb, var(--accent) 12%, var(--surface));padding:7px 8px;margin:0;color:var(--accent-text)}
 .prop{display:grid;grid-template-columns:1.15fr 1fr;border-bottom:1px solid var(--line);font-size:9px}
 .prop span,.prop b{padding:6px 8px}
 .prop span{color:var(--muted);background:var(--paper)}
@@ -243,22 +392,22 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .line b{color:var(--ink)}
 .direct{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding:10px 0;font-size:10px}
 .totalBox{background:var(--accent);color:#fff;border-radius:10px;padding:16px;margin:12px 0;transition:background .2s}
-.totalBox>span{color:#ffffffcc;display:flex;justify-content:space-between}
+.totalBox>span{color:#ffffffe6;display:flex;justify-content:space-between}
 .totalBox small{font-size:8px}
 .totalBox>strong{display:block;font-family:Georgia,serif;font-size:28px;margin:8px 0 14px;font-variant-numeric:tabular-nums}
 .totalBox div{display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #ffffff33;font-size:11px}
-.totalBox div span{color:#ffffffcc}
+.totalBox div span{color:#ffffffe6}
 .materials{border-top:1px solid var(--line);margin-top:12px}
 .materials summary{padding:10px 0;font-size:10px;font-weight:bold;cursor:pointer}
 .materialItem{display:grid;grid-template-columns:68px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
-.materialItem>span{font-size:9px;color:var(--accent)}
+.materialItem>span{font-size:9px;color:var(--accent-text)}
 .materialItem div{display:flex;justify-content:space-between;gap:8px}
 .materialItem b,.materialItem small{font-size:10px}
 .materialItem small{color:var(--muted);white-space:nowrap}
 .priceNote{text-align:center;line-height:1.5;margin-top:12px;letter-spacing:.04em}
 
 .optimization{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;border:1px solid var(--line);border-radius:9px;padding:15px;margin:14px 0}
-.optimization strong{font-size:30px;grid-row:1/3;color:var(--accent);font-variant-numeric:tabular-nums}
+.optimization strong{font-size:30px;grid-row:1/3;color:var(--accent-text);font-variant-numeric:tabular-nums}
 .optimization span{font-size:9px;color:var(--muted)}
 .optimization b{font-size:13px}
 .cutPlan{margin:14px 0;max-height:230px;overflow:auto}
@@ -266,43 +415,23 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .cutPlan header{display:flex;justify-content:space-between;font-size:8px;margin-bottom:3px}
 .cutPlan header span{color:var(--muted)}
 .cutPlan section{height:25px;display:flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
-.cutPlan i,.cutPlan em{display:grid;place-items:center;min-width:32px;padding:0 3px;border-right:1px solid var(--surface);background:#5e9e84;color:#fff;font-size:7px;font-style:normal}
+.cutPlan i,.cutPlan em{display:grid;place-items:center;min-width:32px;padding:0 3px;border-right:1px solid var(--surface);background:#2f6c55;color:#fff;font-size:7.5px;font-style:normal}
 .cutPlan em{background:var(--paper);color:var(--muted);border:0}
 .notice{font-size:10px;line-height:1.5;color:var(--warn-fg);background:var(--warn-bg);padding:10px;border-radius:7px}
 .profileFilters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
 .profileCount{font-size:9px;color:var(--muted);margin:4px 0 10px}
 .profileCatalog{display:grid;gap:6px;max-height:420px;overflow:auto}
 .profileCatalog>div{display:grid;grid-template-columns:44px 1fr;border:1px solid var(--line);border-radius:7px;overflow:hidden}
-.profileSketch{display:grid;place-items:center;background:var(--paper);font-size:20px;color:var(--accent)}
+.profileSketch{display:grid;place-items:center;background:var(--paper);font-size:20px;color:var(--accent-text)}
 .profileCatalog section{padding:7px}
-.profileCatalog b{font-size:9px;color:var(--accent)}
+.profileCatalog b{font-size:9px;color:var(--accent-text)}
 .profileCatalog p{font-size:9px;margin:3px 0}
 .profileCatalog small{font-size:8px;color:var(--muted)}
 
-.componentOutliner{display:grid;gap:6px;margin:10px 0}
-.componentRow{display:grid;grid-template-columns:1fr auto;align-items:stretch;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--surface)}
-.componentRow.active{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 10%, var(--surface))}
-.componentMain{display:grid;gap:3px;text-align:left;padding:9px 10px}
-.componentMain b{font-size:10px;color:var(--ink)}
-.componentMain span{font-size:8.5px;color:var(--muted)}
-.componentActions{display:flex;flex-direction:column;border-left:1px solid var(--line)}
-.componentActions button{flex:1;padding:0 10px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--line)}
-.componentActions button:last-child{border-bottom:none}
-.componentActions button:hover:not(:disabled){color:var(--accent)}
-.componentActions button:disabled{opacity:.35}
-
-/* Selector de carpetas. Reusa la escala tipográfica y los radios del outliner de componentes:
-   es la misma clase de lista, un nivel más arriba. Las que llegaron del cotizador público se
-   marcan con acento e insignia WEB para reconocerlas sin leer el nombre. */
-.projectFolders{display:grid;gap:6px;margin:10px 0;max-height:236px;overflow-y:auto}
-.projectFolder{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;text-align:left;padding:9px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface)}
-.projectFolder i{font-style:normal;font-size:13px;line-height:1}
-.projectFolder span{display:grid;gap:3px;min-width:0}
-.projectFolder b{font-size:10px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.projectFolder small{font-size:8.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.projectFolder em{font-style:normal;font-size:7.5px;font-weight:700;letter-spacing:.08em;color:var(--accent);border:1px solid color-mix(in srgb, var(--accent) 42%, transparent);border-radius:999px;padding:2px 6px}
-.projectFolder.active{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 10%, var(--surface))}
-.projectFolder:disabled{opacity:.55}
+/* La lista de componentes y el selector de carpetas que vivían aquí los sustituyeron
+   components/projects/ComponentList.tsx y components/projects/ProjectExplorer.tsx, con sus
+   estilos al final de este archivo. Las reglas de .internalApp de más abajo siguen dándoles el
+   mismo tratamiento de panel de vidrio que tenían, ahora por .componentItem y .explorerRow. */
 
 /* Expediente de clientes (tab Clientes). Misma escala tipográfica minúscula y mismos radios que
    el resto del panel técnico: es una herramienta de trabajo, no una pantalla de cliente. Cada
@@ -314,7 +443,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .clientBookFilters label:first-child{grid-column:1/-1}
 .clientBookFilters input,.clientBookFilters select{width:100%;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);padding:7px 8px;font:inherit;font-size:9px}
 .clientBookSummary{margin:0;font-size:8.5px;color:var(--muted)}
-.clientBookError{margin:0;font-size:8.5px;color:#a12d3b;background:rgba(224,69,88,.1);border-radius:6px;padding:7px 8px}
+.clientBookError{margin:0;font-size:9px;color:var(--danger-fg);background:var(--danger-bg);border:1px solid var(--danger-line);border-radius:6px;padding:7px 8px}
 .clientBookEmpty{margin:0;font-size:9px;color:var(--muted);border:1px dashed var(--line);border-radius:7px;padding:14px 10px;text-align:center}
 .clientCard{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:10px}
 .clientCard>header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -322,7 +451,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .clientCard b{font-size:10.5px;color:var(--ink)}
 .clientCard small{font-size:8.5px;color:var(--muted)}
 .clientCardContact{align-items:flex-end;text-align:right}
-.clientCardContact a{font-size:8.5px;color:var(--accent);text-decoration:none}
+.clientCardContact a{font-size:8.5px;color:var(--accent-text);text-decoration:none}
 .clientCardAddress{margin:6px 0 0;font-size:8.5px;color:var(--muted)}
 .clientQuotes{list-style:none;display:grid;gap:6px;margin:9px 0 0;padding:0}
 .clientQuotes>li{border-top:1px solid var(--line);padding-top:7px}
@@ -331,7 +460,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .clientQuoteFigures{display:grid;gap:2px;text-align:right;flex:0 1 auto}
 .clientQuoteFigures b{font-variant-numeric:tabular-nums}
 .clientQuoteRow select{border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);padding:5px 7px;font:inherit;font-size:8px}
-.clientQuoteDoc,.clientQuoteRow button{border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--accent);padding:5px 9px;font-size:8px;font-weight:700;text-decoration:none}
+.clientQuoteDoc,.clientQuoteRow button{border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--accent-text);padding:5px 9px;font-size:8px;font-weight:700;text-decoration:none}
 .clientQuoteNotes{margin:6px 0 0;font-size:8.5px;font-style:italic;color:var(--muted)}
 .clientQuoteHistory{list-style:none;display:grid;gap:4px;margin:7px 0 0;padding:7px 0 0;border-top:1px dashed var(--line)}
 .clientQuoteHistory li{display:grid;gap:1px}
@@ -370,10 +499,10 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 
 .reportList{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}
 .reportList button{display:flex;justify-content:space-between;border:1px solid var(--line);background:var(--surface);padding:11px;border-radius:7px;font-size:9px;color:var(--ink)}
-.reportList button.selected{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 12%, var(--surface));color:var(--accent);font-weight:bold}
+.reportList button.selected{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 12%, var(--surface));color:var(--accent-text);font-weight:bold}
 .reportPreview{margin-top:12px;border:1px solid var(--line);background:var(--surface);border-radius:5px;overflow:hidden}
 .reportPreview>header{padding:15px;background:var(--paper);display:flex;flex-direction:column;gap:3px}
-.reportPreview>header span{font-size:8px;letter-spacing:.12em;color:var(--accent)}
+.reportPreview>header span{font-size:8px;letter-spacing:.12em;color:var(--accent-text)}
 .reportPreview>header b{font-size:18px}
 .reportPreview>header small{font-size:8px;color:var(--muted)}
 .reportPreview h3{font-size:11px;margin:15px}
@@ -397,14 +526,14 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .docMeta b{color:var(--ink);font-weight:bold}
 .docIntro{font-size:9.5px;line-height:1.6;color:var(--muted);margin:0 0 16px;max-width:62ch}
 .docItem{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:16px}
-.docItemHead{background:color-mix(in srgb, var(--accent) 10%, var(--surface));padding:8px 12px;font-size:10px;font-weight:bold;color:var(--accent)}
+.docItemHead{background:color-mix(in srgb, var(--accent) 10%, var(--surface));padding:8px 12px;font-size:10px;font-weight:bold;color:var(--accent-text)}
 .docItemBody{display:grid;grid-template-columns:1.3fr 1fr;gap:0}
 .docSpecTable{border-collapse:collapse;width:100%;font-size:9px}
 .docSpecTable td{border-bottom:1px solid var(--line);padding:7px 10px}
 .docSpecTable td:first-child{color:var(--muted);width:38%}
 .docDiagramBox{display:flex;align-items:center;justify-content:center;padding:16px;background:var(--paper);border-left:1px solid var(--line)}
 .docDiagramBox .window{width:min(100%,220px,calc(140px * var(--ar,1.818)));aspect-ratio:var(--ar,1.818);min-height:0}
-.docDiagramBox .paneHardware,.docDiagramBox .paneDim,.docDiagramBox .pane em,.docDiagramBox .hitHerraje,.docDiagramBox .cierreCentral{display:none}
+.docDiagramBox .paneHardware,.docDiagramBox .paneRail,.docDiagramBox .paneDim,.docDiagramBox .pane em,.docDiagramBox .hitHerraje,.docDiagramBox .cierreCentral{display:none}
 .docTable{border-collapse:collapse;width:100%;font-size:9px;margin-bottom:4px}
 .docTable th,.docTable td{border:1px solid var(--line);padding:6px 8px;text-align:left}
 .docTable th{background:color-mix(in srgb, var(--accent) 8%, var(--paper));font-size:8.5px;letter-spacing:.02em;color:var(--ink)}
@@ -415,7 +544,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .docStatGrid div{border:1px solid var(--line);border-radius:7px;padding:10px}
 .docStatGrid span{display:block;font-size:8px;color:var(--muted);letter-spacing:.06em}
 .docStatGrid b{font-size:14px}
-.docTerms h4{font-size:10px;margin:16px 0 6px;color:var(--accent)}
+.docTerms h4{font-size:10px;margin:16px 0 6px;color:var(--accent-text)}
 .docTerms p,.docTerms li{font-size:9px;line-height:1.6;color:var(--ink);margin:4px 0}
 .docBank{background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:10px 12px;font-size:9px;line-height:1.7;margin:8px 0}
 .docSignatures{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:34px}
@@ -424,7 +553,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 
 .cutGroup{margin-bottom:18px}
 .cutGroupHead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
-.cutGroupHead b{font-size:11px;color:var(--accent)}
+.cutGroupHead b{font-size:11px;color:var(--accent-text)}
 .cutGroupHead span{font-size:8.5px;color:var(--muted)}
 .cutBarRow{margin-bottom:10px}
 .cutBarLabel{display:flex;justify-content:space-between;font-size:8px;color:var(--muted);margin-bottom:3px}
@@ -436,24 +565,43 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 @media print{.reportDoc{border:0;border-radius:0}.docPage{padding:0}.docPageBreak{border-top:0;page-break-before:always;margin-top:0;padding-top:26px}}
 
 .sources{background:var(--surface);color:var(--muted);padding:18px 30px;font-size:9px;text-align:center;border-top:1px solid var(--line)}
-.sources a{color:var(--accent)}
+.sources a{color:var(--accent-text)}
 
 /* ---------- Aplicación interna · Liquid Glass ----------
    Capa visual aislada bajo .internalApp. La jerarquía, controles, canvas, reportes y
    cálculos conservan exactamente el mismo DOM y comportamiento. */
 .internalApp{
+  color-scheme:light;
   --paper:rgba(244,247,255,.56);
   --surface:rgba(255,255,255,.66);
-  --ink:#242238;
+  --ink:#211f35;
+  --text-2:#3d3a55;
   --line:rgba(255,255,255,.7);
-  --muted:#66647a;
+  --muted:#5c5974;
+  --disabled-fg:#84819a;
   --shadow:rgba(57,45,112,.22);
   --accent:#6c60ea;
+  --accent-text:#5245cd;
+  --accent-contrast:#fff;
   --warn-bg:rgba(255,241,195,.68);
-  --warn-fg:#765b19;
+  --warn-fg:#6b5215;
   --warn-line:rgba(224,184,77,.38);
   --ok-bg:rgba(213,245,229,.72);
-  --ok-fg:#277158;
+  --ok-fg:#22654e;
+  --danger-bg:rgba(255,226,230,.72);
+  --danger-fg:#9a2c3b;
+  --danger-line:rgba(198,72,92,.34);
+  /* Campo editable: tiene que leerse como un hueco dentro del panel, no como el panel mismo. */
+  --field-bg:rgba(255,255,255,.62);
+  --field-border:rgba(255,255,255,.88);
+  --field-text:var(--ink);
+  --field-placeholder:#736f8d;
+  --focus-ring:#6c60ea;
+  --hover-bg:rgba(108,96,234,.1);
+  --selected-bg:rgba(235,232,255,.72);
+  --disabled-bg:rgba(232,232,244,.5);
+  --disabled-line:rgba(120,113,158,.24);
+  --grid-line:rgba(69,59,115,.055);
   --ia-glass:rgba(255,255,255,.54);
   --ia-glass-strong:rgba(255,255,255,.72);
   --ia-highlight:rgba(255,255,255,.92);
@@ -513,11 +661,14 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .internalApp .step{border-color:rgba(92,81,151,.13)}
 .internalApp .step>span{width:25px;height:25px;flex:0 0 auto;display:grid;place-items:center;border:1px solid rgba(255,255,255,.76);border-radius:999px;background:rgba(255,255,255,.48);box-shadow:inset 0 1px 0 #fff,0 8px 16px -14px rgba(69,55,160,.7)}
 .internalApp select,.internalApp input[type=number],.internalApp input[type=text],.internalApp input[type=date],.internalApp textarea{
-  border:1px solid rgba(255,255,255,.88);border-radius:14px;background:rgba(255,255,255,.62);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.98),0 9px 22px -18px rgba(54,40,122,.62);
+  border:1px solid var(--field-border);border-radius:14px;background:var(--field-bg);color:var(--field-text);
+  box-shadow:inset 0 1px 0 var(--ia-highlight),0 9px 22px -18px rgba(54,40,122,.62);
   transition:border-color .2s,background .2s,box-shadow .2s
 }
-.internalApp select:focus,.internalApp input:focus,.internalApp textarea:focus{background:rgba(255,255,255,.78);border-color:rgba(111,101,232,.5);box-shadow:0 0 0 4px rgba(111,101,232,.11),inset 0 1px 0 #fff}
+.internalApp select:hover:not(:disabled),.internalApp input:hover:not(:disabled),.internalApp textarea:hover:not(:disabled){border-color:color-mix(in srgb,var(--focus-ring) 45%,var(--field-border))}
+.internalApp select:focus,.internalApp input:focus,.internalApp textarea:focus{border-color:var(--focus-ring);box-shadow:0 0 0 4px color-mix(in srgb,var(--focus-ring) 22%,transparent),inset 0 1px 0 var(--ia-highlight)}
+.internalApp select:disabled,.internalApp input:disabled,.internalApp textarea:disabled{background:var(--disabled-bg);border-color:var(--disabled-line);color:var(--disabled-fg);box-shadow:none}
+.internalApp input[aria-invalid=true],.internalApp select[aria-invalid=true]{border-color:var(--danger-line);background:var(--danger-bg)}
 .internalApp .segmented{border:1px solid rgba(255,255,255,.8);border-radius:17px;padding:4px;background:rgba(255,255,255,.34);box-shadow:inset 0 1px 0 rgba(255,255,255,.76)}
 .internalApp .segmented button{border-radius:12px}
 .internalApp .segmented button.selected{background:rgba(255,255,255,.82);color:#5146c9;box-shadow:0 8px 18px -13px rgba(70,55,160,.7),inset 0 1px 0 #fff}
@@ -534,7 +685,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .internalApp .presetRow button.active{border-color:#ffffff88;background:linear-gradient(145deg,#8d83f3,#6559dd);box-shadow:0 9px 20px -13px rgba(69,55,175,.7)}
 .internalApp .canvas{margin:12px;border:1px solid rgba(255,255,255,.72);border-radius:24px;background:radial-gradient(100% 90% at 70% 100%,rgba(199,245,229,.26),transparent 56%),linear-gradient(145deg,rgba(245,247,255,.45),rgba(225,239,255,.28));box-shadow:inset 0 1px 0 rgba(255,255,255,.8);overflow:hidden}
 .internalApp .canvasStage{border-radius:20px}
-.internalApp .canvas.view-2D .canvasStage{background-image:linear-gradient(rgba(69,59,115,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(69,59,115,.055) 1px,transparent 1px)}
+.internalApp .canvas.view-2D .canvasStage{background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px)}
 .internalApp .viewportControls,.internalApp .scene3dHint,.internalApp .viewportHint{
   border:1px solid rgba(255,255,255,.84);background:linear-gradient(145deg,rgba(255,255,255,.72),rgba(255,255,255,.44));box-shadow:0 14px 30px -18px rgba(61,48,130,.62),inset 0 1px 0 #fff;
   backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5)
@@ -553,10 +704,10 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .internalApp .fullButton{border:1px solid rgba(111,101,232,.36);border-radius:15px;background:linear-gradient(145deg,rgba(255,255,255,.55),rgba(255,255,255,.28));box-shadow:inset 0 1px 0 rgba(255,255,255,.86)}
 .internalApp .fullButton:hover{background:linear-gradient(145deg,#8d83f3,#6559dd);border-color:transparent;box-shadow:0 12px 28px -16px rgba(74,57,181,.65)}
 .internalApp .propertyGroup h2,.internalApp .costSummary h2{border-radius:11px;background:rgba(255,255,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
-.internalApp .componentRow,.internalApp .reportList button,.internalApp .profileCatalog>div,.internalApp .projectFolder{
+.internalApp .componentItem,.internalApp .reportList button,.internalApp .profileCatalog>div,.internalApp .explorerRow{
   border:1px solid rgba(255,255,255,.76);border-radius:15px;background:linear-gradient(145deg,rgba(255,255,255,.55),rgba(255,255,255,.3));box-shadow:inset 0 1px 0 rgba(255,255,255,.9)
 }
-.internalApp .componentRow.active,.internalApp .reportList button.selected,.internalApp .projectFolder.active{background:rgba(235,232,255,.7);border-color:rgba(111,101,232,.38);box-shadow:0 10px 22px -17px rgba(67,53,157,.65),inset 0 1px 0 #fff}
+.internalApp .componentItem.isActive,.internalApp .reportList button.selected,.internalApp .explorerRow.isActive{background:rgba(235,232,255,.7);border-color:rgba(111,101,232,.38);box-shadow:0 10px 22px -17px rgba(67,53,157,.65),inset 0 1px 0 #fff}
 .internalApp .componentTitle{background:linear-gradient(145deg,rgba(143,133,245,.95),rgba(101,89,221,.96))}
 .internalApp .totalBox{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.62);border-radius:22px;background:linear-gradient(145deg,rgba(158,149,255,.96),rgba(112,98,229,.96) 55%,rgba(89,75,205,.97));box-shadow:0 22px 46px -24px rgba(63,45,172,.82),inset 0 1px 0 rgba(255,255,255,.68)}
 .internalApp .totalBox::after{content:"";position:absolute;inset:-70% -20%;transform:rotate(16deg);background:linear-gradient(90deg,transparent 36%,rgba(255,255,255,.25) 50%,transparent 64%);pointer-events:none}
@@ -565,16 +716,75 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .internalApp button{transition:transform .18s ease,filter .18s ease,background .18s ease,box-shadow .18s ease}
 .internalApp button:active:not(:disabled){transform:scale(.98)}
 
+/* Modo oscuro de la app interna.
+   Antes este bloque solo bajaba seis tokens (paper/surface/ink/line/muted/shadow) y dejaba
+   heredados los del tema claro: el acento como texto, los avisos, el "OK", el fondo de los
+   campos y los estados. De ahí venían los grises deslavados sobre panel morado y las píldoras
+   pastel claras dentro de una interfaz oscura. Ahora se redefine la escala completa. */
 @media(prefers-color-scheme:dark){
   .internalApp{
-    --paper:rgba(35,32,57,.5);--surface:rgba(43,39,68,.56);--ink:#f0eff9;--line:rgba(255,255,255,.13);--muted:#aaa8bd;--shadow:rgba(0,0,0,.35);
+    color-scheme:dark;
+    --paper:rgba(28,25,47,.58);
+    --surface:rgba(46,42,72,.62);
+    --ink:#f4f3fb;
+    --text-2:#d8d5e8;
+    --muted:#b8b4cc;
+    --disabled-fg:#918da8;
+    --line:rgba(255,255,255,.2);
+    --shadow:rgba(0,0,0,.5);
+    /* El acento de relleno no se toca (lleva blanco encima y ya cumple); el acento COMO texto
+       sube a un lila claro, que es lo que hacía ilegibles los títulos y las etiquetas. */
+    --accent-text:#bcb0ff;
+    --warn-bg:rgba(92,68,22,.62);--warn-fg:#f6d79a;--warn-line:rgba(226,178,86,.42);
+    --ok-bg:rgba(24,72,54,.62);--ok-fg:#8fe3ba;
+    --danger-bg:rgba(94,28,40,.6);--danger-fg:#ffa7b2;--danger-line:rgba(255,120,140,.38);
+    --field-bg:rgba(14,12,28,.62);
+    --field-border:rgba(255,255,255,.28);
+    --field-placeholder:#a09cb8;
+    --focus-ring:#bcb0ff;
+    --hover-bg:rgba(166,154,255,.16);
+    --selected-bg:rgba(116,104,206,.36);
+    --disabled-bg:rgba(255,255,255,.05);
+    --disabled-line:rgba(255,255,255,.15);
+    --grid-line:rgba(196,188,255,.08);
     --ia-glass:rgba(43,39,68,.6);--ia-glass-strong:rgba(50,46,76,.78);--ia-highlight:rgba(255,255,255,.18);
     --ia-panel-hi:rgba(102,94,142,.34);--ia-panel-mid:rgba(43,39,68,.66);--ia-panel-low:rgba(29,35,55,.52);
     background:radial-gradient(950px 600px at 0 -5%,rgba(102,49,92,.52),transparent 58%),radial-gradient(900px 650px at 100% 0,rgba(46,80,130,.6),transparent 60%),radial-gradient(800px 600px at 70% 100%,rgba(35,100,82,.4),transparent 62%),linear-gradient(145deg,#191526,#171d2e 55%,#152720)
   }
   .internalApp .topbar,.internalApp .moduleNav{background:linear-gradient(145deg,rgba(67,61,98,.72),rgba(28,27,47,.54))}
-  .internalApp select,.internalApp input[type=number],.internalApp input[type=text],.internalApp input[type=date],.internalApp textarea{background:rgba(28,26,45,.5)}
-  .internalApp .segmented button.selected,.internalApp .moduleNav button.active,.internalApp .viewSwitch .active{background:rgba(91,83,132,.7);color:#fff}
+  .internalApp .segmented button.selected,.internalApp .moduleNav button.active,.internalApp .viewSwitch button.active{background:rgba(103,94,158,.78);color:#fff}
+  /* Superficies de tarjeta y de fila: en claro son blancos translúcidos; heredarlos en oscuro
+     dejaba texto claro sobre una lámina casi blanca. */
+  .internalApp .toolboxGrid button,.internalApp .toolboxAction,.internalApp .explorerLeaf,.internalApp .explorerMarco,
+  .internalApp .explorerGancho,.internalApp .explorerSide,.internalApp .explorerSplitHeader{
+    border-color:rgba(255,255,255,.16);background:rgba(255,255,255,.07)
+  }
+  .internalApp .summaryCard,.internalApp .componentEditor,.internalApp .optimization,.internalApp .reportPreview,
+  .internalApp .docItem,.internalApp .componentItem,.internalApp .reportList button,.internalApp .profileCatalog>div,
+  .internalApp .explorerRow,.internalApp .typologyButton,.internalApp .clientCard{
+    border-color:rgba(255,255,255,.16);background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.04))
+  }
+  .internalApp .summaryCard span,.internalApp .prop span,.internalApp .reportPreview>header{background:rgba(255,255,255,.05)}
+  .internalApp .componentItem.isActive,.internalApp .reportList button.selected,.internalApp .explorerRow.isActive{
+    background:var(--selected-bg);border-color:color-mix(in srgb,var(--accent-text) 55%,transparent)
+  }
+  .internalApp .propertyGroup h2,.internalApp .costSummary h2{background:rgba(255,255,255,.07)}
+  .internalApp .step>span{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.2)}
+  .internalApp .segmented{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16)}
+  .internalApp .viewSwitch{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16)}
+  .internalApp .presetRow button{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18)}
+  .internalApp .fullButton{border-color:color-mix(in srgb,var(--accent-text) 46%,transparent);background:rgba(255,255,255,.05)}
+  .internalApp .viewportControls,.internalApp .scene3dHint,.internalApp .viewportHint,.internalApp .editHint,.internalApp .specChip,.internalApp .toolbox{
+    border-color:rgba(255,255,255,.18);
+    background:linear-gradient(145deg,rgba(58,53,88,.9),rgba(36,33,58,.86))
+  }
+  .internalApp .appUpdateToast{border-color:rgba(255,255,255,.2);background:rgba(52,47,82,.9);color:var(--ink)}
+  /* Lienzo y cabecera de la vista: en claro son degradados de blanco translúcido. Heredarlos
+     dejaba una lámina clara en medio de la interfaz oscura, con el texto tenue encima. */
+  .internalApp .canvas{border-color:rgba(255,255,255,.14);background:radial-gradient(100% 90% at 70% 100%,rgba(60,120,102,.16),transparent 56%),linear-gradient(145deg,rgba(30,27,50,.5),rgba(22,26,44,.42))}
+  .internalApp .visualHeader{border-color:rgba(255,255,255,.14);background:linear-gradient(90deg,rgba(255,255,255,.07),rgba(255,255,255,.02))}
+  .internalApp .presetRow{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.05)}
+  .internalApp .docDiagramBox{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.14)}
 }
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
   .internalApp{--ia-glass:rgba(250,250,255,.95);--surface:rgba(255,255,255,.96);--ia-panel-hi:rgba(255,255,255,.98);--ia-panel-mid:rgba(249,249,255,.96);--ia-panel-low:rgba(240,245,255,.96)}
@@ -1344,7 +1554,9 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
   .configPanel h1{font-size:34px}
   .inputGrid{grid-template-columns:1fr 1fr}
   .inputGrid label:last-child{grid-column:1/3}
-  .window{width:88%;border-width:9px}
+  /* El ancho de reserva se aprieta en pantallas chicas; el borde que se adelgazaba aquí era el
+     vano falso y ya no existe (ver .window). */
+  .window{width:88%}
   .moduleNav{top:auto;overflow:auto;justify-content:flex-start}
   .moduleNav button{padding:0 16px}
   .toolbox{display:none}
@@ -1567,15 +1779,340 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .luftAiKicker{font-size:9px;font-weight:800;letter-spacing:.18em;color:var(--muted)}
 .luftAiHeader h2{margin:0;font-size:23px;letter-spacing:-.04em}.luftAiHeader h2 i{display:inline-grid;width:29px;height:29px;margin-right:5px;place-items:center;border-radius:11px;color:#fff;font-style:normal;font-size:15px;background:linear-gradient(145deg,#168be8,#36c6bc);box-shadow:0 7px 17px rgba(21,135,215,.25)}
 .luftAiStatus{align-items:flex-end!important;flex-direction:column}.luftAiStatus span{padding:5px 10px;border-radius:999px;font-size:10px;font-weight:800}.luftAiStatus .ready{color:#08765f;background:rgba(26,194,151,.14)}.luftAiStatus .blocked{color:#a12d3b;background:rgba(224,69,88,.13)}.luftAiStatus small{font-size:9px;color:var(--muted)}
-.luftAiReply{margin:14px 0 10px;padding:12px 14px;border:1px solid rgba(255,255,255,.78);border-radius:16px;background:rgba(255,255,255,.42);color:var(--text);font-size:12px;line-height:1.55;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
-.luftAiAuth{padding:9px 11px;border-radius:12px;background:rgba(255,188,68,.13);font-size:10px;line-height:1.45}.luftAiAuth a{font-weight:800;color:var(--accent)}
+.luftAiReply{margin:14px 0 10px;padding:12px 14px;border:1px solid rgba(255,255,255,.78);border-radius:16px;background:rgba(255,255,255,.42);color:var(--ink);font-size:12px;line-height:1.55;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+.luftAiAuth{padding:9px 11px;border-radius:12px;background:rgba(255,188,68,.13);font-size:10px;line-height:1.45}.luftAiAuth a{font-weight:800;color:var(--accent-text)}
 .luftAiComposer textarea{width:100%;min-height:72px;resize:vertical;margin:0;border-color:rgba(127,165,190,.28);border-radius:16px;background:rgba(255,255,255,.54);box-shadow:inset 0 1px 0 rgba(255,255,255,.92)}
 .luftAiComposer>div{margin-top:8px;justify-content:flex-end}.luftAiComposer button,.luftAiProposals button{min-height:34px;padding:8px 12px;border:1px solid rgba(112,148,173,.26);border-radius:12px;background:rgba(255,255,255,.58);font-size:10px;font-weight:800}.luftAiComposer button.primary,.luftAiProposals button.primary{color:#fff;border-color:transparent;background:linear-gradient(135deg,#147edf,#20b7af);box-shadow:0 8px 18px rgba(18,130,195,.2)}
-.luftAiAgents{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}.luftAiAgents span{display:flex;align-items:center;gap:5px;padding:5px 8px;border:1px solid rgba(122,157,181,.2);border-radius:999px;background:rgba(255,255,255,.42);font-size:9px;color:var(--muted)}.luftAiAgents b{color:#58a8cc;font-size:7px}.luftAiAgents .director{color:#116d9c;border-color:rgba(34,142,201,.3);background:rgba(77,182,236,.1)}.luftAiAgents .director b{font-size:10px}
+.luftAiAgents{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}.luftAiAgents span{display:flex;align-items:center;gap:5px;padding:5px 8px;border:1px solid var(--line);border-radius:999px;background:var(--paper);font-size:9px;color:var(--text-2)}.luftAiAgents b{color:#58a8cc;font-size:7px}.luftAiAgents .director{color:var(--accent-text);border-color:color-mix(in srgb,var(--accent-text) 40%,transparent);background:var(--hover-bg)}.luftAiAgents .director b{font-size:10px}
 .luftAiRun,.luftAiProposals,.luftAiAudit{margin-top:12px;padding:12px;border:1px solid rgba(129,164,187,.22);border-radius:18px;background:rgba(255,255,255,.4)}.luftAiRun>header{align-items:flex-start}.luftAiRun>header strong{font-size:11px;line-height:1.45}.confidence{flex:none;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.confidence.high{color:#08765f;background:rgba(32,194,149,.14)}.confidence.medium{color:#8a6010;background:rgba(233,171,46,.15)}.confidence.low,.confidence.blocked{color:#a12d3b;background:rgba(224,69,88,.13)}
 .luftAiFindings{display:grid;gap:7px;margin:11px 0 0;padding:0;list-style:none}.luftAiFindings li{padding:10px;border-left:3px solid #62a9cc;border-radius:11px;background:rgba(245,251,255,.68)}.luftAiFindings li.warning{border-left-color:#e5a92f}.luftAiFindings li.blocking{border-left-color:#dc4558;background:rgba(255,242,244,.68)}.luftAiFindings li>b{display:inline-block;margin-right:6px;font-size:8px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}.luftAiFindings li>span{font-size:10px;font-weight:850}.luftAiFindings p{margin:4px 0;font-size:10px;line-height:1.45}.luftAiFindings small,.luftAiSources p,.luftAiProposals small,.luftAiAudit small{display:block;color:var(--muted);font-size:8px;line-height:1.4}
 .luftAiSources,.luftAiAudit{font-size:9px}.luftAiSources summary,.luftAiAudit summary{cursor:pointer;font-weight:850;color:var(--muted)}.luftAiSources p{margin:7px 0 0}.luftAiSources p b{text-transform:uppercase}
 .luftAiProposals h3{margin:0 0 8px;font-size:11px}.luftAiProposals article{padding:10px 0;border-top:1px solid rgba(126,160,182,.2)}.luftAiProposals article:first-of-type{border-top:0}.luftAiProposals article>div b{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:9px}.luftAiProposals article>div small{font-weight:800}.luftAiProposals article>p{display:flex;align-items:center;gap:8px;margin:8px 0}.luftAiProposals del,.luftAiProposals ins{padding:4px 7px;border-radius:8px;font-size:10px;text-decoration:none}.luftAiProposals del{color:#9b3c4b;background:rgba(219,69,88,.1)}.luftAiProposals ins{color:#08765f;background:rgba(27,188,146,.12)}.luftAiProposals footer{justify-content:flex-end;margin-top:9px}
 .luftAiAudit p{margin:8px 0 0;padding-top:8px;border-top:1px solid rgba(126,160,182,.18);font-size:9px;line-height:1.4}.luftAiAudit p small{margin-top:2px}
+/* Modo oscuro del panel de LUFT AI. El bloque de arriba está escrito con blancos translúcidos y
+   con verdes/rojos pensados para fondo claro; heredarlos dejaba láminas casi blancas y textos
+   oscuros dentro de la interfaz oscura. Se bajan las superficies y se aclaran los semánticos. */
+@media(prefers-color-scheme:dark){
+  .luftAiPanel{border-color:color-mix(in srgb,var(--accent-text) 26%,rgba(255,255,255,.16));background:linear-gradient(145deg,rgba(58,53,90,.72),rgba(34,40,64,.6) 54%,rgba(30,28,50,.5));box-shadow:0 18px 45px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.1)}
+  .luftAiReply,.luftAiRun,.luftAiProposals,.luftAiAudit{border-color:rgba(255,255,255,.16);background:rgba(255,255,255,.06);box-shadow:none}
+  .luftAiComposer textarea{border-color:var(--field-border);background:var(--field-bg);box-shadow:none}
+  .luftAiComposer button,.luftAiProposals button{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.08)}
+  .luftAiAuth{background:var(--warn-bg);color:var(--warn-fg)}
+  .luftAiStatus .ready,.confidence.high,.luftAiProposals ins{color:var(--ok-fg);background:var(--ok-bg)}
+  .luftAiStatus .blocked,.confidence.low,.confidence.blocked,.luftAiProposals del{color:var(--danger-fg);background:var(--danger-bg)}
+  .confidence.medium{color:var(--warn-fg);background:var(--warn-bg)}
+  .luftAiFindings li{background:rgba(255,255,255,.06)}
+  .luftAiFindings li.blocking{background:var(--danger-bg)}
+  .luftAiAgents b{color:#8ecdea}
+}
 @media(max-width:760px){.luftAiPanel{padding:14px;border-radius:21px}.luftAiHeader{align-items:flex-start}.luftAiComposer>div{display:grid;grid-template-columns:1fr 1fr}.luftAiComposer button{width:100%}}
 @media print{.luftAiPanel{display:none!important}}
+
+/* ==========================================================================
+   Gestor de proyectos: explorador, alta, ficha del solicitante, componentes y
+   recomendaciones.
+
+   Todo pide tokens (--surface, --ink, --line, --muted, --accent...) y no escribe un solo color
+   literal, que es la regla del archivo: así el modo oscuro sale del bloque de tokens de arriba y no
+   hay que arreglarlo componente por componente. Los contrastes se apoyan en los pares ya validados
+   (--ok-bg/--ok-fg, --warn-bg/--warn-fg, --danger-bg/--danger-fg).
+   ========================================================================== */
+
+/* Texto solo para lectores de pantalla. Lo usan las etiquetas de casillas y selectores cuyo
+   propósito ya se ve por el contexto pero que sin nombre accesible quedarían anónimos. */
+.visuallyHidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* ---------- Avisos de toda la pantalla ---------- */
+.workspaceBanner{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:8px 14px 0;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font-size:12px}
+.workspaceBanner span{flex:1;min-width:200px}
+.workspaceBanner button{padding:6px 12px;border:1px solid var(--field-border);border-radius:8px;background:var(--field-bg);color:var(--ink);font-size:11px}
+.workspaceBanner button:hover{background:var(--hover-bg)}
+.workspaceBanner.info{background:var(--ok-bg);border-color:var(--ok-fg);color:var(--ok-fg)}
+.workspaceBanner.warn{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-fg)}
+.workspaceBanner.error{background:var(--danger-bg);border-color:var(--danger-line);color:var(--danger-fg)}
+.workspaceBanner.info button,.workspaceBanner.warn button,.workspaceBanner.error button{background:var(--surface);color:var(--ink);border-color:var(--line)}
+
+/* Insignia de guardado. Cuatro tonos porque son cuatro cosas distintas, y "guardado" es solo una. */
+.selfCheckBadge.save-ok{background:var(--ok-bg);color:var(--ok-fg)}
+.selfCheckBadge.save-busy{background:var(--warn-bg);color:var(--warn-fg)}
+.selfCheckBadge.save-warn{background:var(--warn-bg);color:var(--warn-fg)}
+.selfCheckBadge.save-error{background:var(--danger-bg);color:var(--danger-fg)}
+
+/* ---------- Explorador ---------- */
+.projectExplorer{display:flex;flex-direction:column;gap:10px}
+.explorerToolbar{display:flex;flex-wrap:wrap;gap:8px}
+.explorerToolbar button,.explorerBackup button,.explorerMore,.explorerEmpty button,.explorerClearFilters{padding:9px 13px;border:1px solid var(--field-border);border-radius:9px;background:var(--field-bg);color:var(--ink);font-size:11.5px}
+.explorerToolbar button:hover:not(:disabled),.explorerBackup button:hover:not(:disabled),.explorerMore:hover,.explorerEmpty button:hover{background:var(--hover-bg);border-color:var(--accent)}
+.explorerToolbar button:disabled,.explorerBackup button:disabled{background:var(--disabled-bg);border-color:var(--disabled-line);color:var(--disabled-fg);cursor:not-allowed}
+.explorerPrimary{background:var(--accent)!important;border-color:var(--accent)!important;color:var(--accent-contrast)!important;font-weight:bold}
+.explorerPrimary:disabled{opacity:.55}
+.explorerDanger{color:var(--danger-fg)!important}
+
+.explorerSearch{display:flex;gap:8px;align-items:stretch}
+.explorerSearchField{flex:1;min-width:0}
+.explorerFilterToggle{padding:0 12px;border:1px solid var(--field-border);border-radius:9px;background:var(--field-bg);color:var(--ink);font-size:11.5px;white-space:nowrap}
+.explorerFilterToggle.hasFilters{border-color:var(--accent);color:var(--accent-text);font-weight:bold}
+.explorerFilters{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.explorerFilters label{display:flex;flex-direction:column;gap:4px;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.explorerFilterRange{grid-column:1/3;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.explorerClearFilters{grid-column:1/3}
+
+.explorerError{margin:0;padding:9px 12px;border:1px solid var(--danger-line);border-radius:10px;background:var(--danger-bg);color:var(--danger-fg);font-size:11.5px}
+.explorerNotice{margin:0;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text-2);font-size:11.5px}
+
+.explorerGroup{border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.explorerGroupHead{display:flex;align-items:center;gap:8px;width:100%;padding:11px 13px;border:0;background:transparent;color:var(--ink);font-size:12.5px;text-align:left}
+.explorerGroupHead:hover{background:var(--hover-bg)}
+.explorerGroupHead i{font-style:normal;color:var(--muted)}
+.explorerGroupHead b{flex:1}
+.explorerGroupCount{min-width:24px;padding:2px 7px;border-radius:20px;background:var(--selected-bg);color:var(--accent-text);font-size:10.5px;font-weight:bold;text-align:center}
+.explorerGroupHint{margin:0 13px 8px;color:var(--muted);font-size:10.5px;line-height:1.45}
+.explorerGroupEmpty{margin:0;padding:0 13px 13px;color:var(--muted);font-size:11px}
+
+.explorerList{list-style:none;margin:0;padding:0 8px 8px;display:flex;flex-direction:column;gap:6px}
+.explorerRow{position:relative;display:flex;align-items:stretch;gap:4px;border:1px solid var(--line);border-radius:11px;background:var(--field-bg)}
+.explorerRow.isActive{border-color:var(--accent);background:var(--selected-bg)}
+/* Barra lateral en el activo: el color de fondo solo no basta para distinguirlo de un hover. */
+.explorerRow.isActive::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--accent)}
+.explorerRow.isArchived{opacity:.72}
+.explorerRowMain{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;padding:10px 11px;border:0;background:transparent;color:var(--ink);text-align:left;font-size:11.5px}
+.explorerRowMain.asStatic{cursor:default}
+.explorerRowMain:hover:not(.asStatic){background:var(--hover-bg)}
+.explorerRowTop{display:flex;align-items:baseline;gap:8px}
+.explorerRowTop b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
+.explorerRowFolio{font-style:normal;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.explorerRowClient{color:var(--text-2);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.explorerRowFigures{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;color:var(--muted);font-size:10.5px}
+.explorerRowFigures b{color:var(--ink);font-size:11.5px;font-variant-numeric:tabular-nums}
+.explorerRowMeta{display:flex;flex-wrap:wrap;gap:4px}
+.explorerRowDates{display:flex;flex-wrap:wrap;gap:3px 9px;color:var(--muted);font-size:9.5px}
+.explorerBadge{padding:2px 7px;border-radius:20px;background:var(--disabled-bg);color:var(--text-2);font-size:9px;letter-spacing:.04em;text-transform:uppercase}
+.explorerBadge.status-approved{background:var(--ok-bg);color:var(--ok-fg)}
+.explorerBadge.status-rejected{background:var(--danger-bg);color:var(--danger-fg)}
+.explorerBadge.status-quoted,.explorerBadge.status-in_progress{background:var(--warn-bg);color:var(--warn-fg)}
+.explorerBadge.origin-imported{background:var(--selected-bg);color:var(--accent-text)}
+.explorerBadge.origin-web{background:var(--accent);color:var(--accent-contrast)}
+.explorerBadge.isArchivedBadge{background:var(--warn-bg);color:var(--warn-fg)}
+
+/* Menús de fila con <details>: se abren y cierran con teclado sin JavaScript propio. */
+.explorerRowMenu,.componentMenu{position:relative;flex:0 0 auto}
+.explorerRowMenu>summary,.componentMenu>summary{display:grid;place-items:center;width:30px;height:100%;min-height:34px;color:var(--muted);font-size:15px;cursor:pointer;list-style:none;border-radius:9px}
+.explorerRowMenu>summary::-webkit-details-marker,.componentMenu>summary::-webkit-details-marker{display:none}
+.explorerRowMenu>summary:hover,.componentMenu>summary:hover{background:var(--hover-bg);color:var(--ink)}
+.explorerRowMenuBody,.componentMenuBody{position:absolute;right:0;top:100%;z-index:20;display:flex;flex-direction:column;min-width:186px;padding:5px;border:1px solid var(--line);border-radius:11px;background:var(--surface);box-shadow:0 10px 26px var(--shadow)}
+.explorerRowMenuBody button,.componentMenuBody button{padding:8px 10px;border:0;border-radius:7px;background:transparent;color:var(--ink);font-size:11.5px;text-align:left}
+.explorerRowMenuBody button:hover:not(:disabled),.componentMenuBody button:hover:not(:disabled){background:var(--hover-bg)}
+.explorerRowMenuBody button:disabled,.componentMenuBody button:disabled{color:var(--disabled-fg);cursor:not-allowed}
+
+.explorerMore{width:100%}
+.explorerEmpty{padding:16px 13px;border:1px dashed var(--line);border-radius:14px;background:var(--surface);color:var(--text-2);font-size:11.5px;text-align:center}
+.explorerEmpty p{margin:0 0 10px}
+.explorerEmptyActions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.explorerTrashActions{display:flex;flex-direction:column;gap:5px;padding:8px}
+.explorerTrashActions button{padding:6px 10px;border:1px solid var(--field-border);border-radius:8px;background:var(--surface);color:var(--ink);font-size:10.5px;white-space:nowrap}
+.explorerBackup{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-top:6px;border-top:1px solid var(--line)}
+.explorerBackup small{flex:1 0 100%;color:var(--muted);font-size:10px;line-height:1.4}
+
+/* ---------- Importación con conflicto ---------- */
+.importPrompt{padding:12px 14px;border:1px solid var(--warn-line);border-radius:13px;background:var(--warn-bg);color:var(--warn-fg);font-size:11.5px}
+.importPrompt p{margin:0 0 8px;line-height:1.5}
+.importPromptWarning{font-size:10.5px}
+.importPromptActions{display:flex;flex-wrap:wrap;gap:8px}
+.importPromptActions button{padding:7px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-size:11px}
+.importPromptActions button:hover{background:var(--hover-bg)}
+
+/* ---------- Proyecto abierto ---------- */
+.openProjectMeta{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px;padding:11px 13px;border:1px solid var(--line);border-radius:13px;background:var(--surface)}
+.openProjectMeta span{display:flex;flex-direction:column;gap:2px;color:var(--muted);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase}
+.openProjectMeta b{color:var(--ink);font-size:11.5px;letter-spacing:0;text-transform:none}
+
+/* ---------- Diálogo de alta ---------- */
+.projectDialog{width:min(660px,94vw);max-height:88vh;overflow:auto;padding:0;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink)}
+.projectDialog::backdrop{background:rgba(6,10,14,.55)}
+.projectDialog form{display:flex;flex-direction:column}
+.projectDialogHead{padding:18px 20px 10px;border-bottom:1px solid var(--line)}
+.projectDialogHead h2{margin:0 0 5px;font-size:17px}
+.projectDialogHead p{margin:0;color:var(--muted);font-size:11.5px;line-height:1.5}
+.projectDialogBody{display:flex;flex-direction:column;gap:14px;padding:16px 20px}
+.projectDialogBody label,.projectDialogGrid label{display:flex;flex-direction:column;gap:4px;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.projectDialogBody input,.projectDialogBody select,.projectDialogBody textarea{text-transform:none;letter-spacing:0}
+.projectDialogBody fieldset{margin:0;padding:12px;border:1px solid var(--line);border-radius:12px}
+.projectDialogBody legend{padding:0 6px;color:var(--accent-text);font-size:10.5px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase}
+.projectDialogGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.projectDialogGrid .wide,.projectDialogBody>label.wide{grid-column:1/-1}
+.projectDialogIssues{margin:0 20px;padding:10px 12px;border:1px solid var(--danger-line);border-radius:11px;background:var(--danger-bg);color:var(--danger-fg);font-size:11.5px}
+.projectDialogIssues p{margin:0 0 4px}
+.projectDialogKeep{font-weight:bold}
+.projectDialogFoot{display:flex;justify-content:flex-end;gap:9px;padding:14px 20px 18px}
+.projectDialogFoot button{padding:10px 16px;border:1px solid var(--field-border);border-radius:9px;background:var(--field-bg);color:var(--ink);font-size:12px}
+.projectDialogFoot button:hover:not(:disabled){background:var(--hover-bg)}
+
+/* ---------- Ficha del solicitante ---------- */
+.requesterPanel{display:flex;flex-direction:column;gap:11px}
+.requesterMeta{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.requesterMeta span{display:flex;flex-direction:column;gap:2px;color:var(--muted);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase}
+.requesterMeta b{color:var(--ink);font-size:11px;letter-spacing:0;text-transform:none}
+.requesterAddress{margin:0;padding:12px;border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;gap:9px}
+.requesterAddress legend{padding:0 6px;color:var(--accent-text);font-size:10.5px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase}
+.requesterAddressEmpty{color:var(--muted);font-weight:normal;text-transform:none;letter-spacing:0}
+.requesterToggle{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text-2);text-transform:none;letter-spacing:0}
+.requesterToggle input{width:auto;height:auto}
+.requesterIssues{margin:0;padding:9px 12px;border:1px solid var(--danger-line);border-radius:10px;background:var(--danger-bg);color:var(--danger-fg);font-size:11.5px}
+.requesterIssues p{margin:0 0 3px}
+.requesterDirty{margin:0;color:var(--warn-fg);font-size:10.5px}
+label.hasIssue input{border-color:var(--danger-line)}
+.fieldIssue{color:var(--danger-fg);font-size:10px;text-transform:none;letter-spacing:0}
+
+/* ---------- Lista de componentes ---------- */
+.componentManager{display:flex;flex-direction:column;gap:9px}
+.componentListHead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.componentSelectAll{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-2)}
+.componentSelectAll input{width:auto;height:auto}
+.componentListCount{color:var(--muted);font-size:10.5px}
+.componentBulkBar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:9px 11px;border:1px solid var(--accent);border-radius:12px;background:var(--selected-bg)}
+.componentBulkBar button{padding:6px 11px;border:1px solid var(--field-border);border-radius:8px;background:var(--surface);color:var(--ink);font-size:11px}
+.componentBulkBar button:hover:not(:disabled){background:var(--hover-bg)}
+.componentBulkBar button:disabled{color:var(--disabled-fg);cursor:not-allowed}
+.componentBulkMove{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.componentBulkMove select{width:auto;min-width:150px;height:32px;font-size:11px}
+
+.componentList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.componentItem{position:relative;display:flex;align-items:stretch;gap:3px;border:1px solid var(--line);border-radius:11px;background:var(--field-bg)}
+.componentItem.isActive{border-color:var(--accent);background:var(--selected-bg)}
+.componentItem.isActive::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--accent)}
+.componentCheck{display:grid;place-items:center;padding:0 4px 0 8px}
+.componentCheck input{width:auto;height:auto}
+.componentBody{flex:1;min-width:0;display:flex;align-items:flex-start;gap:6px}
+.componentOpen{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;padding:9px 4px 9px 0;border:0;background:transparent;color:var(--ink);text-align:left}
+.componentOpen:hover{background:var(--hover-bg)}
+.componentOpen>b{display:flex;flex-wrap:wrap;align-items:baseline;gap:7px;font-size:12.5px}
+.componentActiveTag{padding:1px 7px;border-radius:20px;background:var(--accent);color:var(--accent-contrast);font-size:8.5px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase}
+.componentSpecs{color:var(--text-2);font-size:10.5px;overflow:hidden;text-overflow:ellipsis}
+.componentFigures{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;color:var(--muted);font-size:10.5px}
+.componentFigures b{color:var(--ink);font-size:11.5px;font-variant-numeric:tabular-nums}
+.componentState{padding:2px 7px;border-radius:20px;background:var(--disabled-bg);color:var(--text-2);font-size:9px;letter-spacing:.04em;text-transform:uppercase}
+.componentState.state-ok{background:var(--ok-bg);color:var(--ok-fg)}
+.componentState.state-alertas{background:var(--warn-bg);color:var(--warn-fg)}
+.componentDates{display:flex;flex-wrap:wrap;gap:3px 9px;color:var(--muted);font-size:9.5px}
+.componentRenameInput{height:30px;font-size:12px}
+.componentQty{display:flex;align-items:center;padding:9px 4px}
+.componentQty label{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:9.5px;letter-spacing:.04em;text-transform:uppercase}
+.componentQty input{width:58px;height:30px;font-size:11.5px;text-align:center}
+.componentEmpty{padding:16px 13px;border:1px dashed var(--line);border-radius:14px;background:var(--surface);color:var(--text-2);font-size:11.5px;text-align:center}
+.componentEmpty p{margin:0 0 10px;line-height:1.5}
+
+/* Estado vacío del lienzo cuando el proyecto no tiene componentes. */
+.canvasEmpty{position:absolute;inset:0;z-index:11;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:24px;background:var(--paper);color:var(--text-2);text-align:center}
+.canvasEmpty b{font-size:15px;color:var(--ink)}
+.canvasEmpty p{margin:0;max-width:380px;font-size:12px;line-height:1.55}
+.canvasEmpty button{padding:10px 16px;border:1px solid var(--accent);border-radius:9px;background:var(--accent);color:var(--accent-contrast);font-size:12px}
+.canvasEmpty button:disabled{opacity:.55;cursor:not-allowed}
+
+/* ---------- Recomendaciones ---------- */
+.quoteInsights{display:flex;flex-direction:column;gap:11px}
+.insightsToggle{display:flex;align-items:flex-start;gap:9px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.insightsToggle input{width:auto;height:auto;margin-top:2px}
+.insightsToggle span{display:flex;flex-direction:column;gap:3px}
+.insightsToggle b{font-size:12px}
+.insightsToggle small{color:var(--muted);font-size:10.5px;line-height:1.5}
+.insightsOff,.insightsEmpty{margin:0;padding:10px 12px;border:1px dashed var(--line);border-radius:11px;color:var(--muted);font-size:11px;line-height:1.5}
+.insightsList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.insightCard{padding:11px 12px;border:1px solid var(--line);border-left-width:3px;border-radius:11px;background:var(--surface)}
+.insightCard.kind-aviso{border-left-color:var(--warn-line);background:var(--warn-bg);color:var(--warn-fg)}
+.insightCard.kind-faltante{border-left-color:var(--danger-line);background:var(--danger-bg);color:var(--danger-fg)}
+.insightCard.kind-sugerencia{border-left-color:var(--accent)}
+.insightCard header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px}
+.insightCard header b{font-size:12px}
+.insightCard p{margin:0 0 5px;font-size:11px;line-height:1.5}
+.insightConfidence{padding:2px 7px;border-radius:20px;background:var(--disabled-bg);color:var(--text-2);font-size:9px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.insightConfidence.confidence-alta{background:var(--ok-bg);color:var(--ok-fg)}
+.insightConfidence.confidence-baja{background:var(--disabled-bg);color:var(--muted)}
+.insightBasis{color:var(--muted);font-size:10px;line-height:1.5}
+.insightBasis i{font-style:normal;opacity:.7}
+.insightBasis em{font-style:normal;font-weight:bold}
+.insightActions{display:flex;gap:7px}
+.insightActions button{padding:6px 11px;border:1px solid var(--field-border);border-radius:8px;background:var(--surface);color:var(--ink);font-size:10.5px}
+.insightActions button:hover{background:var(--hover-bg)}
+.insightDismiss{color:var(--muted)}
+.insightsTemplates{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.insightsTemplates h3{margin:0 0 4px;font-size:11.5px}
+.insightsTemplates ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.insightsTemplates li{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:var(--field-bg)}
+.insightsTemplates li span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.insightsTemplates li b{font-size:11.5px}
+.insightsTemplates li small{color:var(--muted);font-size:10px}
+.insightsTemplates li button{padding:6px 10px;border:1px solid var(--field-border);border-radius:8px;background:var(--surface);color:var(--ink);font-size:10.5px;white-space:nowrap}
+.insightsStats{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:11px}
+.insightsStats summary{cursor:pointer;font-weight:bold}
+.insightsStats dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:9px 0}
+.insightsStats dt{color:var(--muted);font-size:10.5px}
+.insightsStats dd{margin:0;font-size:11px}
+.insightsDanger{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-top:8px;border-top:1px solid var(--line)}
+.insightsDanger p{flex:1 0 100%;margin:0;color:var(--muted);font-size:10.5px;line-height:1.5}
+.insightsDanger button{padding:7px 11px;border:1px solid var(--field-border);border-radius:8px;background:var(--field-bg);color:var(--ink);font-size:10.5px}
+.insightsDanger button:hover{background:var(--hover-bg)}
+
+/* Motivo de rechazo en el expediente de clientes. */
+.clientQuoteReason{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:7px 0;padding:9px 11px;border:1px solid var(--warn-line);border-radius:11px;background:var(--warn-bg);color:var(--warn-fg)}
+.clientQuoteReason label{display:flex;flex-direction:column;gap:4px;font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+.clientQuoteReason select{min-width:190px;text-transform:none;letter-spacing:0}
+.clientQuoteReason button{padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font-size:11px}
+.clientQuoteReasonCancel{color:var(--muted)}
+
+/* ---------- Adaptación a pantallas reducidas ----------
+   El explorador y sus filas pasan a una sola columna, y los menús de fila se anclan al borde para
+   no salirse. El panel lateral ya se pliega por su cuenta en el diseño existente. */
+@media(max-width:900px){
+  .explorerFilters{grid-template-columns:1fr}
+  .explorerFilterRange{grid-column:auto}
+  .explorerClearFilters{grid-column:auto}
+  .projectDialogGrid{grid-template-columns:1fr}
+  .componentBody{flex-direction:column}
+  .componentQty{padding:0 4px 9px 0}
+  .explorerRowMenuBody,.componentMenuBody{right:-4px;min-width:170px}
+}
+@media print{
+  .projectExplorer,.workspaceBanner,.quoteInsights,.componentManager,.requesterPanel,.importPrompt,.projectDialog{display:none!important}
+}
+
+/* ---------- Lista virtualizada ----------
+   El alto de fila se fija aquí Y en ProjectExplorer (ROW_HEIGHT): la ventana deslizante calcula
+   posiciones con ese número, así que si el CSS dejara crecer la fila, lo pintado y lo calculado se
+   separarían. De ahí el overflow oculto: una fila que se pase se recorta en vez de descuadrar la lista. */
+.virtualViewport{overflow-y:auto;overscroll-behavior:contain}
+.virtualRow{list-style:none;margin:0;padding:0}
+.virtualViewport .virtualRow{padding-bottom:6px}
+.virtualViewport .virtualRow>.explorerRow{height:100%;overflow:hidden}
+.explorerList .virtualRow>.explorerRow{margin:0}
+
+/* ---------- Historial de versiones y cierre de obra ---------- */
+.projectHistory{display:flex;flex-direction:column;gap:14px}
+.historyBlock{padding:12px 13px;border:1px solid var(--line);border-radius:13px;background:var(--surface)}
+.historyBlock h3{margin:0 0 4px;font-size:12px}
+.historyHint{margin:0 0 9px;color:var(--muted);font-size:10.5px;line-height:1.5}
+.historyEmpty{margin:0;color:var(--muted);font-size:11px}
+.historyCreate{display:flex;gap:7px;margin-bottom:9px}
+.historyCreate label{flex:1;min-width:0}
+.historyCreate button,.historyToggle{padding:8px 12px;border:1px solid var(--field-border);border-radius:9px;background:var(--field-bg);color:var(--ink);font-size:11px;white-space:nowrap}
+.historyCreate button:hover:not(:disabled),.historyToggle:hover{background:var(--hover-bg)}
+.historyToggle{margin-top:9px}
+.historyList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:250px;overflow-y:auto}
+.historyList li{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--field-bg)}
+.historyList li span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.historyList li b{font-size:11.5px}
+.historyList li small{color:var(--muted);font-size:10px}
+.historyList li button{padding:6px 11px;border:1px solid var(--field-border);border-radius:8px;background:var(--surface);color:var(--ink);font-size:10.5px;white-space:nowrap}
+
+.outcomeSummary{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:8px;margin-bottom:8px}
+.outcomeSummary span{display:flex;flex-direction:column;gap:2px;color:var(--muted);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase}
+.outcomeSummary b{color:var(--ink);font-size:12px;letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums}
+/* El desvío al alza se marca: es el dato que cambia una decisión de precio. */
+.outcomeSummary b.isOver{color:var(--danger-fg)}
+.outcomeNotes{margin:0 0 8px;padding:8px 10px;border-left:3px solid var(--line);color:var(--text-2);font-size:11px;line-height:1.5}
+.outcomeForm{display:flex;flex-direction:column;gap:9px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.outcomeForm label{display:flex;flex-direction:column;gap:4px;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.outcomeForm input,.outcomeForm textarea{text-transform:none;letter-spacing:0}
+.outcomeActions{display:flex;flex-wrap:wrap;gap:8px}
+.outcomeActions button{padding:9px 14px;border:1px solid var(--field-border);border-radius:9px;background:var(--field-bg);color:var(--ink);font-size:11.5px}
+
+@media print{.projectHistory{display:none!important}}

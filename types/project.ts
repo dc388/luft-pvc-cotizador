@@ -35,6 +35,13 @@ export type ComponentData = {
   luftAi?: LuftAgentState;
 };
 
+/** En qué punto está la configuración de un componente. Lo escribe quien lo edita, porque es lo
+ * único que puede saberlo: recalcularlo para toda la lista exigiría cargar el árbol de cada
+ * componente, que es justo el payload que ComponentSummary evita. "pendiente" es el valor de
+ * partida y también el de los componentes guardados antes de que este campo existiera -- se
+ * muestra como "sin verificar", no como correcto. */
+export type ComponentConfigState = "pendiente" | "ok" | "alertas";
+
 export type ComponentRecord = {
   id: string;
   projectId: string;
@@ -48,6 +55,17 @@ export type ComponentRecord = {
   brand: Brand;
   systemIndex: number;
   colorIndex: number;
+  /** Índice del vidrio general en glassCatalog. Columna (y no solo `data.glassIndex`) para que
+   * la lista de componentes pueda decir qué vidrio lleva cada uno sin cargar su configuración. */
+  glassIndex: number;
+  /** Tipología resuelta ("Corrediza + Fijo"), calculada del árbol por quien lo edita. */
+  typology: string;
+  configState: ComponentConfigState;
+  /** Precio de venta por pieza y subtotal (precio × cantidad) en pesos redondeados, tal como los
+   * calculó lib/calc.ts la última vez que se guardó. Son caché de lectura: la fuente de verdad
+   * sigue siendo el cálculo sobre la configuración, que se rehace al abrir el componente. */
+  unitPrice: number;
+  total: number;
   data: ComponentData;
   createdAt: string;
   updatedAt: string;
@@ -60,32 +78,104 @@ export type ComponentSummary = Omit<ComponentRecord, "data">;
 /** De dónde salió el proyecto: lo capturó un cliente en /cotizar, o lo abrió el equipo. */
 export type ProjectSource = "web" | "interno";
 
-export type ProjectRecord = {
-  id: string;
-  name: string;
-  activeComponentId: string | null;
-  source: ProjectSource;
-  /** Folio público (W-XXXXXX) cuando `source` es "web"; cadena vacía en los internos. */
-  folio: string;
-  /** Cliente capturado por el cotizador público; cadena vacía en los internos. */
-  client: string;
+/** Las dos categorías del explorador de proyectos.
+ *
+ * "imported" es todo lo que entró desde fuera de esta pantalla: un archivo .luftproj abierto, un
+ * respaldo restaurado, o una cotización que un cliente envió desde /cotizar. "platform" es lo que
+ * alguien del equipo creó aquí dentro.
+ *
+ * Es una columna aparte de `source` y no un valor más de ella a propósito: `source` responde "¿lo
+ * capturó el cliente en el cotizador público?", que sigue cambiando lo que se muestra (folio
+ * público, insignia WEB) y de dónde salieron los datos. `origin` responde "¿nació aquí o llegó de
+ * fuera?", que es lo que organiza las carpetas. Un proyecto interno exportado y vuelto a importar
+ * es source="interno" y origin="imported": las dos preguntas tienen respuestas distintas. */
+export type ProjectOrigin = "platform" | "imported";
+
+/** Etapa del proyecto. "archived" no vive aquí sino en `archivedAt`: archivar es reversible y no
+ * debe borrar en qué etapa comercial iba el proyecto (ver lib/projectStatus.ts). */
+export type ProjectStatus = "draft" | "in_progress" | "quoted" | "approved" | "rejected";
+
+export type Address = {
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+};
+
+/** Quien pide la cotización. Todos los campos son cadenas (vacía = sin capturar) en vez de
+ * opcionales: así el formulario, la exportación y la importación no tienen que distinguir entre
+ * "no capturado" y "ausente del archivo", que era una fuente de campos perdidos al reimportar.
+ * Las direcciones de instalación y facturación sí son nulables, porque `null` significa algo
+ * distinto de vacío: "la misma que la dirección principal". */
+export type Requester = {
+  fullName: string;
+  company: string;
+  phone: string;
+  alternatePhone: string;
+  email: string;
+  taxId: string;
+  contactPerson: string;
+  acquisitionChannel: string;
+  notes: string;
+  address: Address;
+  installationAddress: Address | null;
+  billingAddress: Address | null;
+  /** Cuándo se registró el solicitante y cuándo se actualizó por última vez su ficha. */
   createdAt: string;
   updatedAt: string;
+};
+
+/** Metadatos comerciales y administrativos del proyecto, sin sus componentes. */
+export type ProjectMeta = {
+  id: string;
+  name: string;
+  folio: string;
+  origin: ProjectOrigin;
+  source: ProjectSource;
+  status: ProjectStatus;
+  requester: Requester;
+  currency: string;
+  pricingListId: string;
+  notes: string;
+  /** Fecha estimada del proyecto (YYYY-MM-DD), capturada al crearlo. */
+  estimatedDate: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Cuándo entró a esta plataforma, si llegó de fuera. */
+  importedAt: string | null;
+  /** Fecha de creación original que traía el archivo importado, cuando venía en él. */
+  originalCreatedAt: string | null;
+  archivedAt: string | null;
+  /** Papelera: un proyecto borrado se marca, no se elimina (ver deleteProject). */
+  deletedAt: string | null;
+  /** Proyecto del que se duplicó, si se duplicó de alguno. */
+  duplicatedFromId: string | null;
+  schemaVersion: number;
+};
+
+export type ProjectRecord = ProjectMeta & {
+  activeComponentId: string | null;
+  /** Cliente tal como lo capturó el cotizador público. Se conserva sincronizado con
+   * `requester.fullName` para no romper lo que ya lo leía (etiquetado de folios, informes). */
+  client: string;
   components: ComponentSummary[];
 };
 
-// Una fila de la lista de proyectos ("carpetas") del tab Proyecto. No arrastra los componentes:
-// solo cuánto hay dentro y su total de piezas, que es lo que se alcanza a leer en la lista.
-export type ProjectSummary = {
-  id: string;
-  name: string;
-  source: ProjectSource;
-  folio: string;
+// Una fila de la lista de proyectos del explorador. No arrastra los componentes: solo cuánto hay
+// dentro, su total de piezas y su importe, que es lo que se alcanza a leer en la lista. Lleva
+// además los datos del solicitante por los que se busca y se filtra, para que el buscador no
+// tenga que pedir cada proyecto completo.
+export type ProjectSummary = Omit<ProjectMeta, "requester" | "notes"> & {
   client: string;
+  company: string;
+  phone: string;
+  email: string;
   componentCount: number;
   pieceCount: number;
-  createdAt: string;
-  updatedAt: string;
+  /** Suma de los subtotales de sus componentes, en pesos redondeados. */
+  total: number;
 };
 
 export type ComponentPatch = Partial<{
@@ -98,5 +188,64 @@ export type ComponentPatch = Partial<{
   brand: string;
   systemIndex: number;
   colorIndex: number;
+  glassIndex: number;
+  typology: string;
+  configState: ComponentConfigState;
+  unitPrice: number;
+  total: number;
   data: Partial<ComponentData>;
 }>;
+
+/** Lo que el alta de proyecto puede fijar de entrada. Todo es opcional salvo el nombre: la ficha
+ * del solicitante se puede terminar después (ver §4 del pedido: nada de datos fiscales
+ * obligatorios para poder crear un proyecto). */
+export type ProjectDraft = {
+  name: string;
+  requester?: Partial<Requester>;
+  currency?: string;
+  pricingListId?: string;
+  notes?: string;
+  estimatedDate?: string;
+  createdBy?: string;
+};
+
+export type ProjectMetaPatch = Partial<{
+  name: string;
+  status: ProjectStatus;
+  requester: Partial<Requester>;
+  currency: string;
+  pricingListId: string;
+  notes: string;
+  estimatedDate: string;
+  activeComponentId: string;
+}>;
+
+/** Por qué existe un punto de restauración. Ver la tabla project_versions. */
+export type ProjectVersionReason = "manual" | "antes-de-importar" | "antes-de-restaurar";
+
+/** Un punto de restauración, sin su contenido: el snapshot es el proyecto entero y no se arrastra a
+ *  la lista. */
+export type ProjectVersionRow = {
+  id: string;
+  projectId: string;
+  label: string;
+  reason: ProjectVersionReason;
+  componentCount: number;
+  total: number;
+  createdAt: string;
+};
+
+/** Cierre de obra: lo que costó y se cobró de verdad frente a lo cotizado. `quotedTotal` y
+ *  `quotedPieces` quedan congelados al cerrar, para que la comparación sea contra lo que se cotizó
+ *  entonces y no contra lo que diría el catálogo hoy. */
+export type ProjectOutcome = {
+  projectId: string;
+  quotedTotal: number;
+  quotedPieces: number;
+  actualCost: number;
+  actualRevenue: number;
+  piecesBuilt: number;
+  notes: string;
+  closedAt: string;
+  updatedAt: string;
+};

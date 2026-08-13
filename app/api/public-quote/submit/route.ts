@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     // `config` se conserva como compatibilidad con clientes anteriores de una sola ventana.
     const configs = parseProjectConfigs(Array.isArray(body.items) ? body.items : [body.config]);
     const contact = parseContact(body.contact);
-    const { price } = priceProjectConfigs(configs);
+    const { price, itemPrices } = priceProjectConfigs(configs);
     const pieceCount = configs.reduce((sum, config) => sum + config.qty, 0);
 
     const customer: QuoteCustomerInput = {
@@ -85,10 +85,25 @@ export async function POST(request: Request) {
     // La carpeta de trabajo se crea antes de la cotización para poder guardar su id en el
     // expediente. Si algo falla después, queda una carpeta sin cotización -- visible y
     // recuperable, que es preferible a una cotización que apunta a una carpeta inexistente.
+    // origin "imported": la cotización se capturó fuera de esta pantalla, así que en el explorador
+    // vive con los proyectos importados y no con los creados aquí. La ficha del solicitante se
+    // llena con lo que el cliente ya escribió en el cotizador, en vez de dejarla vacía para que
+    // alguien la recapture a mano: son exactamente los mismos datos.
     const project = await createEmptyProject(db, `Cotización WEB · ${projectName}`, {
       source: "web",
+      origin: "imported",
       folio: "",
       client: contact.name,
+      importedAt: new Date().toISOString(),
+      notes: contact.notes,
+      requester: {
+        fullName: contact.name,
+        company: contact.company,
+        phone: contact.phone,
+        email: contact.email,
+        acquisitionChannel: "Cotizador público",
+        address: { street: contact.address, city: contact.city, state: "", postalCode: contact.postalCode, country: "" },
+      },
     });
 
     const quote = await createQuote(db, {
@@ -105,7 +120,7 @@ export async function POST(request: Request) {
 
     // El folio real se conoce al reservarlo, así que la carpeta se etiqueta después. Es lo que
     // permite reconocer la cotización desde la lista de carpetas del editor.
-    await createProjectComponents(db, project.id, configs, quote.folio, contact);
+    await createProjectComponents(db, project.id, configs, quote.folio, contact, itemPrices);
     await labelProjectWithFolio(db, project.id, quote.folio, `Cotización WEB ${quote.folio} · ${projectName}`);
 
     return Response.json({ folio: quote.folio, documentPath: `/cotizacion/${quote.token}` }, { status: 201 });
@@ -123,12 +138,17 @@ async function createProjectComponents(
   projectId: string,
   configs: ReturnType<typeof parseProjectConfigs>,
   folio: string,
-  contact: Contact
+  contact: Contact,
+  // Los precios por renglón ya se calcularon en el servidor para armar la cotización; se guardan
+  // también en el componente para que la lista de proyectos pueda mostrar el importe de una
+  // cotización web sin tener que abrir y recalcular cada componente uno por uno.
+  itemPrices: { unit: number; total: number }[]
 ): Promise<void> {
   let firstComponentId = "";
   for (const [index, config] of configs.entries()) {
     const data = buildComponentData(config);
     const brand = brandForStyle(config.styleId);
+    const price = itemPrices[index];
     const component = await createComponentWithData(db, projectId, {
       code: `${folio}-${String(index + 1).padStart(2, "0")}`,
       designation: styleNameFor(config.styleId),
@@ -139,6 +159,14 @@ async function createProjectComponents(
       brand,
       systemIndex: systemIndexForStyle(config.styleId),
       colorIndex: colorIndexFor(brand, config.colorId),
+      glassIndex: data.glassIndex,
+      typology: styleNameFor(config.styleId),
+      // "pendiente" y no "ok": la configuración la armó el cotizador público a partir de un estilo
+      // predefinido y nadie del equipo la ha revisado todavía. Decir "correcta" sería afirmar algo
+      // que no se ha comprobado.
+      configState: "pendiente",
+      unitPrice: price ? Math.round(price.unit) : 0,
+      total: price ? Math.round(price.total) : 0,
       data: {
         ...data,
         client: contact.name,

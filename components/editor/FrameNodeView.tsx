@@ -4,6 +4,8 @@ import type { CSSProperties, MouseEvent } from "react";
 import type { FocusScope } from "@/types/domain";
 import type { LeafFrame } from "@/lib/tree";
 import { motionGlyph, wingName, SLIDING_WINGS } from "@/lib/tree";
+import { resolveSashHardware } from "@/lib/hardware";
+import { SashHardwareMarks } from "./SashHardwareMarks";
 import { SIDES, SIDE_LABELS, type Edges, type PartKind, type SideKey } from "./frameTypes";
 
 type Props = {
@@ -33,12 +35,18 @@ export function FrameNodeView({ frame, overallWidthMm, overallHeightMm, zIndex, 
   const { id, wing, spec, edges: e } = frame;
   const hasSash = wing !== "fixed" && wing !== "inactive";
   const isOperable = hasSash && wing !== "sliding-fixed";
-  const showOpeningLines = isOperable && !SLIDING_WINGS.includes(wing);
   const glyph = motionGlyph(wing, spec.direction);
+  // Toda la herrajería (manilla, bisagras, pivotes, puntos de cierre y símbolo de apertura)
+  // sale de la configuración de la hoja, no de su tipo a secas -- ver lib/hardware.ts.
+  const hw = resolveSashHardware(wing, spec, frame.fabH);
+  const isSliding = SLIDING_WINGS.includes(wing);
   const borderWidth = `${edgeWidth(e.top)}px ${edgeWidth(e.right)}px ${edgeWidth(e.bottom)}px ${edgeWidth(e.left)}px`;
   const isSideFocused = (side: SideKey) => focusScope === "leaf" && id === selectedId && focusPart === "marco" && focusSide === side;
   const isGlassSideFocused = (side: SideKey) => focusScope === "leaf" && id === selectedId && focusPart === "vidrio" && focusSide === side;
 
+  // La hoja seleccionada se dibuja por encima de sus vecinas: su marca de selección va por fuera
+  // del contorno (ver .pane.selectedPane), y sin esto la hoja siguiente la taparía justo en el
+  // traslape que comparten.
   const style: CSSProperties = {
     position: "absolute",
     left: `${(frame.fabX / overallWidthMm) * 100}%`,
@@ -46,13 +54,20 @@ export function FrameNodeView({ frame, overallWidthMm, overallHeightMm, zIndex, 
     width: `${(frame.fabW / overallWidthMm) * 100}%`,
     height: `${(frame.fabH / overallHeightMm) * 100}%`,
     borderWidth,
-    zIndex,
+    zIndex: id === selectedId ? zIndex + 100 : zIndex,
   };
 
   return (
-    <div className={`pane ${id === selectedId ? "selectedPane" : ""}`} style={style} data-leaf={id}>
+    <div
+      className={`pane ${hasSash ? "paneMovable" : "paneFixed"} ${id === selectedId ? "selectedPane" : ""}`}
+      style={style}
+      data-leaf={id}
+    >
       {hasSash && <div className="sashRing" />}
-      <div className="glassFill" />
+      <div className="glassFill">
+        {/* Accesorio de sombra: si está configurado, se ve. Antes solo existía en la ficha. */}
+        {spec.mallorquina && <i className="mallorquinaLouvres" aria-hidden="true" />}
+      </div>
       {SIDES.map((side) => (
         <button
           key={`marco-${side}`}
@@ -66,7 +81,6 @@ export function FrameNodeView({ frame, overallWidthMm, overallHeightMm, zIndex, 
       {hasSash ? (
         <button type="button" className="hit hitHoja" title="Hoja / tipo de apertura" onClick={(ev) => onPartClick(id, "hoja", null, ev)}>
           <span className="motion">{glyph}</span>
-          {showOpeningLines && <i className="openingLines" />}
         </button>
       ) : (
         <span className="motion">{glyph}</span>
@@ -82,13 +96,17 @@ export function FrameNodeView({ frame, overallWidthMm, overallHeightMm, zIndex, 
           onClick={(ev) => onPartClick(id, "vidrio", side, ev)}
         />
       ))}
-      {isOperable && (
-        <button type="button" className="hit hitHerraje" title="Herraje / manilla" onClick={(ev) => onPartClick(id, "herraje", null, ev)}>
+      <SashHardwareMarks hw={hw} spec={spec} onHandleClick={(ev) => onPartClick(id, "herraje", null, ev)} />
+      {/* Respaldo para llegar al herraje cuando la hoja se configuró "Sin manilla": sin esto,
+          una hoja operable sin manilla se quedaba sin punto de entrada al panel de herraje. */}
+      {isOperable && hw.handleKind === "none" && (
+        <button type="button" className="hit hitHerraje" title="Herraje (sin manilla)" onClick={(ev) => onPartClick(id, "herraje", null, ev)}>
           ⚙
         </button>
       )}
       <em>{wingName(wing)}</em>
       <small className="paneHardware">{spec.hardware.replace("Roto · ", "")}</small>
+      {isSliding && <small className="paneRail">Riel {spec.railIndex}</small>}
       <b className="paneDim">
         {Math.round(frame.fabW)} × {Math.round(frame.fabH)}
       </b>

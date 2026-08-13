@@ -15,6 +15,25 @@ const MIN_SCALE = 0.5;
 const MAX_SCALE = 2.5;
 const SCALE_STEP = 0.15;
 
+// Margen que el dibujo deja libre dentro del lienzo, y es simétrico porque el dibujo va centrado:
+// reservar de más por un solo lado no lo correría, solo lo encogería. Los valores salen de las
+// cotas generales, que se dibujan sobre el lienzo y no deben quedar encima del producto
+// (.dim.side arranca en left:42px y su etiqueta girada ocupa hasta ~66px; .dim.top en top:40px).
+const FIT_INSET_X = 76;
+const FIT_INSET_Y = 58;
+// Por debajo de esto no hay lienzo real que medir (primer render, panel plegado): se deja que el
+// CSS aplique su valor de reserva en vez de fijar un tamaño absurdo.
+const MIN_FIT_PX = 80;
+
+/** El rectángulo más grande con proporción `aspect` que cabe en el lienzo, sin deformarlo. */
+function fitBox(containerWidth: number, containerHeight: number, aspect: number) {
+  const availableWidth = containerWidth - FIT_INSET_X * 2;
+  const availableHeight = containerHeight - FIT_INSET_Y * 2;
+  if (!(aspect > 0) || availableWidth < MIN_FIT_PX || availableHeight < MIN_FIT_PX) return null;
+  const width = Math.min(availableWidth, availableHeight * aspect);
+  return { width, height: width / aspect };
+}
+
 type Viewport = {
   x: number;
   y: number;
@@ -32,6 +51,8 @@ type Drag = {
 type PanZoomViewportProps = {
   children: ReactNode;
   onBackgroundClick: () => void;
+  /** Proporción real del producto (ancho/alto en mm) para ajustarlo al lienzo sin deformarlo. */
+  aspect: number;
 };
 
 function clampScale(value: number) {
@@ -43,13 +64,35 @@ function isEditableTarget(target: EventTarget | null) {
   return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 
-export function PanZoomViewport({ children, onBackgroundClick }: PanZoomViewportProps) {
+export function PanZoomViewport({ children, onBackgroundClick, aspect }: PanZoomViewportProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<Drag | null>(null);
   const spacePressedRef = useRef(false);
   const suppressClickRef = useRef(false);
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false);
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
+
+  // El lienzo se mide en vez de suponerse: es un panel elástico entre dos columnas que además
+  // cambian de tamaño con la ventana del navegador y con el nivel de zoom de la página, así que
+  // cualquier tope en píxeles fijos deja de corresponder al espacio real disponible.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (!rect) return;
+      setContainerSize((prev) =>
+        prev && Math.abs(prev.width - rect.width) < 1 && Math.abs(prev.height - rect.height) < 1
+          ? prev
+          : { width: rect.width, height: rect.height }
+      );
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  const fit = containerSize ? fitBox(containerSize.width, containerSize.height, aspect) : null;
 
   const setScaleAround = useCallback((requestedScale: number, clientX?: number, clientY?: number) => {
     setViewport((current) => {
@@ -178,10 +221,13 @@ export function PanZoomViewport({ children, onBackgroundClick }: PanZoomViewport
   const layerStyle = {
     transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.scale})`,
   } satisfies CSSProperties;
+  // --fit-w/--fit-h las consume .modelStage (app/globals.css). Cuando todavía no hay medida se
+  // omiten y el CSS aplica su valor de reserva.
   const stageStyle = {
     "--viewport-grid-size": `${28 * viewport.scale}px`,
     "--viewport-pan-x": `${viewport.x}px`,
     "--viewport-pan-y": `${viewport.y}px`,
+    ...(fit ? { "--fit-w": `${fit.width}px`, "--fit-h": `${fit.height}px` } : {}),
   } as CSSProperties;
 
   return (
