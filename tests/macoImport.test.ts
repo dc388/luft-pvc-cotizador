@@ -30,8 +30,19 @@ import { DEFAULT_HEADER_ROWS, ORDEN_SENTINEL, SAMPLE_ROWS, buildWorkbook } from 
 
 const workspace = mkdtempSync(join(tmpdir(), "maco-import-"));
 
-/** SQL de la migración 0005, aplicada tal cual a una base temporal. */
-const MIGRATION = readFileSync("drizzle/0005_busy_triathlon.sql", "utf8");
+// La migración se busca por su contenido y no por su nombre. Dos ramas crearon un 0005 a la vez y
+// ésta acabó renumerada; con el nombre escrito a mano la prueba se rompía por eso y no porque algo
+// estuviera mal. Se recorre el journal en orden y se toma la que crea las tablas de proveedor.
+const MIGRATION = (() => {
+  const journal = JSON.parse(readFileSync("drizzle/meta/_journal.json", "utf8")) as {
+    entries: { tag: string }[];
+  };
+  for (const entry of journal.entries) {
+    const sql = readFileSync(`drizzle/${entry.tag}.sql`, "utf8");
+    if (sql.includes("CREATE TABLE `supplier_catalog_sources`")) return sql;
+  }
+  throw new Error("Ninguna migración crea las tablas de catálogo de proveedor");
+})();
 
 // Windows no borra un archivo con un descriptor abierto, así que toda base que se abre se
 // registra y se cierra al final: si no, la limpieza falla con EPERM y ensucia la corrida.
