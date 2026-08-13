@@ -2,14 +2,59 @@ import type { ColorItem, FrameNode, GlassItem, Marco, PaneSpec, System, WingType
 import { buildReinforcementCutList, flattenToLeafFrames } from "./tree";
 import { profileFamilies } from "@/data/families";
 import { glassCatalog } from "@/data/glass";
-import { EUR_MXN } from "@/data/catalog";
+import { EUR_MXN, IMPORT_FACTOR } from "@/data/catalog";
 import { resolveHardwareCost, type VerifiedHardwareCosting } from "./maco/costing";
 
-// Representative rate for the Mallorquina louvre-shutter accessory (avg. of the 5
-// Mallorquina families' base EUR/m prices * EUR_MXN) — modeled as a per-leaf add-on, not a
-// wing type, since it's an exterior shading accessory mounted over a window, not one of the
-// window's own opening mechanisms. See data/catalog.ts for EUR_MXN.
-const MALLORQUINA_RATE_MXN_PER_M = 47;
+// ---------- MALLORQUINA (exterior louvre shutter) ----------
+// Modeled as a per-leaf add-on, not a wing type: it's an exterior shading accessory mounted
+// over a window, not one of the window's own opening mechanisms.
+//
+// Costed from the real MALLORQUINA families in data/families.ts. A louvre shutter is a stack
+// of fixed lamas inside a tapajuntas frame, so its profile consumption scales with leaf
+// HEIGHT (how many lamas fit) as well as width — the flat per-metre-of-width rate this
+// replaced undercounted it by roughly an order of magnitude.
+const MALLORQUINA_LAMA_EUR_PER_M = 1.69; // 190235 "lama fija 45mm p/mallorq"
+const MALLORQUINA_TRIM_EUR_PER_M = 2.29; // 190227/190228 "tapajuntas troquel. p/lama fija"
+// 45 mm lama installed with ~5 mm overlap between courses.
+const MALLORQUINA_LAMA_PITCH_MM = 40;
+// CALIBRAR: hinges, stays and fixings for the shutter are not in the profile price list and
+// are therefore NOT included below. Set a real per-shutter figure once known.
+const MALLORQUINA_HARDWARE_MXN = 0;
+
+// Profile metres consumed by one Mallorquina over a leaf of wM x hM, priced in MXN.
+function mallorquinaCost(wM: number, hM: number): number {
+  const lamaCount = Math.ceil((hM * 1000) / MALLORQUINA_LAMA_PITCH_MM);
+  const lamaM = lamaCount * wM;
+  const trimM = 2 * (wM + hM);
+  const profileEUR = lamaM * MALLORQUINA_LAMA_EUR_PER_M + trimM * MALLORQUINA_TRIM_EUR_PER_M;
+  return profileEUR * EUR_MXN * IMPORT_FACTOR + MALLORQUINA_HARDWARE_MXN;
+}
+
+// ---------- TARIFAS DE COSTEO (editables desde la pestaña Servicios) ----------
+
+// Offcut allowance. Costing profile on exact net metres assumes zero waste, but stock comes
+// in fixed 5.8 m bars and the remnants are usually unusable — the shop buys more metres than
+// the window contains. A percentage (rather than per-window bar rounding) is the right model
+// because optimisation spreads offcuts across a production batch.
+// CALIBRAR against real consumption: (metres bought) / (metres in finished windows) - 1.
+export const DEFAULT_WASTE_PCT = 12;
+
+// Shop labour: cutting, welding, corner cleaning, reinforcement, hardware fitting and
+// glazing. This is fabrication work in the plant and is distinct from `installation`
+// (on-site fitting) and `transport` (freight), which are quoted separately per piece.
+//
+// Derived from the shop's own figures (Ago 2026): 2 operarios a $1,000/día pagados en mano;
+// con ~40% de carga social (IMSS, INFONAVIT, aguinaldo, vacaciones, prima) el costo real es
+// $1,400/día. Producción normal 3-4 ventanas/día ≈ 6.3 m²/día con ventana promedio de 1.8 m².
+//   $1,400 / 6.3 m² ≈ $222/m²  ->  se redondea a 225.
+// CALIBRAR: recalcular si cambia la plantilla, el salario o el ritmo de producción. Si el
+// taller no factura todos los días pagados, la tarifa efectiva sube en la misma proporción.
+export const DEFAULT_LABOR_MXN_PER_M2 = 225;
+
+// Rent, admin payroll, utilities, software, vehicles — everything that is not traceable to a
+// single window. Used only to report net utility; it does not change the quoted price.
+// CALIBRAR: (monthly fixed costs) / (monthly sales).
+export const DEFAULT_OVERHEAD_PCT = 20;
 
 // Below this, the canvas renders an unusable sliver with no warning that the design is
 // unfabricable — ported from static/cotizador.html's MIN_OPENING_MM.
@@ -46,6 +91,8 @@ export type QuoteCalc = {
   sashM: number;
   glassArea: number;
   profileCost: number;
+  /** Portion of profileCost that is offcut/waste rather than profile in the finished window. */
+  profileWasteCost: number;
   glassCost: number;
   reinforce: number;
   seals: number;
@@ -56,10 +103,19 @@ export type QuoteCalc = {
   hardwareVerified: boolean;
   addons: number;
   consumables: number;
+  /** Shop labour: cutting, welding, cleaning, hardware fitting and glazing. */
+  labor: number;
   direct: number;
   sale: number;
   total: number;
+  /** Gross contribution (sale - direct). Does NOT carry fixed overhead. */
   utility: number;
+  /** Fixed overhead absorbed by this quote, at overheadPct of sale. */
+  overhead: number;
+  /** Utility left after overhead — the number that actually reaches the bottom line. */
+  netUtility: number;
+  /** Net utility as a percentage of sale. */
+  netMarginPct: number;
   bars: number;
   waste: number;
 };
@@ -78,6 +134,12 @@ type Params = {
   margin: number;
   discount: number;
   marco: Marco;
+  /** Offcut allowance on profile, as a % of net linear metres. Defaults to DEFAULT_WASTE_PCT. */
+  wastePct?: number;
+  /** Shop labour rate in MXN per m² of window. Defaults to DEFAULT_LABOR_MXN_PER_M2. */
+  laborPerM2?: number;
+  /** Fixed overhead as a % of sale, used only to report net utility. Defaults to DEFAULT_OVERHEAD_PCT. */
+  overheadPct?: number;
   /** Commercial stock bar length used for cut-list bin-packing (bars/waste below and the
    * despiece report) -- defaults to BAR_LENGTH_MM when not given. */
   barLengthMm?: number;
@@ -111,7 +173,13 @@ function reinforcementProfile(code: string) {
   return profileFamilies.find((f) => f.code === code && /^refuerzo/i.test(f.name)) ?? null;
 }
 
-export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco, barLengthMm, hardwareCosting }: Params): QuoteCalc {
+export function calcQuote({
+  width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco,
+  barLengthMm, hardwareCosting,
+  wastePct = DEFAULT_WASTE_PCT,
+  laborPerM2 = DEFAULT_LABOR_MXN_PER_M2,
+  overheadPct = DEFAULT_OVERHEAD_PCT,
+}: Params): QuoteCalc {
   const w = width / 1000, h = height / 1000;
   const area = w * h, perimeter = 2 * (w + h);
   const barLength = barLengthMm ?? BAR_LENGTH_MM;
@@ -144,7 +212,14 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
   const sashM = leaves.reduce((a, l) => a + l.sashPerimeter, 0);
   const glassArea = leaves.reduce((a, l) => a + l.glassArea, 0);
 
-  const profileCost = (frameM * sys.frame + sashM * sys.sash) * color.factor;
+  // Net profile in the finished window, then the metres actually bought to produce it: the
+  // shop buys full 5.8 m bars and the offcuts are usually unusable, so costing on exact net
+  // metres understated every profile line. IMPORT_FACTOR carries the EXWORK list up to landed
+  // cost (see data/catalog.ts); it is 1.0 today, so this reproduces the old number until
+  // someone calibrates it against a real pedimento.
+  const profileNet = (frameM * sys.frame + sashM * sys.sash) * color.factor * IMPORT_FACTOR;
+  const profileCost = profileNet * (1 + wastePct / 100);
+  const profileWasteCost = profileCost - profileNet;
   // Per-leaf glass cost: a leaf that overrides the window's general glass (spec.glass) is
   // costed at ITS OWN catalog price, not the general glass's -- previously every leaf's area
   // was costed at the general glass's price even when VidrioDoc's report already showed the
@@ -157,8 +232,10 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
   // so a quote that has never touched the reinforcement editor doesn't silently lose this cost.
   const reinforcementPieces = buildReinforcementCutList(tree, width, height, marco);
   const reinforcementMatch = marco.reinforcement ? reinforcementProfile(marco.reinforcementCode) : null;
+  // El refuerzo real sale de la misma lista EXWORK que los perfiles, así que lleva el mismo
+  // IMPORT_FACTOR. La estimación plana de respaldo ya está en MXN y no lo lleva.
   const reinforce = reinforcementMatch && reinforcementPieces.length
-    ? (reinforcementPieces.reduce((a, pc) => a + pc.length, 0) / 1000) * reinforcementMatch.priceEUR * EUR_MXN
+    ? (reinforcementPieces.reduce((a, pc) => a + pc.length, 0) / 1000) * reinforcementMatch.priceEUR * EUR_MXN * IMPORT_FACTOR
     : (frameM + sashM) * 78;
   const seals = (frameM + sashM) * 24;
   // The per-leaf $110 "juego de herraje" fee only applies to leaves that actually carry
@@ -178,10 +255,17 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
   const accessories = verifiedHardware
     ? verifiedHardware.totalMxn
     : sys.hardware + hardwareLeafCount * 110 + rail * 165;
-  const addons = leaves.reduce((a, l) => a + (l.spec.mallorquina ? (l.wMm / 1000) * MALLORQUINA_RATE_MXN_PER_M * 2 : 0), 0);
+  const addons = leaves.reduce((a, l) => a + (l.spec.mallorquina ? mallorquinaCost(l.wMm / 1000, l.hMm / 1000) : 0), 0);
   const consumables = (profileCost + glassCost) * 0.045;
-  const direct = profileCost + glassCost + reinforce + seals + accessories + addons + consumables + installation + transport;
+  // Mano de obra de taller: cortar, soldar, limpiar esquinas, herrar y acristalar. No existía
+  // ninguna partida por esto, así que el margen mostrado no era el margen obtenido. Es distinta
+  // de `installation` (montaje en obra) y `transport` (flete), que se cotizan por pieza aparte.
+  const labor = area * laborPerM2;
+  const direct = profileCost + glassCost + reinforce + seals + accessories + addons + consumables + labor + installation + transport;
   const sale = (direct / (1 - margin / 100)) * (1 - discount / 100);
+  // Los gastos fijos NO cambian el precio de venta: solo revelan cuánta de la utilidad bruta
+  // queda de verdad al final. `utility` es contribución bruta y no los absorbe.
+  const overhead = sale * (overheadPct / 100);
 
   // Real per-category bin-packing against the actual commercial bar length/kerf (configurable
   // via barLengthMm -- see the Consumo tab's "Longitud de barra" selector), instead of a flat
@@ -198,9 +282,13 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
 
   return {
     w, h, area, perimeter, leaves, frameM, sashM, glassArea,
-    profileCost, glassCost, reinforce, seals, accessories, hardwareLeafCount,
-    hardwareVerified: verifiedHardware !== null, addons, consumables,
-    direct, sale, total: sale * qty, utility: (sale - direct) * qty, bars, waste,
+    profileCost, profileWasteCost, glassCost, reinforce, seals, accessories, hardwareLeafCount,
+    hardwareVerified: verifiedHardware !== null, addons, consumables, labor,
+    direct, sale, total: sale * qty, utility: (sale - direct) * qty,
+    overhead: overhead * qty,
+    netUtility: (sale - direct - overhead) * qty,
+    netMarginPct: sale > 0 ? ((sale - direct - overhead) / sale) * 100 : 0,
+    bars, waste,
   };
 }
 

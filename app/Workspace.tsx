@@ -29,7 +29,10 @@ import {
   remapTreeToSystem,
   SLIDING_WINGS,
 } from "@/lib/tree";
-import { BAR_LENGTH_MM, KERF_MM, buildCutList, calcQuote, packBars, MIN_OPENING_MM } from "@/lib/calc";
+import {
+  BAR_LENGTH_MM, KERF_MM, buildCutList, calcQuote, packBars, MIN_OPENING_MM,
+  DEFAULT_WASTE_PCT, DEFAULT_LABOR_MXN_PER_M2, DEFAULT_OVERHEAD_PCT,
+} from "@/lib/calc";
 import { money } from "@/lib/money";
 import { downloadFile, exportReportHtml, toCsv } from "@/lib/exportDoc";
 import { runSelfCheck, type SelfCheckResult } from "@/lib/selfCheck";
@@ -231,6 +234,12 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
   const [installation, setInstallation] = useState(1200);
   const [transport, setTransport] = useState(450);
   const [discount, setDiscount] = useState(0);
+  // Tarifas de producción. No se guardan con el proyecto todavía: reabrir uno vuelve a los valores
+  // por omisión del motor. Persistirlas obliga a tocar el formato .luftproj y la tabla `projects`,
+  // y eso es una migración aparte; mientras tanto la referencia es la del motor y no una copia.
+  const [wastePct, setWastePct] = useState(DEFAULT_WASTE_PCT);
+  const [laborPerM2, setLaborPerM2] = useState(DEFAULT_LABOR_MXN_PER_M2);
+  const [overheadPct, setOverheadPct] = useState(DEFAULT_OVERHEAD_PCT);
   const [code, setCode] = useState("001");
   const [designation, setDesignation] = useState("V01");
   const [location, setLocation] = useState("Cocina");
@@ -1538,8 +1547,8 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
   }, [profileSearch, profileSystemFilter]);
 
   const calc = useMemo(
-    () => calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco, barLengthMm }),
-    [width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco, barLengthMm]
+    () => calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco, barLengthMm, wastePct, laborPerM2, overheadPct }),
+    [width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco, barLengthMm, wastePct, laborPerM2, overheadPct]
   );
 
   const selectedLeaf = useMemo(() => {
@@ -1567,6 +1576,7 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
       setSelfCheck(
         runSelfCheck({
           tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, marco, threeReady,
+          wastePct, laborPerM2, overheadPct,
           componentIds: components.map((c) => c.id),
           activeComponentId: componentId,
         })
@@ -1575,7 +1585,7 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
     const id = setInterval(run, 25000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, marco, threeReady, components, componentId]);
+  }, [tree, width, height, qty, sys, glass, color, rail, installation, transport, margin, discount, marco, threeReady, wastePct, laborPerM2, overheadPct, components, componentId]);
 
   // ---------- Tree-mutation click helpers (split/assign-wing tools only apply via a leaf's own
   // pane rect; select-tool clicks just move focus, see handlePartClick below) ----------
@@ -2524,11 +2534,18 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
 
           {tab === "Servicios" && (
             <>
-              <Block n="01" title="Costos adicionales" sub="Recargos y condiciones comerciales." />
+              <Block n="01" title="Costos de producción" sub="Mano de obra de taller y merma de perfil. Entran al costo directo, así que mueven el precio." />
+              <label>Mano de obra por m²<input type="number" value={laborPerM2} onChange={(e) => setLaborPerM2(Math.max(0, Number(e.target.value)))} /></label>
+              <label>Merma de perfil <b>{wastePct}%</b><input type="range" min="0" max="30" value={wastePct} onChange={(e) => setWastePct(Number(e.target.value))} /></label>
+
+              <Block n="02" title="Costos adicionales" sub="Recargos y condiciones comerciales." />
               <label>Instalación por pieza<input type="number" value={installation} onChange={(e) => setInstallation(Number(e.target.value))} /></label>
               <label>Transporte por pieza<input type="number" value={transport} onChange={(e) => setTransport(Number(e.target.value))} /></label>
               <label>Margen de utilidad <b>{margin}%</b><input type="range" min="10" max="60" value={margin} onChange={(e) => setMargin(Number(e.target.value))} /></label>
               <label>Descuento <b>{discount}%</b><input type="range" min="0" max="20" value={discount} onChange={(e) => setDiscount(Number(e.target.value))} /></label>
+
+              <Block n="03" title="Gastos fijos" sub="Solo afecta la utilidad neta reportada, no el precio de venta." />
+              <label>Gastos fijos sobre venta <b>{overheadPct}%</b><input type="range" min="0" max="45" value={overheadPct} onChange={(e) => setOverheadPct(Number(e.target.value))} /></label>
             </>
           )}
 
@@ -2751,17 +2768,22 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
               </div>
               <div className="costSummary">
                 <h2>Costos del elemento</h2>
-                <Cost label="Perfiles" value={calc.profileCost} />
+                <Cost label={`Perfiles (incl. ${wastePct}% merma)`} value={calc.profileCost} />
                 <Cost label="Accesorios y herrajes" value={calc.accessories + calc.reinforce + calc.seals} />
                 {calc.addons > 0 && <Cost label="Persianas Mallorquina" value={calc.addons} />}
                 <Cost label="Vidrio" value={calc.glassCost} />
+                <Cost label="Mano de obra de taller" value={calc.labor} />
                 <Cost label="Servicios y consumibles" value={installation + transport + calc.consumables} />
                 <div className="direct"><span>Costo directo / pza.</span><b>{money(calc.direct)}</b></div>
               </div>
               <div className="totalBox">
                 <span>TOTAL OFERTA <small>IVA no incluido</small></span>
                 <strong>{money(calc.total)}</strong>
-                <div><span>Utilidad estimada</span><b>{money(calc.utility)}</b></div>
+                {/* Bruta y neta separadas: la bruta no absorbe gastos fijos, así que mostrarla sola
+                    hacía leer un 35% que nunca llegaba al resultado. */}
+                <div><span>Utilidad bruta</span><b>{money(calc.utility)}</b></div>
+                <div><span>Gastos fijos ({overheadPct}%)</span><b>−{money(calc.overhead)}</b></div>
+                <div><span>Utilidad neta ({calc.netMarginPct.toFixed(1)}%)</span><b>{money(calc.netUtility)}</b></div>
               </div>
               <details className="materials" open>
                 <summary>Consumo calculado</summary>

@@ -74,24 +74,30 @@ const EXPECTED_CURRENCY = "EUR";
  */
 export function resolveHardwareCost(input: VerifiedHardwareCosting | undefined): HardwareCostBreakdown | null {
   if (!input) return null;
+  // Los campos se comprueban por tipo y no solo por valor. Esta estructura se armará leyendo
+  // supplier_hardware_mappings y un JSON de proyecto, donde el tipo de TypeScript no garantiza
+  // nada en tiempo de ejecución: un objeto a medio llenar tiene que devolver `null`, que es la
+  // respuesta correcta cuando falta evidencia, y no reventar la cotización completa.
   // 6. Indicación explícita.
   if (!input.useVerifiedCosts) return null;
   // 4. Revisión elegida.
-  if (input.revision.trim() === "") return null;
+  if (typeof input.revision !== "string" || input.revision.trim() === "") return null;
   // 5. Tipo de cambio explícito.
   if (!Number.isFinite(input.eurMxn) || input.eurMxn <= 0) return null;
   // 1. Mapeo explícito.
-  if (input.lines.length === 0) return null;
+  if (!Array.isArray(input.lines) || input.lines.length === 0) return null;
 
   const lines: HardwareCostBreakdown["lines"] = [];
   let totalMxn = 0;
 
   for (const line of input.lines) {
+    if (!line) return null;
     // 2. Cantidad verificada.
     if (line.verification !== "verified") return null;
     if (!Number.isFinite(line.qty) || line.qty <= 0) return null;
     // 3. Fuente documental.
-    if (line.sourceRef.trim() === "" || line.sourceLocation.trim() === "") return null;
+    if (typeof line.sourceRef !== "string" || line.sourceRef.trim() === "") return null;
+    if (typeof line.sourceLocation !== "string" || line.sourceLocation.trim() === "") return null;
     // Un precio en otra moneda con un tipo de cambio EUR/MXN daría un número sin significado.
     if (line.currency !== EXPECTED_CURRENCY) return null;
     if (!Number.isSafeInteger(line.unitPriceMinor) || line.unitPriceMinor < 0) return null;

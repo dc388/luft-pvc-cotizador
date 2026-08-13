@@ -3,7 +3,19 @@ import type { Brand, System } from "@/types/domain";
 // Reference EUR->MXN rate used only to convert the Aluplast EXWORK Veracruz price list
 // (rev. ABR_22, 01/05/2022) into MXN for the `sourced: true` systems below. Update if
 // quoting against a materially different exchange rate.
+//
+// CALIBRAR: this rate is the one that was current when the ABR_22 list was extracted.
+// Quoting today against a stale rate silently understates every profile line.
 export const EUR_MXN = 21.8;
+
+// Landed-cost multiplier applied on top of the EXWORK Veracruz profile prices. The source
+// list is EXWORK: it stops at the seller's dock and excludes ocean/inland freight, customs
+// duty, broker fees, and handling into the plant. Charging EXWORK as if it were the landed
+// cost is a direct margin leak on every window.
+//
+// CALIBRAR: set this from a real recent import — (total landed cost) / (EXWORK invoice).
+// 1.0 reproduces the previous behaviour exactly (EXWORK charged as landed).
+export const IMPORT_FACTOR = 1.0;
 
 // The 5 systems marked sourced:true use real base (white) EUR/m frame+sash prices from the
 // extracted "Familias_Precio" sheet (280 normalized families, 1279 SKUs), converted to MXN

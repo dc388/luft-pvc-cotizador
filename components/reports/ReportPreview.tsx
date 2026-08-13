@@ -47,11 +47,14 @@ export function ReportPreview({ report, code, designation, location, brand, syst
       ) : (
         <>
           <h3>Estadística del proyecto</h3>
-          <ReportRow a="Perfiles" b={money(calc.profileCost * qty)} c="MXN" />
+          <ReportRow a="Perfiles" b={money(calc.profileCost * qty)} c={`incl. merma ${money(calc.profileWasteCost * qty)}`} />
           <ReportRow a="Vidrio" b={money(calc.glassCost * qty)} c="MXN" />
           <ReportRow a="Herrajes y accesorios" b={money(calc.accessories * qty)} c="MXN" />
+          <ReportRow a="Mano de obra de taller" b={money(calc.labor * qty)} c="MXN" />
           <ReportRow a="Costo directo" b={money(calc.direct * qty)} c="MXN" />
           <ReportRow a="Total oferta" b={money(calc.total)} c="MXN" />
+          <ReportRow a="Utilidad bruta" b={money(calc.utility)} c="MXN" />
+          <ReportRow a="Utilidad neta" b={money(calc.netUtility)} c={`${calc.netMarginPct.toFixed(1)}% s/venta`} />
         </>
       )}
     </div>
