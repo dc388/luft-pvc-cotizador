@@ -1,11 +1,14 @@
 // Importador de la lista de precios de herrajes MACO para sistemas Aluplast.
 //
 // Uso:
-//   npm run maco:import:dry            -- lee y reporta, no escribe nada
-//   npm run maco:import                -- escribe en la D1 LOCAL
+//   npm run maco:import:dry -- --file="<ruta>"   -- lee y reporta, no escribe nada
+//   npm run maco:import     -- --file="<ruta>"   -- escribe en la D1 LOCAL
 //
 //   node --import ./tests/register-ts-loader.mjs scripts/import-maco.ts \
 //     --file="<ruta al .xlsx o al .lnk>" [--dry-run] [--manuals="<carpeta>"] [--db-file="<sqlite>"]
+//
+// La ruta se pasa siempre a mano y NO tiene valor por omisión: tenerla escrita en package.json
+// ataba el repositorio a una computadora concreta y fallaba en cualquier otra.
 //
 // Acepta tanto el .xlsx como el acceso directo .lnk de Windows que apunta a él (es lo que entrega
 // la carpeta de archivos recientes de Office); en ese caso resuelve el destino y abre el libro
@@ -38,7 +41,13 @@ import { writeManuals, writePriceList } from "./lib/macoWriter";
 import { resolveShortcut } from "./lib/shortcut";
 import { openWorkbook } from "./lib/xlsx";
 
-/** Carpeta destinada a la documentación técnica de herrajes MACO para Aluplast. */
+/**
+ * Carpeta destinada a la documentación técnica de herrajes MACO para Aluplast.
+ *
+ * Es una comodidad para la máquina donde vive hoy esa carpeta, no un requisito: si no existe,
+ * `scanManuals` devuelve una lista vacía sin fallar y la importación de precios sigue igual. En
+ * otra computadora se pasa `--manuals="<carpeta>"`.
+ */
 const DEFAULT_MANUALS_DIR =
   "C:/Users/jsald/Desktop/04 - Recursos y plantillas/CATALOGOS/ALUPLAST MX/MANUAL MACO";
 

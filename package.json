@@ -17,8 +17,8 @@
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
     "db:migrate:local": "bash scripts/sites-env.sh -- wrangler d1 migrations apply DB --local",
-    "maco:import:dry": "node --import ./tests/register-ts-loader.mjs scripts/import-maco.ts --dry-run --file=\"C:/Users/jsald/AppData/Roaming/Microsoft/Office/Recent/LOUDVENTURES_MEXpricelist22_2022_MACO.LNK\"",
-    "maco:import": "node --import ./tests/register-ts-loader.mjs scripts/import-maco.ts --file=\"C:/Users/jsald/AppData/Roaming/Microsoft/Office/Recent/LOUDVENTURES_MEXpricelist22_2022_MACO.LNK\"",
+    "maco:import:dry": "node --import ./tests/register-ts-loader.mjs scripts/import-maco.ts --dry-run",
+    "maco:import": "node --import ./tests/register-ts-loader.mjs scripts/import-maco.ts",
     "test:maco": "node --import ./tests/register-ts-loader.mjs --test tests/macoDecimal.test.ts tests/macoPriceList.test.ts tests/macoImport.test.ts tests/macoCatalog.test.ts tests/macoCosting.test.ts",
     "test:costeo": "node --test tests/costeo.test.mjs"
   },

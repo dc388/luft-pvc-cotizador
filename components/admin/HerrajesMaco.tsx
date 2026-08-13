@@ -154,7 +154,7 @@ export function HerrajesMaco() {
       {!loading && rows.length === 0 && !error && (
         <p className="macoCatalogEmpty">
           {revisions.length === 0
-            ? "Todavía no se ha importado ninguna revisión de la lista MACO. Ejecuta `npm run maco:import`."
+            ? 'Todavía no se ha importado ninguna revisión de la lista MACO. Ejecuta `npm run maco:import -- --file="<ruta al Excel del proveedor>"`.'
             : "Ningún herraje coincide con esa búsqueda."}
         </p>
       )}
