@@ -44,6 +44,9 @@ export function FrameNodeView({ frame, overallWidthMm, overallHeightMm, zIndex, 
   const isSideFocused = (side: SideKey) => focusScope === "leaf" && id === selectedId && focusPart === "marco" && focusSide === side;
   const isGlassSideFocused = (side: SideKey) => focusScope === "leaf" && id === selectedId && focusPart === "vidrio" && focusSide === side;
 
+  // La hoja seleccionada se dibuja por encima de sus vecinas: su marca de selección va por fuera
+  // del contorno (ver .pane.selectedPane), y sin esto la hoja siguiente la taparía justo en el
+  // traslape que comparten.
   const style: CSSProperties = {
     position: "absolute",
     left: `${(frame.fabX / overallWidthMm) * 100}%`,
@@ -51,7 +54,7 @@ export function FrameNodeView({ frame, overallWidthMm, overallHeightMm, zIndex, 
     width: `${(frame.fabW / overallWidthMm) * 100}%`,
     height: `${(frame.fabH / overallHeightMm) * 100}%`,
     borderWidth,
-    zIndex,
+    zIndex: id === selectedId ? zIndex + 100 : zIndex,
   };
 
   return (

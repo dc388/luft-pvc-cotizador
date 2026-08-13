@@ -55,7 +55,10 @@ html{background:var(--paper)}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased}
 button{font:inherit;cursor:pointer;color:inherit}
 button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
-select,input[type=number],input[type=text],input[type=date]{width:100%;height:40px;border:1px solid var(--field-border);background:var(--field-bg);border-radius:7px;padding:0 10px;color:var(--field-text);font-size:12px}
+/* email/tel/search entran en la misma lista que text/number/date: la ficha del solicitante y el
+   buscador del explorador los usan, y sin estar aquí quedaban con el aspecto nativo del navegador
+   -- en modo oscuro, un campo blanco en medio de un panel oscuro. */
+select,input[type=number],input[type=text],input[type=date],input[type=email],input[type=tel],input[type=search]{width:100%;height:40px;border:1px solid var(--field-border);background:var(--field-bg);border-radius:7px;padding:0 10px;color:var(--field-text);font-size:12px}
 textarea{background:var(--field-bg);border-color:var(--field-border);color:var(--field-text)}
 /* Los controles nativos (menú del select, casilla, selector de fecha, barra de rango) los pinta
    el navegador, no esta hoja: sin color-scheme/accent-color salen en claro dentro del tema oscuro. */
@@ -144,14 +147,32 @@ a{color:inherit}
 .viewportControls .viewportScale{min-width:52px;font-variant-numeric:tabular-nums}
 .viewportControls .viewportCenter{font-size:8px;letter-spacing:.05em;text-transform:uppercase}
 .viewportHint{position:absolute;right:18px;bottom:20px;z-index:6;max-width:45%;padding:6px 9px;border:1px solid var(--line);border-radius:20px;background:color-mix(in srgb,var(--surface) 92%,transparent);color:var(--muted);font-size:8px;text-align:center;pointer-events:none}
-.modelStage{width:min(76%,650px,calc(420px * var(--ar,1.818)));aspect-ratio:var(--ar,1.818);perspective:1100px;position:relative;display:grid;place-items:center}
+/* El tamaño del dibujo lo mide PanZoomViewport y lo entrega en --fit-w/--fit-h: el rectángulo
+   más grande con la proporción REAL de la ventana que cabe en el lienzo disponible. Los topes
+   fijos que había aquí (650px de ancho y un presupuesto de alto de 420px) no eran un ajuste sino
+   un supuesto: en un lienzo más grande que ese supuesto la ventana se quedaba diminuta en una
+   esquina, ocupando una fracción del espacio. El valor de reserva conserva el cálculo anterior
+   para los diagramas de informe, que se dibujan sin viewport que los mida. */
+.modelStage{width:var(--fit-w,min(76%,650px,calc(420px * var(--ar,1.818))));height:var(--fit-h,auto);aspect-ratio:var(--ar,1.818);perspective:1100px;position:relative;display:grid;place-items:center}
 .modelStage .window{width:100%;height:100%}
 .view-3D .modelStage{transform-style:preserve-3d;transform:rotateY(-24deg) rotateX(3deg);filter:drop-shadow(28px 28px 24px var(--shadow))}
 .view-3D .window{transform-style:preserve-3d;box-shadow:none}
 .modelSide{position:absolute;top:0;right:-22px;width:24px;height:100%;background:linear-gradient(90deg,#0c1713,#35473f);transform-origin:left;transform:rotateY(90deg);border:1px solid #08100d}
 .modelSill{position:absolute;left:0;right:0;bottom:-20px;height:22px;background:linear-gradient(#23332c,#0d1814);transform-origin:top;transform:rotateX(-90deg)}
-.window{width:min(76%,650px);aspect-ratio:var(--ar,1.818);border:15px solid #1d2924;background:linear-gradient(135deg,#b9d5d7,#e5eeee 45%,#afcdd0);display:flex;box-shadow:0 24px 40px var(--shadow);position:relative;min-height:0}
-.window.whiteFrame{border-color:#f7f7f2;box-shadow:0 0 0 1px #aeb8b1,0 24px 40px var(--shadow)}
+/* La ventana flota sobre el lienzo. Aquí había un borde de 15px en verde oscuro (#1d2924) que no
+   era ningún perfil del sistema: era un vano de instalación dibujado alrededor del producto, y
+   por eso se leía como un segundo marco por fuera del marco real -- el real sí sale del folio
+   elegido y cambia de color con él, el falso no cambiaba nunca. Con el vano fuera, el marco
+   visible es el del sistema y nada más.
+   El fondo pasa de un degradado azul de vidrio al color del folio: en los sistemas de corredera
+   la hoja se encaja en el marco (frameSeatMm, ver flattenToLeafFrames) y deja a la vista una
+   franja perimetral que ES el marco real, proporcional a los milímetros reales. Como vidrio azul
+   estaba mal pintada, y transparente se vería un hueco.
+   --marco-hit es el ancho de las zonas de clic del marco de conjunto, que antes coincidía con
+   ese borde; ahora es una franja transparente en el margen (ver .hitAssemblyMarco*).
+   La sombra queda suave y hacia abajo: separa el producto del fondo sin volver a insinuar un
+   hueco de muro. */
+.window{--marco-hit:14px;width:min(76%,650px);aspect-ratio:var(--ar,1.818);border:0;background:var(--frame,#dfe2dc);display:flex;box-shadow:inset 0 0 0 1px rgba(0,0,0,.22),0 10px 20px -10px var(--shadow);position:relative;min-height:0}
 .splitNode{display:flex;min-width:0;min-height:0;position:relative}
 .splitNode.axisCol{flex-direction:row}
 .splitNode.axisRow{flex-direction:column}
@@ -160,10 +181,13 @@ a{color:inherit}
    y cierres se posiciona contra --stile, así que sigue cuadrando a cualquier tamaño de hoja. */
 .pane{flex:1;position:relative;border-style:solid;border-color:#24352e;background:var(--frame,#dfe2dc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);overflow:hidden;min-width:0;--ring:max(9%,12px);--stile:max(13%,17px)}
 .whiteFrame .pane{border-color:#e8eae5}
-/* Selección: anillo por fuera del dibujo, no una capa encima. El velo translúcido anterior
-   apagaba justo lo que hay que ver al seleccionar (manilla, flechas, cotas de la hoja). */
-.pane.selectedPane{outline:3px solid var(--focus-ring);outline-offset:-3px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),0 0 0 1px rgba(0,0,0,.25)}
-.pane:hover:not(.selectedPane){outline:2px dashed color-mix(in srgb,var(--focus-ring) 65%,transparent);outline-offset:-2px}
+/* Selección: una línea separada del producto por unos píxeles de fondo, no un anillo metido
+   dentro de la hoja. El anillo interior anterior (con su reflejo blanco y su filo oscuro) se
+   leía como un perfil más de la ventana en vez de como una marca de la interfaz; el velo
+   translúcido que hubo antes apagaba justo lo que hay que ver al seleccionar (manilla, flechas,
+   cotas de la hoja). El desplazamiento hacia fuera es lo que la hace inequívocamente anotación. */
+.pane.selectedPane{outline:2px solid var(--focus-ring);outline-offset:3px}
+.pane:hover:not(.selectedPane){outline:2px dashed color-mix(in srgb,var(--focus-ring) 65%,transparent);outline-offset:2px}
 /* Fija vs móvil: la hoja fija no lleva perfil de hoja, y además se trama para distinguirla de
    un vistazo cuando conviven las dos en la misma composición. */
 .paneFixed .glassFill{background:linear-gradient(145deg,#a7c3c8cc,#dde8e7cc 55%,#9dbfc6cc)}
@@ -187,14 +211,24 @@ a{color:inherit}
 .hitVidrioLeft{top:max(17%,22px);bottom:max(17%,22px);left:max(17%,22px);width:10px}
 .hitVidrioRight{top:max(17%,22px);bottom:max(17%,22px);right:max(17%,22px);width:10px}
 .hitHerraje{position:absolute;z-index:5;bottom:6px;left:6px;width:24px;height:24px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:12px;display:grid;place-items:center}
-.hitAssemblyMarco{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer;z-index:8}
-.hitAssemblyMarco:hover{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent)}
-.hitAssemblyMarco.marcoSideFocus{background:color-mix(in srgb, var(--accent) 55%, transparent);box-shadow:inset 0 0 0 2px var(--accent)}
-.hitAssemblyMarcoTop{top:-15px;left:-15px;right:-15px;height:15px}
-.hitAssemblyMarcoBottom{bottom:-15px;left:-15px;right:-15px;height:15px}
-.hitAssemblyMarcoLeft{top:-15px;bottom:-15px;left:-15px;width:15px}
-.hitAssemblyMarcoRight{top:-15px;bottom:-15px;right:-15px;width:15px}
-.cierreCentral{position:absolute;top:50%;transform:translate(-50%,-50%);z-index:6;width:22px;height:22px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:11px;border:0;padding:0;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+/* Zonas de clic del marco de conjunto. Viven en el margen, sobre el fondo del lienzo y no sobre
+   el producto: son transparentes salvo al apuntarlas o al quedar seleccionadas, así que ya no
+   pintan ninguna franja permanente alrededor de la ventana. Cuando se marcan, el relleno tenue
+   más el filo de 1px se leen como una anotación en el margen, no como un perfil de la ventana.
+   Llegar al marco de conjunto también es posible desde el árbol de Composición, que lo lista con
+   nombre -- de ahí que estas franjas puedan ser invisibles sin volverse inalcanzables. */
+.hitAssemblyMarco{position:absolute;appearance:none;padding:0;border:0;background:transparent;cursor:pointer;z-index:210}
+.hitAssemblyMarco:hover{background:color-mix(in srgb, var(--accent) 14%, transparent)}
+.hitAssemblyMarco.marcoSideFocus{background:color-mix(in srgb, var(--accent) 26%, transparent);box-shadow:inset 0 0 0 1px var(--accent)}
+.hitAssemblyMarcoTop{top:calc(-1 * var(--marco-hit,14px));left:calc(-1 * var(--marco-hit,14px));right:calc(-1 * var(--marco-hit,14px));height:var(--marco-hit,14px)}
+.hitAssemblyMarcoBottom{bottom:calc(-1 * var(--marco-hit,14px));left:calc(-1 * var(--marco-hit,14px));right:calc(-1 * var(--marco-hit,14px));height:var(--marco-hit,14px)}
+.hitAssemblyMarcoLeft{top:calc(-1 * var(--marco-hit,14px));bottom:calc(-1 * var(--marco-hit,14px));left:calc(-1 * var(--marco-hit,14px));width:var(--marco-hit,14px)}
+.hitAssemblyMarcoRight{top:calc(-1 * var(--marco-hit,14px));bottom:calc(-1 * var(--marco-hit,14px));right:calc(-1 * var(--marco-hit,14px));width:var(--marco-hit,14px)}
+/* Las capas de anotación (cierre central y zonas del marco de conjunto) van por encima de
+   cualquier hoja: la hoja seleccionada se eleva sobre sus vecinas para que su marca de selección
+   no quede tapada en el traslape (ver FrameNodeView), y sin este margen de altura acabaría
+   tapando ella el marcador del cierre. */
+.cierreCentral{position:absolute;top:50%;transform:translate(-50%,-50%);z-index:200;width:22px;height:22px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:11px;border:0;padding:0;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}
 .motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#1d4f74;font-size:18px;font-weight:bold;text-shadow:0 1px 0 rgba(255,255,255,.75);pointer-events:none}
 /* El nombre de la hoja cae sobre la banda de perfil, que puede ser un folio oscuro (nogal,
    antracita): sin fondo propio desaparecía. Mismo tratamiento de placa que las demás etiquetas. */
@@ -394,30 +428,10 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .profileCatalog p{font-size:9px;margin:3px 0}
 .profileCatalog small{font-size:8px;color:var(--muted)}
 
-.componentOutliner{display:grid;gap:6px;margin:10px 0}
-.componentRow{display:grid;grid-template-columns:1fr auto;align-items:stretch;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--surface)}
-.componentRow.active{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 10%, var(--surface))}
-.componentMain{display:grid;gap:3px;text-align:left;padding:9px 10px}
-.componentMain b{font-size:10px;color:var(--ink)}
-.componentMain span{font-size:8.5px;color:var(--muted)}
-.componentActions{display:flex;flex-direction:column;border-left:1px solid var(--line)}
-.componentActions button{flex:1;padding:0 10px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--line)}
-.componentActions button:last-child{border-bottom:none}
-.componentActions button:hover:not(:disabled){color:var(--accent-text)}
-.componentActions button:disabled{color:var(--disabled-fg);background:var(--disabled-bg);cursor:not-allowed}
-
-/* Selector de carpetas. Reusa la escala tipográfica y los radios del outliner de componentes:
-   es la misma clase de lista, un nivel más arriba. Las que llegaron del cotizador público se
-   marcan con acento e insignia WEB para reconocerlas sin leer el nombre. */
-.projectFolders{display:grid;gap:6px;margin:10px 0;max-height:236px;overflow-y:auto}
-.projectFolder{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;text-align:left;padding:9px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface)}
-.projectFolder i{font-style:normal;font-size:13px;line-height:1}
-.projectFolder span{display:grid;gap:3px;min-width:0}
-.projectFolder b{font-size:10px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.projectFolder small{font-size:8.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.projectFolder em{font-style:normal;font-size:7.5px;font-weight:700;letter-spacing:.08em;color:var(--accent-text);border:1px solid color-mix(in srgb, var(--accent) 42%, transparent);border-radius:999px;padding:2px 6px}
-.projectFolder.active{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 10%, var(--surface))}
-.projectFolder:disabled{border-color:var(--disabled-line);color:var(--disabled-fg);cursor:not-allowed}
+/* La lista de componentes y el selector de carpetas que vivían aquí los sustituyeron
+   components/projects/ComponentList.tsx y components/projects/ProjectExplorer.tsx, con sus
+   estilos al final de este archivo. Las reglas de .internalApp de más abajo siguen dándoles el
+   mismo tratamiento de panel de vidrio que tenían, ahora por .componentItem y .explorerRow. */
 
 /* Expediente de clientes (tab Clientes). Misma escala tipográfica minúscula y mismos radios que
    el resto del panel técnico: es una herramienta de trabajo, no una pantalla de cliente. Cada
@@ -660,10 +674,10 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .internalApp .fullButton{border:1px solid rgba(111,101,232,.36);border-radius:15px;background:linear-gradient(145deg,rgba(255,255,255,.55),rgba(255,255,255,.28));box-shadow:inset 0 1px 0 rgba(255,255,255,.86)}
 .internalApp .fullButton:hover{background:linear-gradient(145deg,#8d83f3,#6559dd);border-color:transparent;box-shadow:0 12px 28px -16px rgba(74,57,181,.65)}
 .internalApp .propertyGroup h2,.internalApp .costSummary h2{border-radius:11px;background:rgba(255,255,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
-.internalApp .componentRow,.internalApp .reportList button,.internalApp .profileCatalog>div,.internalApp .projectFolder{
+.internalApp .componentItem,.internalApp .reportList button,.internalApp .profileCatalog>div,.internalApp .explorerRow{
   border:1px solid rgba(255,255,255,.76);border-radius:15px;background:linear-gradient(145deg,rgba(255,255,255,.55),rgba(255,255,255,.3));box-shadow:inset 0 1px 0 rgba(255,255,255,.9)
 }
-.internalApp .componentRow.active,.internalApp .reportList button.selected,.internalApp .projectFolder.active{background:rgba(235,232,255,.7);border-color:rgba(111,101,232,.38);box-shadow:0 10px 22px -17px rgba(67,53,157,.65),inset 0 1px 0 #fff}
+.internalApp .componentItem.isActive,.internalApp .reportList button.selected,.internalApp .explorerRow.isActive{background:rgba(235,232,255,.7);border-color:rgba(111,101,232,.38);box-shadow:0 10px 22px -17px rgba(67,53,157,.65),inset 0 1px 0 #fff}
 .internalApp .componentTitle{background:linear-gradient(145deg,rgba(143,133,245,.95),rgba(101,89,221,.96))}
 .internalApp .totalBox{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.62);border-radius:22px;background:linear-gradient(145deg,rgba(158,149,255,.96),rgba(112,98,229,.96) 55%,rgba(89,75,205,.97));box-shadow:0 22px 46px -24px rgba(63,45,172,.82),inset 0 1px 0 rgba(255,255,255,.68)}
 .internalApp .totalBox::after{content:"";position:absolute;inset:-70% -20%;transform:rotate(16deg);background:linear-gradient(90deg,transparent 36%,rgba(255,255,255,.25) 50%,transparent 64%);pointer-events:none}
@@ -716,12 +730,12 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
     border-color:rgba(255,255,255,.16);background:rgba(255,255,255,.07)
   }
   .internalApp .summaryCard,.internalApp .componentEditor,.internalApp .optimization,.internalApp .reportPreview,
-  .internalApp .docItem,.internalApp .componentRow,.internalApp .reportList button,.internalApp .profileCatalog>div,
-  .internalApp .projectFolder,.internalApp .typologyButton,.internalApp .clientCard{
+  .internalApp .docItem,.internalApp .componentItem,.internalApp .reportList button,.internalApp .profileCatalog>div,
+  .internalApp .explorerRow,.internalApp .typologyButton,.internalApp .clientCard{
     border-color:rgba(255,255,255,.16);background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.04))
   }
   .internalApp .summaryCard span,.internalApp .prop span,.internalApp .reportPreview>header{background:rgba(255,255,255,.05)}
-  .internalApp .componentRow.active,.internalApp .reportList button.selected,.internalApp .projectFolder.active{
+  .internalApp .componentItem.isActive,.internalApp .reportList button.selected,.internalApp .explorerRow.isActive{
     background:var(--selected-bg);border-color:color-mix(in srgb,var(--accent-text) 55%,transparent)
   }
   .internalApp .propertyGroup h2,.internalApp .costSummary h2{background:rgba(255,255,255,.07)}
@@ -1510,7 +1524,9 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
   .configPanel h1{font-size:34px}
   .inputGrid{grid-template-columns:1fr 1fr}
   .inputGrid label:last-child{grid-column:1/3}
-  .window{width:88%;border-width:9px}
+  /* El ancho de reserva se aprieta en pantallas chicas; el borde que se adelgazaba aquí era el
+     vano falso y ya no existe (ver .window). */
+  .window{width:88%}
   .moduleNav{top:auto;overflow:auto;justify-content:flex-start}
   .moduleNav button{padding:0 16px}
   .toolbox{display:none}
@@ -1761,3 +1777,312 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 }
 @media(max-width:760px){.luftAiPanel{padding:14px;border-radius:21px}.luftAiHeader{align-items:flex-start}.luftAiComposer>div{display:grid;grid-template-columns:1fr 1fr}.luftAiComposer button{width:100%}}
 @media print{.luftAiPanel{display:none!important}}
+
+/* ==========================================================================
+   Gestor de proyectos: explorador, alta, ficha del solicitante, componentes y
+   recomendaciones.
+
+   Todo pide tokens (--surface, --ink, --line, --muted, --accent...) y no escribe un solo color
+   literal, que es la regla del archivo: así el modo oscuro sale del bloque de tokens de arriba y no
+   hay que arreglarlo componente por componente. Los contrastes se apoyan en los pares ya validados
+   (--ok-bg/--ok-fg, --warn-bg/--warn-fg, --danger-bg/--danger-fg).
+   ========================================================================== */
+
+/* Texto solo para lectores de pantalla. Lo usan las etiquetas de casillas y selectores cuyo
+   propósito ya se ve por el contexto pero que sin nombre accesible quedarían anónimos. */
+.visuallyHidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* ---------- Avisos de toda la pantalla ---------- */
+.workspaceBanner{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:8px 14px 0;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font-size:12px}
+.workspaceBanner span{flex:1;min-width:200px}
+.workspaceBanner button{padding:6px 12px;border:1px solid var(--field-border);border-radius:8px;background:var(--field-bg);color:var(--ink);font-size:11px}
+.workspaceBanner button:hover{background:var(--hover-bg)}
+.workspaceBanner.info{background:var(--ok-bg);border-color:var(--ok-fg);color:var(--ok-fg)}
+.workspaceBanner.warn{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-fg)}
+.workspaceBanner.error{background:var(--danger-bg);border-color:var(--danger-line);color:var(--danger-fg)}
+.workspaceBanner.info button,.workspaceBanner.warn button,.workspaceBanner.error button{background:var(--surface);color:var(--ink);border-color:var(--line)}
+
+/* Insignia de guardado. Cuatro tonos porque son cuatro cosas distintas, y "guardado" es solo una. */
+.selfCheckBadge.save-ok{background:var(--ok-bg);color:var(--ok-fg)}
+.selfCheckBadge.save-busy{background:var(--warn-bg);color:var(--warn-fg)}
+.selfCheckBadge.save-warn{background:var(--warn-bg);color:var(--warn-fg)}
+.selfCheckBadge.save-error{background:var(--danger-bg);color:var(--danger-fg)}
+
+/* ---------- Explorador ---------- */
+.projectExplorer{display:flex;flex-direction:column;gap:10px}
+.explorerToolbar{display:flex;flex-wrap:wrap;gap:8px}
+.explorerToolbar button,.explorerBackup button,.explorerMore,.explorerEmpty button,.explorerClearFilters{padding:9px 13px;border:1px solid var(--field-border);border-radius:9px;background:var(--field-bg);color:var(--ink);font-size:11.5px}
+.explorerToolbar button:hover:not(:disabled),.explorerBackup button:hover:not(:disabled),.explorerMore:hover,.explorerEmpty button:hover{background:var(--hover-bg);border-color:var(--accent)}
+.explorerToolbar button:disabled,.explorerBackup button:disabled{background:var(--disabled-bg);border-color:var(--disabled-line);color:var(--disabled-fg);cursor:not-allowed}
+.explorerPrimary{background:var(--accent)!important;border-color:var(--accent)!important;color:var(--accent-contrast)!important;font-weight:bold}
+.explorerPrimary:disabled{opacity:.55}
+.explorerDanger{color:var(--danger-fg)!important}
+
+.explorerSearch{display:flex;gap:8px;align-items:stretch}
+.explorerSearchField{flex:1;min-width:0}
+.explorerFilterToggle{padding:0 12px;border:1px solid var(--field-border);border-radius:9px;background:var(--field-bg);color:var(--ink);font-size:11.5px;white-space:nowrap}
+.explorerFilterToggle.hasFilters{border-color:var(--accent);color:var(--accent-text);font-weight:bold}
+.explorerFilters{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.explorerFilters label{display:flex;flex-direction:column;gap:4px;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.explorerFilterRange{grid-column:1/3;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.explorerClearFilters{grid-column:1/3}
+
+.explorerError{margin:0;padding:9px 12px;border:1px solid var(--danger-line);border-radius:10px;background:var(--danger-bg);color:var(--danger-fg);font-size:11.5px}
+.explorerNotice{margin:0;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text-2);font-size:11.5px}
+
+.explorerGroup{border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.explorerGroupHead{display:flex;align-items:center;gap:8px;width:100%;padding:11px 13px;border:0;background:transparent;color:var(--ink);font-size:12.5px;text-align:left}
+.explorerGroupHead:hover{background:var(--hover-bg)}
+.explorerGroupHead i{font-style:normal;color:var(--muted)}
+.explorerGroupHead b{flex:1}
+.explorerGroupCount{min-width:24px;padding:2px 7px;border-radius:20px;background:var(--selected-bg);color:var(--accent-text);font-size:10.5px;font-weight:bold;text-align:center}
+.explorerGroupHint{margin:0 13px 8px;color:var(--muted);font-size:10.5px;line-height:1.45}
+.explorerGroupEmpty{margin:0;padding:0 13px 13px;color:var(--muted);font-size:11px}
+
+.explorerList{list-style:none;margin:0;padding:0 8px 8px;display:flex;flex-direction:column;gap:6px}
+.explorerRow{position:relative;display:flex;align-items:stretch;gap:4px;border:1px solid var(--line);border-radius:11px;background:var(--field-bg)}
+.explorerRow.isActive{border-color:var(--accent);background:var(--selected-bg)}
+/* Barra lateral en el activo: el color de fondo solo no basta para distinguirlo de un hover. */
+.explorerRow.isActive::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--accent)}
+.explorerRow.isArchived{opacity:.72}
+.explorerRowMain{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;padding:10px 11px;border:0;background:transparent;color:var(--ink);text-align:left;font-size:11.5px}
+.explorerRowMain.asStatic{cursor:default}
+.explorerRowMain:hover:not(.asStatic){background:var(--hover-bg)}
+.explorerRowTop{display:flex;align-items:baseline;gap:8px}
+.explorerRowTop b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
+.explorerRowFolio{font-style:normal;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.explorerRowClient{color:var(--text-2);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.explorerRowFigures{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;color:var(--muted);font-size:10.5px}
+.explorerRowFigures b{color:var(--ink);font-size:11.5px;font-variant-numeric:tabular-nums}
+.explorerRowMeta{display:flex;flex-wrap:wrap;gap:4px}
+.explorerRowDates{display:flex;flex-wrap:wrap;gap:3px 9px;color:var(--muted);font-size:9.5px}
+.explorerBadge{padding:2px 7px;border-radius:20px;background:var(--disabled-bg);color:var(--text-2);font-size:9px;letter-spacing:.04em;text-transform:uppercase}
+.explorerBadge.status-approved{background:var(--ok-bg);color:var(--ok-fg)}
+.explorerBadge.status-rejected{background:var(--danger-bg);color:var(--danger-fg)}
+.explorerBadge.status-quoted,.explorerBadge.status-in_progress{background:var(--warn-bg);color:var(--warn-fg)}
+.explorerBadge.origin-imported{background:var(--selected-bg);color:var(--accent-text)}
+.explorerBadge.origin-web{background:var(--accent);color:var(--accent-contrast)}
+.explorerBadge.isArchivedBadge{background:var(--warn-bg);color:var(--warn-fg)}
+
+/* Menús de fila con <details>: se abren y cierran con teclado sin JavaScript propio. */
+.explorerRowMenu,.componentMenu{position:relative;flex:0 0 auto}
+.explorerRowMenu>summary,.componentMenu>summary{display:grid;place-items:center;width:30px;height:100%;min-height:34px;color:var(--muted);font-size:15px;cursor:pointer;list-style:none;border-radius:9px}
+.explorerRowMenu>summary::-webkit-details-marker,.componentMenu>summary::-webkit-details-marker{display:none}
+.explorerRowMenu>summary:hover,.componentMenu>summary:hover{background:var(--hover-bg);color:var(--ink)}
+.explorerRowMenuBody,.componentMenuBody{position:absolute;right:0;top:100%;z-index:20;display:flex;flex-direction:column;min-width:186px;padding:5px;border:1px solid var(--line);border-radius:11px;background:var(--surface);box-shadow:0 10px 26px var(--shadow)}
+.explorerRowMenuBody button,.componentMenuBody button{padding:8px 10px;border:0;border-radius:7px;background:transparent;color:var(--ink);font-size:11.5px;text-align:left}
+.explorerRowMenuBody button:hover:not(:disabled),.componentMenuBody button:hover:not(:disabled){background:var(--hover-bg)}
+.explorerRowMenuBody button:disabled,.componentMenuBody button:disabled{color:var(--disabled-fg);cursor:not-allowed}
+
+.explorerMore{width:100%}
+.explorerEmpty{padding:16px 13px;border:1px dashed var(--line);border-radius:14px;background:var(--surface);color:var(--text-2);font-size:11.5px;text-align:center}
+.explorerEmpty p{margin:0 0 10px}
+.explorerEmptyActions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.explorerTrashActions{display:flex;flex-direction:column;gap:5px;padding:8px}
+.explorerTrashActions button{padding:6px 10px;border:1px solid var(--field-border);border-radius:8px;background:var(--surface);color:var(--ink);font-size:10.5px;white-space:nowrap}
+.explorerBackup{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-top:6px;border-top:1px solid var(--line)}
+.explorerBackup small{flex:1 0 100%;color:var(--muted);font-size:10px;line-height:1.4}
+
+/* ---------- Importación con conflicto ---------- */
+.importPrompt{padding:12px 14px;border:1px solid var(--warn-line);border-radius:13px;background:var(--warn-bg);color:var(--warn-fg);font-size:11.5px}
+.importPrompt p{margin:0 0 8px;line-height:1.5}
+.importPromptWarning{font-size:10.5px}
+.importPromptActions{display:flex;flex-wrap:wrap;gap:8px}
+.importPromptActions button{padding:7px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-size:11px}
+.importPromptActions button:hover{background:var(--hover-bg)}
+
+/* ---------- Proyecto abierto ---------- */
+.openProjectMeta{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px;padding:11px 13px;border:1px solid var(--line);border-radius:13px;background:var(--surface)}
+.openProjectMeta span{display:flex;flex-direction:column;gap:2px;color:var(--muted);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase}
+.openProjectMeta b{color:var(--ink);font-size:11.5px;letter-spacing:0;text-transform:none}
+
+/* ---------- Diálogo de alta ---------- */
+.projectDialog{width:min(660px,94vw);max-height:88vh;overflow:auto;padding:0;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink)}
+.projectDialog::backdrop{background:rgba(6,10,14,.55)}
+.projectDialog form{display:flex;flex-direction:column}
+.projectDialogHead{padding:18px 20px 10px;border-bottom:1px solid var(--line)}
+.projectDialogHead h2{margin:0 0 5px;font-size:17px}
+.projectDialogHead p{margin:0;color:var(--muted);font-size:11.5px;line-height:1.5}
+.projectDialogBody{display:flex;flex-direction:column;gap:14px;padding:16px 20px}
+.projectDialogBody label,.projectDialogGrid label{display:flex;flex-direction:column;gap:4px;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.projectDialogBody input,.projectDialogBody select,.projectDialogBody textarea{text-transform:none;letter-spacing:0}
+.projectDialogBody fieldset{margin:0;padding:12px;border:1px solid var(--line);border-radius:12px}
+.projectDialogBody legend{padding:0 6px;color:var(--accent-text);font-size:10.5px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase}
+.projectDialogGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.projectDialogGrid .wide,.projectDialogBody>label.wide{grid-column:1/-1}
+.projectDialogIssues{margin:0 20px;padding:10px 12px;border:1px solid var(--danger-line);border-radius:11px;background:var(--danger-bg);color:var(--danger-fg);font-size:11.5px}
+.projectDialogIssues p{margin:0 0 4px}
+.projectDialogKeep{font-weight:bold}
+.projectDialogFoot{display:flex;justify-content:flex-end;gap:9px;padding:14px 20px 18px}
+.projectDialogFoot button{padding:10px 16px;border:1px solid var(--field-border);border-radius:9px;background:var(--field-bg);color:var(--ink);font-size:12px}
+.projectDialogFoot button:hover:not(:disabled){background:var(--hover-bg)}
+
+/* ---------- Ficha del solicitante ---------- */
+.requesterPanel{display:flex;flex-direction:column;gap:11px}
+.requesterMeta{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.requesterMeta span{display:flex;flex-direction:column;gap:2px;color:var(--muted);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase}
+.requesterMeta b{color:var(--ink);font-size:11px;letter-spacing:0;text-transform:none}
+.requesterAddress{margin:0;padding:12px;border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;gap:9px}
+.requesterAddress legend{padding:0 6px;color:var(--accent-text);font-size:10.5px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase}
+.requesterAddressEmpty{color:var(--muted);font-weight:normal;text-transform:none;letter-spacing:0}
+.requesterToggle{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text-2);text-transform:none;letter-spacing:0}
+.requesterToggle input{width:auto;height:auto}
+.requesterIssues{margin:0;padding:9px 12px;border:1px solid var(--danger-line);border-radius:10px;background:var(--danger-bg);color:var(--danger-fg);font-size:11.5px}
+.requesterIssues p{margin:0 0 3px}
+.requesterDirty{margin:0;color:var(--warn-fg);font-size:10.5px}
+label.hasIssue input{border-color:var(--danger-line)}
+.fieldIssue{color:var(--danger-fg);font-size:10px;text-transform:none;letter-spacing:0}
+
+/* ---------- Lista de componentes ---------- */
+.componentManager{display:flex;flex-direction:column;gap:9px}
+.componentListHead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.componentSelectAll{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-2)}
+.componentSelectAll input{width:auto;height:auto}
+.componentListCount{color:var(--muted);font-size:10.5px}
+.componentBulkBar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:9px 11px;border:1px solid var(--accent);border-radius:12px;background:var(--selected-bg)}
+.componentBulkBar button{padding:6px 11px;border:1px solid var(--field-border);border-radius:8px;background:var(--surface);color:var(--ink);font-size:11px}
+.componentBulkBar button:hover:not(:disabled){background:var(--hover-bg)}
+.componentBulkBar button:disabled{color:var(--disabled-fg);cursor:not-allowed}
+.componentBulkMove{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.componentBulkMove select{width:auto;min-width:150px;height:32px;font-size:11px}
+
+.componentList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.componentItem{position:relative;display:flex;align-items:stretch;gap:3px;border:1px solid var(--line);border-radius:11px;background:var(--field-bg)}
+.componentItem.isActive{border-color:var(--accent);background:var(--selected-bg)}
+.componentItem.isActive::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--accent)}
+.componentCheck{display:grid;place-items:center;padding:0 4px 0 8px}
+.componentCheck input{width:auto;height:auto}
+.componentBody{flex:1;min-width:0;display:flex;align-items:flex-start;gap:6px}
+.componentOpen{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;padding:9px 4px 9px 0;border:0;background:transparent;color:var(--ink);text-align:left}
+.componentOpen:hover{background:var(--hover-bg)}
+.componentOpen>b{display:flex;flex-wrap:wrap;align-items:baseline;gap:7px;font-size:12.5px}
+.componentActiveTag{padding:1px 7px;border-radius:20px;background:var(--accent);color:var(--accent-contrast);font-size:8.5px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase}
+.componentSpecs{color:var(--text-2);font-size:10.5px;overflow:hidden;text-overflow:ellipsis}
+.componentFigures{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;color:var(--muted);font-size:10.5px}
+.componentFigures b{color:var(--ink);font-size:11.5px;font-variant-numeric:tabular-nums}
+.componentState{padding:2px 7px;border-radius:20px;background:var(--disabled-bg);color:var(--text-2);font-size:9px;letter-spacing:.04em;text-transform:uppercase}
+.componentState.state-ok{background:var(--ok-bg);color:var(--ok-fg)}
+.componentState.state-alertas{background:var(--warn-bg);color:var(--warn-fg)}
+.componentDates{display:flex;flex-wrap:wrap;gap:3px 9px;color:var(--muted);font-size:9.5px}
+.componentRenameInput{height:30px;font-size:12px}
+.componentQty{display:flex;align-items:center;padding:9px 4px}
+.componentQty label{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:9.5px;letter-spacing:.04em;text-transform:uppercase}
+.componentQty input{width:58px;height:30px;font-size:11.5px;text-align:center}
+.componentEmpty{padding:16px 13px;border:1px dashed var(--line);border-radius:14px;background:var(--surface);color:var(--text-2);font-size:11.5px;text-align:center}
+.componentEmpty p{margin:0 0 10px;line-height:1.5}
+
+/* Estado vacío del lienzo cuando el proyecto no tiene componentes. */
+.canvasEmpty{position:absolute;inset:0;z-index:11;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:24px;background:var(--paper);color:var(--text-2);text-align:center}
+.canvasEmpty b{font-size:15px;color:var(--ink)}
+.canvasEmpty p{margin:0;max-width:380px;font-size:12px;line-height:1.55}
+.canvasEmpty button{padding:10px 16px;border:1px solid var(--accent);border-radius:9px;background:var(--accent);color:var(--accent-contrast);font-size:12px}
+.canvasEmpty button:disabled{opacity:.55;cursor:not-allowed}
+
+/* ---------- Recomendaciones ---------- */
+.quoteInsights{display:flex;flex-direction:column;gap:11px}
+.insightsToggle{display:flex;align-items:flex-start;gap:9px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.insightsToggle input{width:auto;height:auto;margin-top:2px}
+.insightsToggle span{display:flex;flex-direction:column;gap:3px}
+.insightsToggle b{font-size:12px}
+.insightsToggle small{color:var(--muted);font-size:10.5px;line-height:1.5}
+.insightsOff,.insightsEmpty{margin:0;padding:10px 12px;border:1px dashed var(--line);border-radius:11px;color:var(--muted);font-size:11px;line-height:1.5}
+.insightsList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.insightCard{padding:11px 12px;border:1px solid var(--line);border-left-width:3px;border-radius:11px;background:var(--surface)}
+.insightCard.kind-aviso{border-left-color:var(--warn-line);background:var(--warn-bg);color:var(--warn-fg)}
+.insightCard.kind-faltante{border-left-color:var(--danger-line);background:var(--danger-bg);color:var(--danger-fg)}
+.insightCard.kind-sugerencia{border-left-color:var(--accent)}
+.insightCard header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px}
+.insightCard header b{font-size:12px}
+.insightCard p{margin:0 0 5px;font-size:11px;line-height:1.5}
+.insightConfidence{padding:2px 7px;border-radius:20px;background:var(--disabled-bg);color:var(--text-2);font-size:9px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.insightConfidence.confidence-alta{background:var(--ok-bg);color:var(--ok-fg)}
+.insightConfidence.confidence-baja{background:var(--disabled-bg);color:var(--muted)}
+.insightBasis{color:var(--muted);font-size:10px;line-height:1.5}
+.insightBasis i{font-style:normal;opacity:.7}
+.insightBasis em{font-style:normal;font-weight:bold}
+.insightActions{display:flex;gap:7px}
+.insightActions button{padding:6px 11px;border:1px solid var(--field-border);border-radius:8px;background:var(--surface);color:var(--ink);font-size:10.5px}
+.insightActions button:hover{background:var(--hover-bg)}
+.insightDismiss{color:var(--muted)}
+.insightsTemplates{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.insightsTemplates h3{margin:0 0 4px;font-size:11.5px}
+.insightsTemplates ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.insightsTemplates li{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:var(--field-bg)}
+.insightsTemplates li span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.insightsTemplates li b{font-size:11.5px}
+.insightsTemplates li small{color:var(--muted);font-size:10px}
+.insightsTemplates li button{padding:6px 10px;border:1px solid var(--field-border);border-radius:8px;background:var(--surface);color:var(--ink);font-size:10.5px;white-space:nowrap}
+.insightsStats{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:11px}
+.insightsStats summary{cursor:pointer;font-weight:bold}
+.insightsStats dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:9px 0}
+.insightsStats dt{color:var(--muted);font-size:10.5px}
+.insightsStats dd{margin:0;font-size:11px}
+.insightsDanger{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-top:8px;border-top:1px solid var(--line)}
+.insightsDanger p{flex:1 0 100%;margin:0;color:var(--muted);font-size:10.5px;line-height:1.5}
+.insightsDanger button{padding:7px 11px;border:1px solid var(--field-border);border-radius:8px;background:var(--field-bg);color:var(--ink);font-size:10.5px}
+.insightsDanger button:hover{background:var(--hover-bg)}
+
+/* Motivo de rechazo en el expediente de clientes. */
+.clientQuoteReason{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:7px 0;padding:9px 11px;border:1px solid var(--warn-line);border-radius:11px;background:var(--warn-bg);color:var(--warn-fg)}
+.clientQuoteReason label{display:flex;flex-direction:column;gap:4px;font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+.clientQuoteReason select{min-width:190px;text-transform:none;letter-spacing:0}
+.clientQuoteReason button{padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font-size:11px}
+.clientQuoteReasonCancel{color:var(--muted)}
+
+/* ---------- Adaptación a pantallas reducidas ----------
+   El explorador y sus filas pasan a una sola columna, y los menús de fila se anclan al borde para
+   no salirse. El panel lateral ya se pliega por su cuenta en el diseño existente. */
+@media(max-width:900px){
+  .explorerFilters{grid-template-columns:1fr}
+  .explorerFilterRange{grid-column:auto}
+  .explorerClearFilters{grid-column:auto}
+  .projectDialogGrid{grid-template-columns:1fr}
+  .componentBody{flex-direction:column}
+  .componentQty{padding:0 4px 9px 0}
+  .explorerRowMenuBody,.componentMenuBody{right:-4px;min-width:170px}
+}
+@media print{
+  .projectExplorer,.workspaceBanner,.quoteInsights,.componentManager,.requesterPanel,.importPrompt,.projectDialog{display:none!important}
+}
+
+/* ---------- Lista virtualizada ----------
+   El alto de fila se fija aquí Y en ProjectExplorer (ROW_HEIGHT): la ventana deslizante calcula
+   posiciones con ese número, así que si el CSS dejara crecer la fila, lo pintado y lo calculado se
+   separarían. De ahí el overflow oculto: una fila que se pase se recorta en vez de descuadrar la lista. */
+.virtualViewport{overflow-y:auto;overscroll-behavior:contain}
+.virtualRow{list-style:none;margin:0;padding:0}
+.virtualViewport .virtualRow{padding-bottom:6px}
+.virtualViewport .virtualRow>.explorerRow{height:100%;overflow:hidden}
+.explorerList .virtualRow>.explorerRow{margin:0}
+
+/* ---------- Historial de versiones y cierre de obra ---------- */
+.projectHistory{display:flex;flex-direction:column;gap:14px}
+.historyBlock{padding:12px 13px;border:1px solid var(--line);border-radius:13px;background:var(--surface)}
+.historyBlock h3{margin:0 0 4px;font-size:12px}
+.historyHint{margin:0 0 9px;color:var(--muted);font-size:10.5px;line-height:1.5}
+.historyEmpty{margin:0;color:var(--muted);font-size:11px}
+.historyCreate{display:flex;gap:7px;margin-bottom:9px}
+.historyCreate label{flex:1;min-width:0}
+.historyCreate button,.historyToggle{padding:8px 12px;border:1px solid var(--field-border);border-radius:9px;background:var(--field-bg);color:var(--ink);font-size:11px;white-space:nowrap}
+.historyCreate button:hover:not(:disabled),.historyToggle:hover{background:var(--hover-bg)}
+.historyToggle{margin-top:9px}
+.historyList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:250px;overflow-y:auto}
+.historyList li{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--field-bg)}
+.historyList li span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.historyList li b{font-size:11.5px}
+.historyList li small{color:var(--muted);font-size:10px}
+.historyList li button{padding:6px 11px;border:1px solid var(--field-border);border-radius:8px;background:var(--surface);color:var(--ink);font-size:10.5px;white-space:nowrap}
+
+.outcomeSummary{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:8px;margin-bottom:8px}
+.outcomeSummary span{display:flex;flex-direction:column;gap:2px;color:var(--muted);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase}
+.outcomeSummary b{color:var(--ink);font-size:12px;letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums}
+/* El desvío al alza se marca: es el dato que cambia una decisión de precio. */
+.outcomeSummary b.isOver{color:var(--danger-fg)}
+.outcomeNotes{margin:0 0 8px;padding:8px 10px;border-left:3px solid var(--line);color:var(--text-2);font-size:11px;line-height:1.5}
+.outcomeForm{display:flex;flex-direction:column;gap:9px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.outcomeForm label{display:flex;flex-direction:column;gap:4px;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.outcomeForm input,.outcomeForm textarea{text-transform:none;letter-spacing:0}
+.outcomeActions{display:flex;flex-wrap:wrap;gap:8px}
+.outcomeActions button{padding:9px 14px;border:1px solid var(--field-border);border-radius:9px;background:var(--field-bg);color:var(--ink);font-size:11.5px}
+
+@media print{.projectHistory{display:none!important}}

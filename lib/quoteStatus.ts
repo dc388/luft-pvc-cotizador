@@ -50,3 +50,41 @@ export function isQuoteStatus(value: unknown): value is QuoteStatus {
 export function quoteStatusLabel(value: string): string {
   return isQuoteStatus(value) ? QUOTE_STATUS_LABEL[value] : value;
 }
+
+/** Motivos por los que se cae una cotización.
+ *
+ *  Es una lista cerrada y no un texto libre por dos razones. Una: solo así se puede contar cuál es el
+ *  motivo más frecuente, que es lo que sirve para mejorar. Y dos, la que decide: el motivo se guarda
+ *  además en las estadísticas de mejora (ver lib/learning.ts), y esa tabla no puede contener datos
+ *  personales. Un texto libre acabaría diciendo "el cliente Juan no contestó el teléfono"; una lista
+ *  cerrada no puede. La nota libre de la bitácora sigue existiendo y sigue siendo libre -- esa vive
+ *  en `quote_events`, junto al expediente del cliente, donde ese dato sí corresponde. */
+export const QUOTE_REJECTION_REASONS = [
+  "precio",
+  "tiempo-de-entrega",
+  "eligio-competencia",
+  "proyecto-cancelado",
+  "sin-respuesta",
+  "fuera-de-alcance",
+  "otro",
+] as const;
+
+export type QuoteRejectionReason = (typeof QUOTE_REJECTION_REASONS)[number];
+
+export const QUOTE_REJECTION_REASON_LABEL: Record<QuoteRejectionReason, string> = {
+  precio: "Precio",
+  "tiempo-de-entrega": "Tiempo de entrega",
+  "eligio-competencia": "Eligió a la competencia",
+  "proyecto-cancelado": "El proyecto se canceló",
+  "sin-respuesta": "El cliente no respondió",
+  "fuera-de-alcance": "Fuera de nuestro alcance",
+  otro: "Otro motivo",
+};
+
+export function isQuoteRejectionReason(value: unknown): value is QuoteRejectionReason {
+  return typeof value === "string" && (QUOTE_REJECTION_REASONS as readonly string[]).includes(value);
+}
+
+export function quoteRejectionReasonLabel(value: string): string {
+  return isQuoteRejectionReason(value) ? QUOTE_REJECTION_REASON_LABEL[value] : value;
+}

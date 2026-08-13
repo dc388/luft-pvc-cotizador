@@ -258,13 +258,21 @@ export async function getQuoteByToken(db: Db, token: string): Promise<{ folio: s
   return row ? { folio: row.folio, snapshot: row.snapshot, status: row.status as QuoteStatus } : null;
 }
 
-export async function setQuoteStatus(db: Db, quoteId: string, status: QuoteStatus, note = ""): Promise<boolean> {
+/** Devuelve el importe de la cotización movida (o `null` si no existe) y no solo un booleano: quien
+ *  llama registra el resultado comercial en las estadísticas de mejora y necesita el importe, que es
+ *  el único dato no personal que tiene sentido guardar de una cotización cerrada. */
+export async function setQuoteStatus(
+  db: Db,
+  quoteId: string,
+  status: QuoteStatus,
+  note = ""
+): Promise<{ total: number } | null> {
   const now = nowIso();
-  const [existing] = await db.select({ id: quotes.id }).from(quotes).where(eq(quotes.id, quoteId)).limit(1);
-  if (!existing) return false;
+  const [existing] = await db.select({ id: quotes.id, total: quotes.total }).from(quotes).where(eq(quotes.id, quoteId)).limit(1);
+  if (!existing) return null;
   await db.update(quotes).set({ status, updatedAt: now }).where(eq(quotes.id, quoteId));
   await db.insert(quoteEvents).values({ id: crypto.randomUUID(), quoteId, status, note, createdAt: now });
-  return true;
+  return { total: existing.total };
 }
 
 export async function listQuoteEvents(db: Db, quoteId: string): Promise<QuoteEventRow[]> {

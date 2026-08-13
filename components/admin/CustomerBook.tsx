@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { money } from "@/lib/money";
-import { QUOTE_STATUSES, quoteStatusLabel, type QuoteStatus } from "@/lib/quoteStatus";
+import {
+  QUOTE_REJECTION_REASONS,
+  QUOTE_STATUSES,
+  quoteRejectionReasonLabel,
+  quoteStatusLabel,
+  type QuoteRejectionReason,
+  type QuoteStatus,
+} from "@/lib/quoteStatus";
 import type { QuoteEventRow, QuoteListRow } from "@/types/quote";
 
 // El expediente de clientes del panel interno. Cada cotización que un cliente genera en /cotizar
@@ -45,6 +52,10 @@ export function CustomerBook() {
   const [error, setError] = useState("");
   const [openQuoteId, setOpenQuoteId] = useState("");
   const [events, setEvents] = useState<QuoteEventRow[]>([]);
+  // Cancelar una cotización pregunta el motivo antes de guardarlo. Es el único dato que convierte
+  // "perdimos esta" en algo de lo que se puede aprender, y por eso se pide en el momento en que se
+  // sabe -- después nadie vuelve a llenarlo.
+  const [rejecting, setRejecting] = useState<{ quoteId: string; reason: QuoteRejectionReason } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,14 +86,21 @@ export function CustomerBook() {
   const groups = useMemo(() => groupByCustomer(rows), [rows]);
   const pipeline = rows.reduce((sum, row) => sum + row.total, 0);
 
-  async function changeStatus(quoteId: string, next: QuoteStatus) {
+  async function changeStatus(quoteId: string, next: QuoteStatus, reason?: QuoteRejectionReason) {
+    // Cancelar abre la pregunta del motivo en vez de guardar de inmediato. La etapa no se mueve
+    // todavía: si se descarta la pregunta, no ha pasado nada.
+    if (next === "cancelado" && !reason) {
+      setRejecting({ quoteId, reason: "precio" });
+      return;
+    }
+    setRejecting(null);
     // Optimista: la etapa se mueve en pantalla y se corrige sola si el servidor falla.
     setRows((current) => current.map((row) => (row.id === quoteId ? { ...row, status: next } : row)));
     try {
       const response = await fetch(`/api/quotes/${quoteId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status: next }),
+        body: JSON.stringify({ status: next, ...(reason ? { reason } : {}) }),
       });
       const payload = (await response.json()) as { events?: QuoteEventRow[]; error?: string };
       if (!response.ok) throw new Error(payload.error ?? "No pudimos guardar la etapa.");
@@ -182,6 +200,29 @@ export function CustomerBook() {
                   <a className="clientQuoteDoc" href={`/cotizacion/${quote.token}`} target="_blank" rel="noopener noreferrer">PDF</a>
                   <button onClick={() => void toggleHistory(quote.id)}>{openQuoteId === quote.id ? "Ocultar" : "Historial"}</button>
                 </div>
+                {rejecting?.quoteId === quote.id && (
+                  <div className="clientQuoteReason">
+                    <label>
+                      Motivo por el que se cayó
+                      <select
+                        value={rejecting.reason}
+                        onChange={(event) =>
+                          setRejecting({ quoteId: quote.id, reason: event.target.value as QuoteRejectionReason })
+                        }
+                      >
+                        {QUOTE_REJECTION_REASONS.map((entry) => (
+                          <option key={entry} value={entry}>{quoteRejectionReasonLabel(entry)}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <button type="button" onClick={() => void changeStatus(quote.id, "cancelado", rejecting.reason)}>
+                      Guardar como cancelada
+                    </button>
+                    <button type="button" className="clientQuoteReasonCancel" onClick={() => setRejecting(null)}>
+                      Descartar
+                    </button>
+                  </div>
+                )}
                 {quote.notes && <p className="clientQuoteNotes">“{quote.notes}”</p>}
                 {openQuoteId === quote.id && (
                   <ol className="clientQuoteHistory">
