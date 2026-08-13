@@ -309,3 +309,60 @@ test("public quote rejects abusive project payload sizes", async () => {
   assert.equal(response.status, 400);
   assert.match((await response.json()).error, /hasta 100 configuraciones/i);
 });
+
+// El catálogo de herrajes MACO es una lista de precios de PROVEEDOR: información interna. Estas
+// dos pruebas cubren las dos formas en que podría escaparse -- por su endpoint, y por el HTML.
+test("el catálogo de herrajes MACO queda cerrado sin la cookie interna", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-maco-gate`);
+  const { default: worker } = await import(workerUrl.href);
+  const env = {
+    ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+    INTERNAL_PASSWORD: TEST_INTERNAL_PASSWORD,
+  };
+  const ctx = { waitUntil() {}, passThroughOnException() {} };
+
+  // Sin cookie: 401, no un 200 con precios.
+  const anonymous = await worker.fetch(new Request("http://localhost/api/maco-hardware?q=100528"), env, ctx);
+  assert.equal(anonymous.status, 401, "el catálogo de proveedor no puede responder sin credenciales");
+  assert.ok(!(await anonymous.text()).includes("11.38"), "no debe filtrarse ningún precio en el 401");
+
+  // Con una cookie firmada con otra contraseña tampoco.
+  const forged = await worker.fetch(
+    new Request("http://localhost/api/maco-hardware", {
+      headers: { cookie: await internalCookie("otra-contrasena") },
+    }),
+    env,
+    ctx,
+  );
+  assert.equal(forged.status, 401);
+});
+
+test("el HTML del cotizador público no trae precios ni códigos de herrajes MACO", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-maco-html`);
+  const { default: worker } = await import(workerUrl.href);
+
+  // /cotizar es público por diseño: se pide SIN cookie interna, como lo haría un cliente.
+  const response = await worker.fetch(
+    new Request("http://localhost/cotizar", { headers: { accept: "text/html" } }),
+    {
+      ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+      INTERNAL_PASSWORD: TEST_INTERNAL_PASSWORD,
+    },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+  assert.equal(response.status, 200);
+  const html = await response.text();
+
+  // Ni el proveedor, ni su endpoint, ni un SKU o precio real de la lista ABR_22.
+  assert.ok(!/\bMACO\b/.test(html), "el HTML público menciona MACO");
+  assert.ok(!html.includes("maco-hardware"), "el HTML público expone el endpoint interno");
+  for (const sku of ["100528", "100551", "X11092", "235650"]) {
+    assert.ok(!html.includes(sku), `el HTML público contiene el SKU de proveedor ${sku}`);
+  }
+  for (const price of ["11.38", "15.94", "428.65"]) {
+    assert.ok(!html.includes(price), `el HTML público contiene el precio de proveedor ${price}`);
+  }
+  assert.ok(!html.includes("EXWORK Veracruz"), "el HTML público expone la condición comercial del proveedor");
+});

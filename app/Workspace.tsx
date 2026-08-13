@@ -75,10 +75,11 @@ import { ProjectCotizacionDoc } from "@/components/reports/ProjectCotizacionDoc"
 import { ProjectCorteDoc } from "@/components/reports/ProjectCorteDoc";
 import { ProjectVidrioDoc } from "@/components/reports/ProjectVidrioDoc";
 import { CustomerBook } from "@/components/admin/CustomerBook";
+import { HerrajesMaco } from "@/components/admin/HerrajesMaco";
 
 // "Clientes" va junto a "Proyecto" y no al final: son las dos pestañas de navegación (a quién le
 // cotizamos, qué le cotizamos) y las demás son de trabajo sobre el componente abierto.
-const TABS: Tab[] = ["Proyecto", "Clientes", "Resumen", "Diseño", "Consumo", "Servicios", "Informes"];
+const TABS: Tab[] = ["Proyecto", "Clientes", "Resumen", "Diseño", "Consumo", "Servicios", "Catálogos", "Informes"];
 const REPORTS: Report[] = ["Cotización", "Optimización de corte", "Pedido de vidrio", "Producción", "Herrajes", "Costos"];
 // Reports that can aggregate every component in the project instead of just the active one --
 // same three the static prototype grouped (Producción/Herrajes/Costos stay per-component only).
@@ -1190,6 +1191,13 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
               <label>Transporte por pieza<input type="number" value={transport} onChange={(e) => setTransport(Number(e.target.value))} /></label>
               <label>Margen de utilidad <b>{margin}%</b><input type="range" min="10" max="60" value={margin} onChange={(e) => setMargin(Number(e.target.value))} /></label>
               <label>Descuento <b>{discount}%</b><input type="range" min="0" max="20" value={discount} onChange={(e) => setDiscount(Number(e.target.value))} /></label>
+            </>
+          )}
+
+          {tab === "Catálogos" && (
+            <>
+              <Block n="01" title="Herrajes MACO para sistemas Aluplast" sub="Lista de precios del proveedor de herrajes, por revisión. MACO fabrica los herrajes; Aluplast es la marca de los perfiles con los que son compatibles." />
+              <HerrajesMaco />
             </>
           )}
 

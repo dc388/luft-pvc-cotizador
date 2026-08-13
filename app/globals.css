@@ -338,6 +338,36 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .clientQuoteHistory b{font-size:8.5px}
 .clientQuoteHistory small{font-size:8px}
 
+/* Catálogo de herrajes MACO para sistemas Aluplast (pantalla interna, pestaña Catálogos).
+   La tabla desborda a lo ancho en el panel lateral, así que scrollea dentro de su contenedor:
+   el panel no debe ensancharse por una descripción de proveedor de 120 caracteres. */
+.macoCatalog{display:grid;gap:10px;margin:10px 0}
+.macoCatalogLead{margin:0;font-size:8.5px;color:var(--muted);line-height:1.55}
+.macoCatalogLead b{color:var(--ink)}
+.macoRevision{display:grid;gap:3px;margin:0;font-size:9px;font-weight:700;color:var(--ink);border:1px solid var(--line);border-left:3px solid var(--muted);border-radius:7px;padding:8px 9px;background:var(--surface)}
+.macoRevision small{font-size:8px;font-weight:400;color:var(--muted);line-height:1.5}
+.macoRevisionActive{border-left-color:var(--accent);color:var(--accent)}
+.macoCatalogFilters{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:6px}
+.macoCatalogFilters label{display:grid;gap:4px;font-size:8px;letter-spacing:.06em;color:var(--muted)}
+.macoCatalogFilters label:first-child{grid-column:1/-1}
+.macoCatalogFilters input,.macoCatalogFilters select{width:100%;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);padding:7px 8px;font:inherit;font-size:9px}
+.macoCatalogSummary{margin:0;font-size:8.5px;color:var(--muted)}
+.macoCatalogError{margin:0;font-size:8.5px;color:#a12d3b;background:rgba(224,69,88,.1);border-radius:6px;padding:7px 8px}
+.macoCatalogEmpty{margin:0;font-size:9px;color:var(--muted);border:1px dashed var(--line);border-radius:7px;padding:14px 10px;text-align:center}
+.macoCatalogTableWrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.macoCatalogTable{border-collapse:collapse;width:100%;min-width:640px;font-size:8.5px}
+.macoCatalogTable th{position:sticky;top:0;text-align:left;font-size:7.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--paper);padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.macoCatalogTable td{padding:7px 8px;border-bottom:1px solid var(--line);color:var(--ink);vertical-align:top}
+.macoCatalogTable tr:last-child td{border-bottom:0}
+.macoSku{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.macoDescription{min-width:220px;line-height:1.5}
+.macoPrice{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.macoPrice small{color:var(--muted);font-size:7.5px}
+.macoProvenance small{color:var(--muted);font-size:7.5px;line-height:1.45}
+.macoCatalogPager{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:8.5px;color:var(--muted)}
+.macoCatalogPager button{border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--accent);padding:5px 9px;font-size:8px;font-weight:700}
+.macoCatalogPager button:disabled{color:var(--muted);opacity:.55}
+
 .reportList{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}
 .reportList button{display:flex;justify-content:space-between;border:1px solid var(--line);background:var(--surface);padding:11px;border-radius:7px;font-size:9px;color:var(--ink)}
 .reportList button.selected{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 12%, var(--surface));color:var(--accent);font-weight:bold}

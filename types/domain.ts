@@ -1,5 +1,9 @@
 export type Brand = "Aluplast" | "Deceuninck";
-export type Tab = "Proyecto" | "Clientes" | "Resumen" | "Diseño" | "Consumo" | "Servicios" | "Informes";
+// "Catálogos" es la administración interna de catálogos de proveedor (hoy: herrajes MACO para
+// sistemas Aluplast). Se llama así y no "Herrajes" porque `Report` ya usa ese nombre para el
+// informe de herrajes de una ventana, que es otra cosa: aquél lista lo que lleva un diseño, ésta
+// consulta la lista de precios del proveedor.
+export type Tab = "Proyecto" | "Clientes" | "Resumen" | "Diseño" | "Consumo" | "Servicios" | "Catálogos" | "Informes";
 export type Report = "Cotización" | "Optimización de corte" | "Pedido de vidrio" | "Producción" | "Herrajes" | "Costos";
 export type ViewMode = "2D" | "Sección" | "3D";
 export type ViewPreset3D = "Frente" | "Planta" | "Perfil" | "Isométrica";

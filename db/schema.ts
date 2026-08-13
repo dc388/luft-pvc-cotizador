@@ -161,6 +161,224 @@ export const rateLimitHits = sqliteTable(
   ]
 );
 
+// ---------------------------------------------------------------------------------------------
+// CATÁLOGOS DE PROVEEDOR (herrajes)
+//
+// MACO no es una marca de perfiles: es el FABRICANTE DE HERRAJES cuyos mecanismos se montan en
+// los sistemas de PVC de la marca Aluplast. Por eso nada de esto vive en `Brand` (types/domain.ts)
+// ni en data/families.ts, que son perfiles: marco, hoja y junquillo. Un renglón de estas tablas es
+// una manilla, un compás o un cerradero -- no un metro de perfil.
+//
+// La separación en tres tablas (fuente / artículo / precio) es lo que permite que llegue la
+// revisión siguiente sin destruir la anterior: el artículo es estable (el SKU 100528 es la misma
+// manilla en 2022 y en 2026), la fuente es el archivo que se importó, y el precio es la
+// intersección de ambos. Guardar el precio en el artículo obligaría a sobrescribirlo en cada
+// lista nueva y la cotización de 2022 dejaría de ser reproducible.
+// ---------------------------------------------------------------------------------------------
+
+// Una revisión importada: el archivo concreto del que salieron los precios. `fileHash` es la
+// llave real de idempotencia -- reimportar el mismo libro encuentra su propia fila y no duplica
+// nada, aunque el archivo haya cambiado de carpeta o de nombre.
+//
+// `active` y `historical` son dos columnas y no un solo estado a propósito: "es la lista de 2022"
+// (historical) y "es la lista con la que se cotiza hoy" (active) son afirmaciones distintas, y
+// ABR_22 entra siendo la primera y NO la segunda. Ser la única revisión disponible no la vuelve
+// vigente: activarla es una decisión comercial explícita, no un efecto secundario de importarla.
+export const supplierCatalogSources = sqliteTable(
+  "supplier_catalog_sources",
+  {
+    id: text("id").primaryKey(),
+    /** Qué clase de fuente es. Hoy solo "lista-precios"; los manuales van en su propia tabla. */
+    sourceType: text("source_type").notNull().default("lista-precios"),
+    /** Fabricante del herraje. "MACO" para esta lista. */
+    supplier: text("supplier").notNull(),
+    /** Marca de perfiles con la que estos herrajes son compatibles. "Aluplast" para esta lista. */
+    brand: text("brand").notNull(),
+    fileName: text("file_name").notNull(),
+    fileHash: text("file_hash").notNull(),
+    fileSize: integer("file_size").notNull().default(0),
+    /** Fecha de modificación del archivo origen, ISO. Es del archivo, no de la importación. */
+    fileModifiedAt: text("file_modified_at").notNull().default(""),
+    /** Etiqueta de revisión tal como la declara el propio archivo: "ABR_22". */
+    revision: text("revision").notNull(),
+    /** Desde cuándo rigen estos precios, ISO corto: "2022-05-01". */
+    effectiveDate: text("effective_date").notNull(),
+    currency: text("currency").notNull().default("EUR"),
+    /** Condición comercial de la lista: "EXWORK Veracruz/México". */
+    terms: text("terms").notNull().default(""),
+    /** 1 = es la revisión con la que se cotiza. Ver la nota de arriba: ABR_22 entra en 0. */
+    active: integer("active").notNull().default(0),
+    /** 1 = lista histórica, conservada para trazabilidad. */
+    historical: integer("historical").notNull().default(1),
+    importedAt: text("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    // Idempotencia apoyada en el índice y no solo en el SELECT previo: dos importaciones
+    // simultáneas del mismo libro llegarían las dos a "no existe".
+    uniqueIndex("supplier_sources_hash_idx").on(table.fileHash),
+    // Una sola fila por proveedor+tipo+revisión: reimportar ABR_22 desde una copia del archivo
+    // con otro hash choca aquí en vez de crear una segunda revisión ABR_22 fantasma.
+    uniqueIndex("supplier_sources_revision_idx").on(table.supplier, table.sourceType, table.revision),
+    index("supplier_sources_brand_idx").on(table.brand, table.supplier),
+  ]
+);
+
+// El artículo en sí, estable entre revisiones. No lleva precio: ver la nota de la sección.
+//
+// `sku` es TEXTO y no un entero aunque la lista traiga códigos como 100528. Dos razones: el mismo
+// archivo mezcla códigos numéricos con códigos como "X11092", y un SKU con ceros a la izquierda
+// ("0012") perdería los ceros al pasar por un entero -- y entonces dejaría de ser el código que
+// el proveedor imprime en su caja.
+export const supplierHardwareItems = sqliteTable(
+  "supplier_hardware_items",
+  {
+    id: text("id").primaryKey(),
+    supplier: text("supplier").notNull(),
+    brand: text("brand").notNull(),
+    sku: text("sku").notNull(),
+    /** Segundo código del proveedor ("clave alterna"). Vacío cuando la lista no lo trae. */
+    altKey: text("alt_key").notNull().default(""),
+    /** Descripción original del proveedor. Se normalizan espacios y Unicode, NO se reescribe. */
+    description: text("description").notNull(),
+    /** Unidad comercial tal como viene ("pz"). */
+    unit: text("unit").notNull().default(""),
+    /** Presentación tal como viene ("pz", "caja"...). */
+    presentation: text("presentation").notNull().default(""),
+    /** Piezas por presentación. Texto para no inventar precisión donde el archivo no la da. */
+    qtyPerPresentation: text("qty_per_presentation").notNull().default(""),
+    /** Vacío salvo que la lista lo declare. NO se infiere de palabras de la descripción. */
+    category: text("category").notNull().default(""),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("supplier_items_sku_idx").on(table.supplier, table.sku),
+    index("supplier_items_alt_idx").on(table.supplier, table.altKey),
+    index("supplier_items_brand_idx").on(table.brand, table.supplier),
+  ]
+);
+
+// El precio de un artículo EN una revisión. Una revisión nueva agrega filas; nunca sobrescribe
+// las viejas, así que el precio de 2022 sigue siendo consultable después de importar 2026.
+//
+// El precio NO se guarda en un REAL: el libro trae 11.379999999999999 donde el proveedor
+// imprime 11.38, y un binario flotante conserva justamente esa basura. `unitPrice` es el decimal
+// canónico en texto y es la FUENTE DE VERDAD; `unitPriceMinor`+`priceScale` son el mismo número
+// como entero exacto (1138 con escala 2) para poder sumar y comparar sin volver a flotante.
+export const supplierHardwarePrices = sqliteTable(
+  "supplier_hardware_prices",
+  {
+    id: text("id").primaryKey(),
+    itemId: text("item_id")
+      .notNull()
+      .references(() => supplierHardwareItems.id, { onDelete: "cascade" }),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => supplierCatalogSources.id, { onDelete: "cascade" }),
+    /** Decimal canónico en texto: "11.38". Fuente de verdad del precio. */
+    unitPrice: text("unit_price").notNull(),
+    /** El mismo precio como entero exacto: 1138. */
+    unitPriceMinor: integer("unit_price_minor").notNull(),
+    /** Decimales de `unitPriceMinor`: 2 para 1138 => 11.38. */
+    priceScale: integer("price_scale").notNull().default(2),
+    currency: text("currency").notNull().default("EUR"),
+    effectiveDate: text("effective_date").notNull(),
+    terms: text("terms").notNull().default(""),
+    /** Fila del Excel de la que salió, para poder volver al origen y auditar el dato. */
+    sourceRow: integer("source_row").notNull().default(0),
+    importedAt: text("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    // Un solo precio por artículo y revisión. Es lo que hace idempotente la reimportación y lo
+    // que impide que la misma lista deje dos precios distintos para el mismo SKU.
+    uniqueIndex("supplier_prices_item_source_idx").on(table.itemId, table.sourceId),
+    index("supplier_prices_source_idx").on(table.sourceId),
+  ]
+);
+
+// Metadatos de un manual técnico del proveedor. Los binarios NO viven aquí: D1 no es un
+// almacén de archivos y este proyecto todavía no tiene bucket privado (R2), así que se guarda
+// la ubicación y el hash y el archivo se queda fuera del repositorio. `extractedText` solo se
+// llena cuando el texto se pudo extraer de verdad.
+//
+// A la fecha de esta migración la carpeta de manuales MACO está vacía: la tabla existe para que
+// importarlos después no requiera otra migración, no porque haya algo que guardar hoy.
+export const supplierHardwareDocs = sqliteTable(
+  "supplier_hardware_docs",
+  {
+    id: text("id").primaryKey(),
+    supplier: text("supplier").notNull(),
+    brand: text("brand").notNull(),
+    name: text("name").notNull(),
+    mimeType: text("mime_type").notNull().default(""),
+    fileHash: text("file_hash").notNull(),
+    fileSize: integer("file_size").notNull().default(0),
+    revision: text("revision").notNull().default(""),
+    /** Ruta o llave de almacenamiento privado. Nunca una URL pública. */
+    location: text("location").notNull().default(""),
+    /** "pendiente" | "extraido" | "no-extraible". */
+    extractionStatus: text("extraction_status").notNull().default("pendiente"),
+    /** Texto extraído completo, cuando fue posible. Vacío si no. */
+    extractedText: text("extracted_text").notNull().default(""),
+    /** Página/ubicación de procedencia de lo extraído, para poder citar la fuente. */
+    extractedLocation: text("extracted_location").notNull().default(""),
+    importedAt: text("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("supplier_docs_hash_idx").on(table.supplier, table.fileHash),
+    index("supplier_docs_brand_idx").on(table.brand, table.supplier),
+  ]
+);
+
+// La lista de materiales que la lista de precios NO trae: qué SKU y cuántos lleva una
+// configuración concreta de Aluplast. Es lo único que podría convertir un precio de proveedor en
+// un costo de ventana, y por eso cada fila EXIGE de dónde salió (`docId` o `sourceRef` más
+// `sourceLocation`) y en qué estado de verificación está.
+//
+// Nace y se queda VACÍA. Sin manual que lo pruebe no hay relación que escribir: deducir "esto es
+// para corredera de 2 hojas" de las palabras de una descripción sería inventar una lista de
+// materiales, y una cotización basada en eso sería falsa con apariencia de exacta. Ver
+// lib/maco/costing.ts, que solo usa filas `verified`.
+export const supplierHardwareMappings = sqliteTable(
+  "supplier_hardware_mappings",
+  {
+    id: text("id").primaryKey(),
+    /** Marca de perfiles: "Aluplast". */
+    brand: text("brand").notNull(),
+    /** Nombre del sistema tal como aparece en data/catalog.ts, p. ej. "CORREDERA 60MM". */
+    system: text("system").notNull(),
+    /** Tipo de apertura (WingType) al que aplica. Vacío = aplica a todo el sistema. */
+    wingType: text("wing_type").notNull().default(""),
+    /** Condición de medidas que debe cumplirse, si el manual la impone. Vacío = sin condición. */
+    sizeCondition: text("size_condition").notNull().default(""),
+    supplier: text("supplier").notNull(),
+    sku: text("sku").notNull(),
+    /** Piezas que lleva la configuración. Texto exacto por la misma razón que los precios. */
+    qty: text("qty").notNull(),
+    /** Documento que prueba la relación. Null solo si la prueba es `sourceRef`. */
+    docId: text("doc_id").references(() => supplierHardwareDocs.id, { onDelete: "set null" }),
+    /** Referencia documental cuando no hay archivo cargado (ficha, correo del proveedor...). */
+    sourceRef: text("source_ref").notNull().default(""),
+    /** Página o ubicación exacta dentro de la fuente. */
+    sourceLocation: text("source_location").notNull().default(""),
+    /** "verified" | "tentativo". Solo `verified` puede costear. */
+    verification: text("verification").notNull().default("tentativo"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("supplier_mappings_unique_idx").on(
+      table.brand,
+      table.system,
+      table.wingType,
+      table.sizeCondition,
+      table.supplier,
+      table.sku
+    ),
+    index("supplier_mappings_lookup_idx").on(table.brand, table.system, table.verification),
+  ]
+);
+
 // El brief acumulado de LUFT Asesor, para que recargar la página no borre la conversación
 // (§90 del brief del asesor). La clave es un token opaco guardado en cookie, no un id
 // consecutivo: el contenido incluye ubicación y preferencias del cliente, así que no debe ser

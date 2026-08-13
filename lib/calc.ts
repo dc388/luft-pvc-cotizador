@@ -3,6 +3,7 @@ import { buildReinforcementCutList, flattenToLeafFrames } from "./tree";
 import { profileFamilies } from "@/data/families";
 import { glassCatalog } from "@/data/glass";
 import { EUR_MXN } from "@/data/catalog";
+import { resolveHardwareCost, type VerifiedHardwareCosting } from "./maco/costing";
 
 // Representative rate for the Mallorquina louvre-shutter accessory (avg. of the 5
 // Mallorquina families' base EUR/m prices * EUR_MXN) — modeled as a per-leaf add-on, not a
@@ -50,6 +51,9 @@ export type QuoteCalc = {
   seals: number;
   accessories: number;
   hardwareLeafCount: number;
+  /** `true` solo cuando `accessories` salió de una lista de materiales verificada con precios
+   * reales de proveedor. `false` significa que es la estimación de siempre. Ver lib/maco/costing.ts. */
+  hardwareVerified: boolean;
   addons: number;
   consumables: number;
   direct: number;
@@ -77,6 +81,10 @@ type Params = {
   /** Commercial stock bar length used for cut-list bin-packing (bars/waste below and the
    * despiece report) -- defaults to BAR_LENGTH_MM when not given. */
   barLengthMm?: number;
+  /** Lista de materiales de herrajes con precios verificados de proveedor (MACO). OPCIONAL y sin
+   * efecto salvo que traiga las seis condiciones que exige lib/maco/costing.ts. Omitirlo -- que es
+   * lo que hace hoy todo el que llama a calcQuote -- deja el cálculo exactamente como estaba. */
+  hardwareCosting?: VerifiedHardwareCosting;
 };
 
 // Meters of internal splitter/mullion profile contributed by every SplitNode:
@@ -103,7 +111,7 @@ function reinforcementProfile(code: string) {
   return profileFamilies.find((f) => f.code === code && /^refuerzo/i.test(f.name)) ?? null;
 }
 
-export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco, barLengthMm }: Params): QuoteCalc {
+export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, installation, transport, margin, discount, marco, barLengthMm, hardwareCosting }: Params): QuoteCalc {
   const w = width / 1000, h = height / 1000;
   const area = w * h, perimeter = 2 * (w + h);
   const barLength = barLengthMm ?? BAR_LENGTH_MM;
@@ -161,7 +169,15 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
   // yet, and Fase 5's rule is to never invent one; that stays a flat fee until real supplier
   // pricing exists.
   const hardwareLeafCount = leaves.filter((l) => l.spec.hardware !== "Sin herraje").length;
-  const accessories = sys.hardware + hardwareLeafCount * 110 + rail * 165;
+  // Costos verificados de proveedor SOLO si vienen con lista de materiales, cantidades probadas,
+  // fuente documental, revisión elegida, tipo de cambio explícito y la indicación de usarlos --
+  // las seis a la vez. Falta una y `resolveHardwareCost` devuelve null, con lo que se conserva la
+  // estimación de arriba sin cambiar ni un peso. Hoy es null siempre: no hay manual MACO que
+  // pruebe ninguna relación, así que supplier_hardware_mappings está vacía. Ver lib/maco/costing.ts.
+  const verifiedHardware = resolveHardwareCost(hardwareCosting);
+  const accessories = verifiedHardware
+    ? verifiedHardware.totalMxn
+    : sys.hardware + hardwareLeafCount * 110 + rail * 165;
   const addons = leaves.reduce((a, l) => a + (l.spec.mallorquina ? (l.wMm / 1000) * MALLORQUINA_RATE_MXN_PER_M * 2 : 0), 0);
   const consumables = (profileCost + glassCost) * 0.045;
   const direct = profileCost + glassCost + reinforce + seals + accessories + addons + consumables + installation + transport;
@@ -182,7 +198,8 @@ export function calcQuote({ width, height, qty, tree, sys, glass, color, rail, i
 
   return {
     w, h, area, perimeter, leaves, frameM, sashM, glassArea,
-    profileCost, glassCost, reinforce, seals, accessories, hardwareLeafCount, addons, consumables,
+    profileCost, glassCost, reinforce, seals, accessories, hardwareLeafCount,
+    hardwareVerified: verifiedHardware !== null, addons, consumables,
     direct, sale, total: sale * qty, utility: (sale - direct) * qty, bars, waste,
   };
 }
