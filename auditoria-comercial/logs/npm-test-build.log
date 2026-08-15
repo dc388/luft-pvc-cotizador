@@ -1,0 +1,50 @@
+  ├ λ /api/projects/:id/restore                
+  ├ λ /api/projects/:id/versions               
+  ├ λ /api/projects/import                     
+  ├ λ /api/public-assistant                    
+  ├ λ /api/public-quote                        
+  ├ λ /api/public-quote/submit                 
+  ├ λ /api/quotes                              
+  ├ λ /api/quotes/:id                          
+  ├ λ /api/version                             
+  ├ ƒ /cotizacion/:token                       
+  └ ? /cotizar                                 
+
+  λ API  ƒ Dynamic  ? Unknown
+
+  ? Some routes could not be classified. vinext currently uses static analysis
+    and cannot detect dynamic API usage (headers(), cookies(), etc.) at build time.
+    Automatic classification will be improved in a future release.
+
+  Build complete. Run `vinext start` to start the production server.
+
+Validated Sites artifact: ESM Worker default.fetch and hosting manifest are present.
+✔ la merma de perfil se cobra y es separable del perfil neto (77.058ms)
+✔ la mano de obra de taller entra al costo directo y escala con el área (2.4745ms)
+✔ la tarifa de mano de obra corresponde a la nómina real del taller (0.4558ms)
+✔ el costeo y el optimizador de corte cuentan barras de la misma longitud (0.966ms)
+✔ la mallorquina escala con la altura, no solo con el ancho (1.379ms)
+✔ la utilidad neta descuenta gastos fijos y queda por debajo de la bruta (0.6631ms)
+✔ los gastos fijos no alteran el precio de venta (0.4651ms)
+✔ todo escala linealmente con la cantidad (2.5125ms)
+✔ los herrajes verificados de proveedor siguen sin activarse solos (1.0991ms)
+✔ renders development preview metadata (576.9139ms)
+cotizacion/[token] Cloudflare D1 binding `DB` is unavailable. Set the `d1` field in .openai/hosting.json to `DB` or let your control plane inject the real binding values before using the database.
+cotizacion/[token] Cloudflare D1 binding `DB` is unavailable. Set the `d1` field in .openai/hosting.json to `DB` or let your control plane inject the real binding values before using the database.
+✔ el candado interno no deja pasar sin cookie válida (107.8142ms)
+✔ exposes a non-cacheable deployment version for open clients (60.7325ms)
+✔ public quote exposes only Aluplast and rejects removed Deceuninck styles (177.996ms)
+✔ public assistant keeps confidential pricing fields out of the rendered client payload (147.3925ms)
+✔ la ruta publica de cotizacion no devuelve ningun importe (76.7173ms)
+✔ una configuracion de un cliente viejo sigue aceptandose y sigue sin precio (94.1426ms)
+✔ public quote rejects abusive project payload sizes (62.3091ms)
+✔ el catálogo de herrajes MACO queda cerrado sin la cookie interna (56.8599ms)
+✔ el HTML del cotizador público no trae precios ni códigos de herrajes MACO (86.5821ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1737.7746

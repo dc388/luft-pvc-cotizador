@@ -1,0 +1,138 @@
+
+> luft-pvc-cotizador@0.1.0 dev
+> cross-env WRANGLER_LOG_PATH=.wrangler/wrangler.log vite
+
+[2m12:14:58 p.m.[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m Re-optimizing dependencies because vite config has changed
+[2m12:14:58 p.m.[22m [36m[1m[vite][22m[39m [34m[2m(rsc)[22m[39m Re-optimizing dependencies because vite config has changed
+⎔ Establishing remote connection...
+[2m12:14:59 p.m.[22m [36m[1m[vite][22m[39m [34m[2m(rsc)[22m[39m [optimizer] scanning dependencies...
+[2m12:14:59 p.m.[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [optimizer] scanning dependencies...
+[2m12:15:01 p.m.[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [optimizer] bundling dependencies...
+[2m12:15:01 p.m.[22m [36m[1m[vite][22m[39m [34m[2m(rsc)[22m[39m [optimizer] bundling dependencies...
+Using secrets defined in .dev.vars
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mAI bindings always access remote resources, and so may incur usage charges even in local dev. To suppress this warning, set `remote: true` for the binding definition in your configuration file.[0m
+
+
+
+  [32m[1mVITE[22m v8.0.13[39m  [2mready in [0m[1m22840[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.80:[1m5173[22m/[39m
+ GET /cotizar 200 in 2.8s (compile: 1786817696.8s, render: 2.7s)
+ GET /cotizar 200 in 153ms (compile: 1786817696.8s, render: 74ms)
+ HEAD / 200 in 905ms (compile: 1786817696.8s, render: 762ms)
+ POST /api/public-assistant 200 in 1.3s
+ POST /api/public-assistant 200 in 1.6s
+ POST /api/public-assistant 200 in 105ms
+ POST /api/public-assistant 200 in 99ms
+ POST /api/public-assistant 200 in 1.4s
+ POST /api/public-assistant 200 in 96ms
+ POST /api/public-assistant 200 in 1.3s
+ POST /api/public-assistant 200 in 91ms
+ POST /api/public-assistant 429 in 83ms
+ POST /api/public-assistant 429 in 79ms
+ POST /api/public-assistant 429 in 77ms
+ POST /api/public-assistant 429 in 102ms
+ POST /api/public-assistant 429 in 80ms
+ POST /api/public-assistant 429 in 74ms
+ POST /api/public-assistant 429 in 82ms
+ POST /api/public-assistant 429 in 66ms
+ POST /api/public-assistant 429 in 70ms
+ POST /api/public-assistant 429 in 71ms
+ POST /api/public-assistant 200 in 104ms
+ POST /api/public-assistant 200 in 1.2s
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = peekpt2i06q9shqe1qdvohp9[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = 2ntrb1ojaaa4g1m1825hp4fn[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = 0dj187fhgnqcl73nih54l5ed[0m
+
+
+ POST /api/public-assistant 200 in 1.0s
+ POST /api/public-assistant 200 in 1.3s
+ POST /api/public-assistant 200 in 1.0s
+ POST /api/public-assistant 200 in 1.2s
+ POST /api/public-assistant 200 in 827ms
+ POST /api/public-assistant 200 in 952ms
+ POST /api/public-assistant 200 in 891ms
+ POST /api/public-assistant 429 in 71ms
+ POST /api/public-assistant 429 in 63ms
+ POST /api/public-assistant 429 in 66ms
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = 8d7phns3urhafo7lq4p1ahf1[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = g1mn1hulishn8o7a68h8mp5g[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = km52qdrkl7ba03832nps3fs2[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = ajlq1g2tlfl7ntjkitm6mfut[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = 1tl6sphmcl3u44h8bi5e864k[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = fhovru752ffe4k0af2qjb73p[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = bculsvol0uham1g0ot8of3ap[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = bah6cpge0s4ht1a5ir61t64j[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = b5girlejsckfr2vmm0hd042g[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = rn821ovv6tjjlb1bk4i8p2im[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = 34bcqg3o2lc5sq28em4ml3br[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = s7tcrkjt2h1nm5onip0l5dbi[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = lj9nh9ad7tfksm9osmg3pgb0[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = smdi0po3ucdqceivig7oh8vc[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = ksvl752t7at59r7pu0utb22q[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = gta2bd80708pab4rsd7ll6mk[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = 4oeujjpp0e6vulo6amm5dbib[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = 0r5bm5sj5dlo7o62i5sf8467[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = kml2amib2npuvplk2ibu5vch[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = 03jsd1059v7srou2vg0en72a[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = 23f1cbdi6i8aa7ln70fouhlj[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = bab5dvhsjjevcrmh8t9f4din[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = hjkrk858qvog4ggjrfj5226i[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mError: internal error; reference = vqcsi8rp2amq4lcbnljrpbjh[0m
+
+
+[2m12:32:27 p.m.[22m [36m[1m[vite][22m[39m [34m[2m(rsc)[22m[39m [32mhmr update [39m[2m/app/globals.css[22m
+[2m12:32:27 p.m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/app/globals.css?direct[22m
+[2m12:32:28 p.m.[22m [36m[1m[vite][22m[39m [34m[2m(rsc)[22m[39m [32mhmr update [39m[2m/app/globals.css[22m
+[2m12:32:28 p.m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/app/globals.css?direct[22m
