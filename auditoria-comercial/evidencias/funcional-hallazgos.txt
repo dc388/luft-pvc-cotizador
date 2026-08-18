@@ -1,0 +1,133 @@
+PRUEBAS FUNCIONALES — 2026-08-18 — entorno local (vite dev, loopback)
+Rama: auditoria/comercial-2026-08   Servidor: http://localhost:5173
+
+=====================================================================
+F-01  FALLO DEL ENVIO FINAL DEL COTIZADOR PUBLICO  (P0)
+=====================================================================
+Pasos: recorrido completo de las 10 etapas, 2 disenos
+  D1 Corrediza de 2 hojas 1800x1400, Gris antracita, Doble vidrio, 2 pzas
+  D2 Fija 1500x1200, Blanco, Sencillo, 1 pza
+Contacto: AUDITORIA PRUEBA QA / 5500000000 / Ciudad de Mexico
+
+Primer clic en "Generar mi cotizacion":
+  POST /api/public-quote/submit -> 500 Internal Server Error
+  UI: "No pudimos guardar tu cotizacion en este momento. Intenta de nuevo."
+
+Log del servidor:
+  public-quote/submit Failed query: update "projects" set "name" = ?, "folio" = ?, "updated_at" = ? where "projects"."id" = ?
+  params: Cotizacion WEB LUFT-2026-000004 - Proyecto de AUDITORIA PRUEBA QA,
+          LUFT-2026-000004, 2026-08-18T21:51:13.882Z, c92c4beb-72e1-4d49-b87a-a96253f8308a
+
+Causa: indice UNIQUE projects_folio_idx sobre projects(folio) WHERE folio <> ''.
+El folio LUFT-2026-000004 ya estaba ocupado por OTRO proyecto (5d07f8f0), cuyo
+nombre dice LUFT-2026-000001. Es decir: projects.folio no corresponde al folio
+de la cotizacion de ese proyecto.
+
+Estado tras el fallo (no atomico):
+  quotes  -> fila 000004 CREADA, status "generada"
+  projects-> folio = ""  (el update fallo)
+  El cliente ve error; la base ya tiene una cotizacion con folio.
+
+Reintento: OK con folio LUFT-2026-000005.
+  El folio 000004 queda quemado y huerfano.
+
+Cruce quotes x projects (5 cotizaciones):
+  000001 -> project.folio = 000004   MISMATCH (de sesion anterior, no lo cause yo)
+  000002 -> project.folio = 000002   ok
+  000003 -> project.folio = 000003   ok
+  000004 -> project.folio = ""       HUERFANA (este fallo)
+  000005 -> project.folio = 000005   ok
+  => 2 de 5 (40%) inconsistentes
+
+Impacto visible en el panel interno de Clientes:
+  "5 cotizaciones - 4 clientes - $155,269.00 en oportunidades"
+  Aparecen 000005 y 000004 para el MISMO cliente, MISMO proyecto,
+  2 disenos / 3 piezas, $45,728.00 cada una.
+  Pipeline inflado en 45,728 sobre 109,541 reales = +41.9%
+  Viola la regla del proyecto: folio unico, sin duplicados.
+
+=====================================================================
+F-02  D-01 CONFIRMADO EN EL PRODUCTO CORRIENDO  (P0)
+=====================================================================
+Mismo componente 1800x1400, solo se cambia el sistema:
+
+  CORREDERA 60MM      prof 60mm  galce 24mm  hoja 902x1384  vidrio 782x1264
+  Lift-slide 85 (HS)  prof 85mm  galce 52mm  hoja 908x1384  vidrio 788x1264
+
+Resta de vidrio: -120 / -120 en AMBOS casos.
+La geometria de hoja SI se adapta (902 -> 908 por centerOverlapMm 20 -> 32).
+La medida de vidrio NO, aunque el perfil de hoja pase de 75 a 285 EUR/m.
+Reporte afectado: "Pedido de vidrio" (el que se manda al proveedor).
+
+=====================================================================
+F-03  D-09 CONFIRMADO EN VIVO  (P2)
+=====================================================================
+Reporte "Optimizacion de corte", Lift-slide 85, qty 2:
+  Hoja      -> 1384 x8 , 908 x8
+  Junquillo -> 1384 x8 , 908 x8   <- IDENTICO a la hoja
+Los junquillos se cortan a la medida exterior de la hoja, no a la luz del galce.
+
+=====================================================================
+F-04  D-07 CONFIRMADO EN VIVO  (P1)
+=====================================================================
+Pie impreso del reporte de corte:
+  "Optimizacion por primer ajuste descendente (first-fit-decreasing);
+   valida angulos, soldadura y reglas especificas del catalogo antes de fabricar."
+No existe validacion de angulos, ni de soldadura, ni de reglas de catalogo.
+
+=====================================================================
+F-05  LA INTERFAZ INTERNA PRESENTA DATOS OBSOLETOS COMO "DATOS REALES"  (P1)
+=====================================================================
+Pestana Diseno, bajo el selector de sistema:
+  "Datos reales - precio de marco/hoja tomado de la lista EXWORK Veracruz
+   (rev. ABR_22), convertido a MXN @ 21.8."
+Lista de 2022-05-01 y tipo de cambio de 2022 (real ~19.68 en ago 2026),
+etiquetados al operador como "Datos reales". Refuerza D-04 y D-05.
+
+=====================================================================
+LO QUE PASO
+=====================================================================
+Cotizador publico:
+  10/10 etapas sin ningun importe visible
+  0 scroll vertical y 0 horizontal en las 10 etapas a 1366x768
+  Validacion de medida fuera de rango: mensaje con el limite real del sistema
+    ("Este estilo se fabrica hasta 4000 x 2400 mm") y Continuar deshabilitado
+  Errores junto a su campo: 12 px bajo el input de ancho, 7 px bajo cada
+    campo obligatorio del formulario de contacto, mismo eje horizontal
+  Volver atras 3 etapas conserva medidas, cantidad, color y vidrio
+  Multiples disenos: 2 disenos / 3 piezas, con eliminar y revisar
+  Documento definitivo: primer lugar donde aparece el precio
+  Datos bancarios NO viajan: "se entregan de forma segura despues de la medicion"
+  HTML del documento (89,467 bytes): 0 apariciones de clabe, cuenta, margen,
+    margin, profileCost, glassCost, netUtility, overhead, proveedor, supplier,
+    hardwareVerified, INTERNAL_PASSWORD
+
+Aritmetica del documento, recalculada de forma independiente:
+  1.8 x 1.4 = 2.520 m2   ok
+  1.5 x 1.2 = 1.800 m2   ok
+  18,218 x 2 = 36,436    ok
+  9,292 x 1 = 9,292      ok
+  total 45,728           ok
+  superficie 5.04 + 1.80 = 6.840 m2   ok
+  anticipo 70% = 32,009.60 -> 32,010
+  saldo   30% = 13,718.40 -> 13,718
+  32,010 + 13,718 = 45,728   cuadra
+
+Geometria de corredera, recalculada:
+  CORREDERA 60MM (frameSeat 8, centerOverlap 20): 900 - 8 + 10 = 902  ok
+  Lift-slide 85  (frameSeat 8, centerOverlap 32): 900 - 8 + 16 = 908  ok
+  Alto: 1400 - 8 - 8 = 1384  ok
+
+Empaquetado de barras, recalculado:
+  Barra 1: 1800 x3 = 5400 + 2 cortes x 5mm = 5410 ; resto 5800 - 5410 = 390  ok
+
+Plataforma interna:
+  Abre en loopback sin contrasena (bypass __LUFT_LOCAL_DEV__), como esta disenado
+  Cargo automaticamente el proyecto creado desde el cotizador publico
+  Las 8 pestanas renderizan con contenido y sin scroll horizontal
+  6 reportes disponibles: Cotizacion, Optimizacion de corte, Pedido de vidrio,
+    Produccion, Herrajes, Costos
+  Exportaciones ofrecidas: PDF (via impresion), HTML, CSV
+  Panel de Clientes: busqueda, filtro por 12 etapas, rango de fechas,
+    cambio de etapa por cotizacion, PDF e Historial
+  Consola: 1 solo error, el 500 del envio fallido. Ningun otro.

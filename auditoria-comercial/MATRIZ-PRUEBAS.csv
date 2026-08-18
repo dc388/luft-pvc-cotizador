@@ -59,3 +59,28 @@ T-057,Dependencias,Vulnerabilidades de dependencias,No ejecutado en esta auditor
 T-058,Concurrencia,Trabajo simultáneo de varios usuarios,No aplica sin gestión de usuarios,-,NOT APPLICABLE,D-17
 T-059,Normativa,Cálculo de transmitancia térmica Uw,Inventario del modelo de datos,"uf es una cadena informativa por sistema; no hay cálculo",NOT IMPLEMENTED,
 T-060,Normativa,Clasificación de aire agua y viento,Inventario del modelo de datos,Sin campos ni cálculo,NOT IMPLEMENTED,
+T-061,Cotizador público,Recorrido completo de las 10 etapas,Navegador a 1366x768,evidencias/funcional-hallazgos.txt,PASS,
+T-062,Cotizador público,Ningún importe visible durante la configuración,Inspección de texto en las 10 etapas,0 coincidencias de importe,PASS,
+T-063,Cotizador público,Sin scroll vertical ni horizontal,Medición de scrollHeight vs clientHeight por etapa,0 en las 10 etapas,PASS,
+T-064,Cotizador público,Medida fuera de rango se rechaza con el límite real,Ancho 9000 en CORREDERA 60MM,"""Este estilo se fabrica hasta 4000 × 2400 mm"" y Continuar deshabilitado",PASS,
+T-065,Cotizador público,Los errores aparecen junto a su campo,Medición geométrica del mensaje respecto al input,12 px bajo ancho; 7 px bajo cada campo obligatorio,PASS,
+T-066,Cotizador público,Volver atrás no borra lo capturado,Retroceder 3 etapas y verificar,"1800x1400, 2 piezas, Gris antracita, Doble vidrio intactos",PASS,
+T-067,Cotizador público,Varios diseños en un proyecto,Agregar un segundo diseño,2 diseños · 3 piezas con eliminar y revisar,PASS,
+T-068,Cotizador público,El envío final guarda la cotización,Pulsar Generar mi cotización,500 y cotización huérfana con folio quemado,FAIL,D-20
+T-069,Cotizaciones,Consistencia entre quotes.folio y projects.folio,Cruce SQL por project_id,2 de 5 inconsistentes,FAIL,D-21
+T-070,Documento definitivo,El precio aparece por primera vez en el documento,Abrir la URL por token,Precios presentes solo aquí,PASS,
+T-071,Documento definitivo,Aritmética del documento,Recálculo independiente de áreas totales y anticipo,Todo cuadra incluido el redondeo del 70/30,PASS,
+T-072,Documento definitivo,No expone datos bancarios ni costos internos,Análisis del HTML servido (89467 bytes),0 apariciones de 12 términos internos,PASS,
+T-073,Fabricación,La medida de vidrio depende del sistema,Comparar CORREDERA 60MM contra Lift-slide 85 (HS),-120/-120 en ambos pese a galce 24 vs 52,FAIL,D-01
+T-074,Fabricación,Geometría de hoja corredera,Recálculo de asiento y traslape en dos sistemas,902 y 908 correctos,PASS,
+T-075,Fabricación,Los junquillos se cortan a la luz del galce,Reporte de optimización de corte,Junquillo idéntico a Hoja (1384x8 y 908x8),FAIL,D-09
+T-076,Optimización de corte,El empaquetado respeta la tolerancia de corte,Recálculo de la barra 1,5400 + 2x5 = 5410 y resto 390,PASS,
+T-077,Documentos,El reporte de corte describe solo lo que hace,Lectura del pie impreso,Afirma validar ángulos y soldadura sin implementarlo,FAIL,D-07
+T-078,Plataforma interna,Acceso en desarrollo local sin contraseña,Abrir / en loopback,Abre por el bypass __LUFT_LOCAL_DEV__ como está diseñado,PASS,
+T-079,Plataforma interna,El proyecto del cotizador público llega al Workspace,Verificar el proyecto cargado,Cargó LUFT-2026-000005 automáticamente,PASS,
+T-080,Plataforma interna,Las 8 pestañas renderizan,Recorrido con espera por pestaña,8 de 8 con contenido y sin scroll horizontal,PASS,
+T-081,Plataforma interna,Centro de informes,Abrir los reportes disponibles,"6 reportes: Cotización, Corte, Vidrio, Producción, Herrajes, Costos",PASS,
+T-082,Plataforma interna,Panel de Clientes,Filtros búsqueda y cambio de etapa,"Búsqueda, 12 etapas, rango de fechas, PDF e Historial operativos",PASS,
+T-083,Plataforma interna,El panel no muestra cotizaciones duplicadas,Revisar el listado,Muestra 000004 y 000005 del mismo cliente e importe,FAIL,D-20
+T-084,Interfaz interna,La procedencia del precio se muestra con honestidad,Leer la nota del selector de sistema,Etiqueta datos de 2022 como Datos reales,FAIL,D-22
+T-085,Plataforma interna,Errores de consola,Lectura de la consola tras el recorrido completo,Solo el 500 del envío fallido,PASS,
