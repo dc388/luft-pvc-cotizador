@@ -19,6 +19,17 @@ import type { ComponentSummary, ProjectSummary } from "@/types/project";
  * Cuál está activo se marca de tres formas a la vez (fondo, barra lateral y `aria-current`) porque es
  * la pregunta que la interfaz nunca debe dejar ambigua: lo que se ve en el dibujo, en propiedades y
  * en el resumen de costos es ESTE componente.
+ *
+ * AGRUPACIÓN POR UBICACIÓN
+ * Un proyecto de obra no es una lista plana: "Torre B" son siete ventanas repartidas entre niveles y
+ * departamentos, y quien cotiza necesita ver y operar por bloque, no recorrer treinta filas seguidas.
+ * La lista se agrupa por el campo `location` que ya existe en cada componente, con subtotal de piezas
+ * e importe por grupo, y con una casilla que selecciona el bloque completo -- que es lo que vuelve
+ * usable "mover todo el piso 3 a otro proyecto".
+ *
+ * Deliberadamente NO es una jerarquía de carpetas: no hay tabla nueva ni migración, y un proyecto que
+ * no use ubicaciones se pinta exactamente como antes. El agrupado aparece solo cuando hay más de una
+ * ubicación distinta, así que la pantalla no cambia para quien no lo necesita.
  */
 
 const CONFIG_LABEL: Record<ComponentSummary["configState"], string> = {
@@ -26,6 +37,9 @@ const CONFIG_LABEL: Record<ComponentSummary["configState"], string> = {
   ok: "Configuración correcta",
   alertas: "Con alertas",
 };
+
+/** Los componentes sin ubicación se juntan bajo un nombre propio en vez de desaparecer del listado. */
+const SIN_UBICACION = "Sin ubicación";
 
 function shortDate(iso: string): string {
   const date = new Date(iso);
@@ -57,6 +71,10 @@ function glassName(component: ComponentSummary): string {
 
 export type BulkAction = "duplicate" | "delete" | "export" | "move" | "copy";
 
+/** Qué campo se está editando en línea. Nombre y ubicación usan el mismo mecanismo porque son la
+ *  misma interacción: escribir un texto corto sobre la fila sin abrir el componente. */
+type EditField = "designation" | "location";
+
 type Props = {
   components: ComponentSummary[];
   activeComponentId: string | null;
@@ -69,6 +87,8 @@ type Props = {
   onAdd: () => void;
   onDuplicate: (id: string) => void;
   onRename: (id: string, designation: string) => void;
+  /** Cambia la ubicación sin abrir el componente: es lo que permite armar y rehacer los grupos. */
+  onSetLocation: (id: string, location: string) => void;
   onChangeQty: (id: string, qty: number) => void;
   onDelete: (component: ComponentSummary) => void;
   onBulk: (action: BulkAction, ids: string[], targetProjectId?: string) => void;
@@ -85,12 +105,13 @@ export function ComponentList({
   onAdd,
   onDuplicate,
   onRename,
+  onSetLocation,
   onChangeQty,
   onDelete,
   onBulk,
 }: Props) {
   const [marked, setMarked] = useState<string[]>([]);
-  const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; field: EditField; value: string } | null>(null);
   const [target, setTarget] = useState("");
 
   // La selección efectiva se DERIVA de lo marcado y de lo que existe, en vez de limpiarse con un
@@ -102,6 +123,25 @@ export function ComponentList({
     return marked.filter((id) => present.has(id));
   }, [components, marked]);
 
+  // Los grupos salen en el orden en que aparece cada ubicación por primera vez, que es el orden de
+  // `position` que el usuario ya controla -- no alfabético, que reordenaría la obra sin pedirlo.
+  const groups = useMemo(() => {
+    const byLocation = new Map<string, ComponentSummary[]>();
+    for (const component of components) {
+      const key = component.location.trim() || SIN_UBICACION;
+      const list = byLocation.get(key);
+      if (list) list.push(component);
+      else byLocation.set(key, [component]);
+    }
+    return [...byLocation.entries()].map(([name, items]) => ({
+      name,
+      items,
+      pieces: items.reduce((sum, component) => sum + component.qty, 0),
+      total: items.reduce((sum, component) => sum + component.total, 0),
+    }));
+  }, [components]);
+
+  const grouped = groups.length > 1;
   const others = projects.filter((project) => project.id !== currentProjectId && !project.deletedAt);
   const allSelected = components.length > 0 && selected.length === components.length;
 
@@ -109,12 +149,29 @@ export function ComponentList({
     setMarked((current) => (current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]));
   }
 
-  function commitRename() {
-    if (!renaming) return;
-    const value = renaming.value.trim();
-    const current = components.find((component) => component.id === renaming.id);
-    if (value && current && value !== current.designation) onRename(renaming.id, value);
-    setRenaming(null);
+  /** Marca o desmarca un bloque entero. Es la mitad que le faltaba a "mover el piso 3 completo". */
+  function toggleGroup(ids: string[], select: boolean) {
+    setMarked((current) => {
+      if (select) return [...new Set([...current, ...ids])];
+      const drop = new Set(ids);
+      return current.filter((id) => !drop.has(id));
+    });
+  }
+
+  function commitEdit() {
+    if (!editing) return;
+    const value = editing.value.trim();
+    const current = components.find((component) => component.id === editing.id);
+    if (current) {
+      // El nombre no se puede vaciar; la ubicación sí, y vaciarla devuelve el componente al grupo
+      // "Sin ubicación", que es la forma natural de sacarlo de un bloque.
+      if (editing.field === "designation") {
+        if (value && value !== current.designation) onRename(editing.id, value);
+      } else if (value !== current.location.trim()) {
+        onSetLocation(editing.id, value);
+      }
+    }
+    setEditing(null);
   }
 
   function runBulk(action: BulkAction) {
@@ -124,6 +181,131 @@ export function ComponentList({
     // Mover y borrar dejan la selección sin sentido; copiar y exportar la conservan para poder
     // repetir la operación hacia otro destino.
     if (action === "move" || action === "delete") setMarked([]);
+  }
+
+  function renderRow(component: ComponentSummary) {
+    const active = component.id === activeComponentId;
+    const edit = editing?.id === component.id ? editing : null;
+    return (
+      <li key={component.id} className={`componentItem ${active ? "isActive" : ""}`}>
+        <label className="componentCheck">
+          <span className="visuallyHidden">Seleccionar {component.designation}</span>
+          <input type="checkbox" checked={selected.includes(component.id)} onChange={() => toggle(component.id)} />
+        </label>
+
+        <div className="componentBody">
+          <button
+            type="button"
+            className="componentOpen"
+            onClick={() => onSelect(component.id)}
+            aria-current={active ? "true" : undefined}
+            title="Abrir este componente en el editor"
+          >
+            {edit?.field === "designation" ? (
+              <input
+                className="componentRenameInput"
+                autoFocus
+                value={edit.value}
+                onChange={(event) => setEditing({ id: component.id, field: "designation", value: event.target.value })}
+                onBlur={commitEdit}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") commitEdit();
+                  if (event.key === "Escape") setEditing(null);
+                }}
+                // El clic dentro del campo no debe abrir el componente.
+                onClick={(event) => event.stopPropagation()}
+              />
+            ) : (
+              <b>
+                {component.code} · {component.designation}
+                {active && <span className="componentActiveTag">En edición</span>}
+              </b>
+            )}
+            <span className="componentSpecs">
+              {component.typology || "Tipología sin registrar"} · {component.brand} {systemName(component)}
+            </span>
+            <span className="componentSpecs">
+              {component.widthMm}×{component.heightMm} mm · {colorName(component)} · {glassName(component)}
+              {/* Cuando la lista ya está agrupada, repetir la ubicación en cada fila es ruido: el
+                  encabezado del bloque ya la dice. */}
+              {!grouped && component.location ? ` · ${component.location}` : ""}
+            </span>
+            {edit?.field === "location" && (
+              <input
+                className="componentRenameInput"
+                autoFocus
+                placeholder="Ubicación (p. ej. Torre B · Piso 3)"
+                value={edit.value}
+                onChange={(event) => setEditing({ id: component.id, field: "location", value: event.target.value })}
+                onBlur={commitEdit}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") commitEdit();
+                  if (event.key === "Escape") setEditing(null);
+                }}
+                onClick={(event) => event.stopPropagation()}
+              />
+            )}
+            <span className="componentFigures">
+              <span className={`componentState state-${component.configState}`}>{CONFIG_LABEL[component.configState]}</span>
+              <span>{component.unitPrice > 0 ? `${money(component.unitPrice)} / pza.` : "Sin precio"}</span>
+              <b>{component.total > 0 ? money(component.total) : "—"}</b>
+            </span>
+            <span className="componentDates">
+              <span title={`Creado ${longDate(component.createdAt)}`}>Creado {shortDate(component.createdAt)}</span>
+              <span title={`Modificado ${longDate(component.updatedAt)}`}>Modificado {shortDate(component.updatedAt)}</span>
+            </span>
+          </button>
+
+          <div className="componentQty">
+            <label>
+              Cant.
+              <input
+                type="number"
+                min={1}
+                value={component.qty}
+                disabled={readOnly}
+                onChange={(event) => {
+                  const qty = Number(event.target.value);
+                  if (Number.isFinite(qty) && qty >= 1) onChangeQty(component.id, Math.round(qty));
+                }}
+              />
+            </label>
+          </div>
+        </div>
+
+        <details className="componentMenu">
+          <summary title="Acciones del componente" aria-label={`Acciones de ${component.designation}`}>⋯</summary>
+          <div className="componentMenuBody">
+            <button type="button" onClick={() => onSelect(component.id)}>Abrir</button>
+            <button
+              type="button"
+              disabled={readOnly}
+              onClick={() => setEditing({ id: component.id, field: "designation", value: component.designation })}
+            >
+              Cambiar nombre
+            </button>
+            <button
+              type="button"
+              disabled={readOnly}
+              onClick={() => setEditing({ id: component.id, field: "location", value: component.location })}
+            >
+              Cambiar ubicación
+            </button>
+            <button type="button" disabled={readOnly} onClick={() => onDuplicate(component.id)}>Duplicar</button>
+            <button type="button" onClick={() => onBulk("export", [component.id])}>Exportar</button>
+            <button
+              type="button"
+              className="explorerDanger"
+              disabled={readOnly || components.length <= 1}
+              title={components.length <= 1 ? "Un proyecto conserva al menos un componente" : undefined}
+              onClick={() => onDelete(component)}
+            >
+              Eliminar
+            </button>
+          </div>
+        </details>
+      </li>
+    );
   }
 
   if (components.length === 0) {
@@ -156,6 +338,7 @@ export function ComponentList({
         <span className="componentListCount">
           {components.length} {components.length === 1 ? "componente" : "componentes"} ·{" "}
           {components.reduce((sum, component) => sum + component.qty, 0)} piezas
+          {grouped ? ` · ${groups.length} ubicaciones` : ""}
         </span>
       </div>
 
@@ -184,108 +367,40 @@ export function ComponentList({
         </div>
       )}
 
-      <ul className="componentList">
-        {components.map((component) => {
-          const active = component.id === activeComponentId;
-          const isRenaming = renaming?.id === component.id;
+      {grouped ? (
+        groups.map((group) => {
+          const ids = group.items.map((component) => component.id);
+          const allInGroup = ids.every((id) => selected.includes(id));
+          const someInGroup = !allInGroup && ids.some((id) => selected.includes(id));
           return (
-            <li key={component.id} className={`componentItem ${active ? "isActive" : ""}`}>
-              <label className="componentCheck">
-                <span className="visuallyHidden">Seleccionar {component.designation}</span>
-                <input type="checkbox" checked={selected.includes(component.id)} onChange={() => toggle(component.id)} />
-              </label>
-
-              <div className="componentBody">
-                <button
-                  type="button"
-                  className="componentOpen"
-                  onClick={() => onSelect(component.id)}
-                  aria-current={active ? "true" : undefined}
-                  title="Abrir este componente en el editor"
-                >
-                  {isRenaming ? (
-                    <input
-                      className="componentRenameInput"
-                      autoFocus
-                      value={renaming.value}
-                      onChange={(event) => setRenaming({ id: component.id, value: event.target.value })}
-                      onBlur={commitRename}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") commitRename();
-                        if (event.key === "Escape") setRenaming(null);
-                      }}
-                      // El clic dentro del campo no debe abrir el componente.
-                      onClick={(event) => event.stopPropagation()}
-                    />
-                  ) : (
-                    <b>
-                      {component.code} · {component.designation}
-                      {active && <span className="componentActiveTag">En edición</span>}
-                    </b>
-                  )}
-                  <span className="componentSpecs">
-                    {component.typology || "Tipología sin registrar"} · {component.brand} {systemName(component)}
-                  </span>
-                  <span className="componentSpecs">
-                    {component.widthMm}×{component.heightMm} mm · {colorName(component)} · {glassName(component)}
-                    {component.location ? ` · ${component.location}` : ""}
-                  </span>
-                  <span className="componentFigures">
-                    <span className={`componentState state-${component.configState}`}>{CONFIG_LABEL[component.configState]}</span>
-                    <span>{component.unitPrice > 0 ? `${money(component.unitPrice)} / pza.` : "Sin precio"}</span>
-                    <b>{component.total > 0 ? money(component.total) : "—"}</b>
-                  </span>
-                  <span className="componentDates">
-                    <span title={`Creado ${longDate(component.createdAt)}`}>Creado {shortDate(component.createdAt)}</span>
-                    <span title={`Modificado ${longDate(component.updatedAt)}`}>Modificado {shortDate(component.updatedAt)}</span>
-                  </span>
-                </button>
-
-                <div className="componentQty">
-                  <label>
-                    Cant.
-                    <input
-                      type="number"
-                      min={1}
-                      value={component.qty}
-                      disabled={readOnly}
-                      onChange={(event) => {
-                        const qty = Number(event.target.value);
-                        if (Number.isFinite(qty) && qty >= 1) onChangeQty(component.id, Math.round(qty));
-                      }}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <details className="componentMenu">
-                <summary title="Acciones del componente" aria-label={`Acciones de ${component.designation}`}>⋯</summary>
-                <div className="componentMenuBody">
-                  <button type="button" onClick={() => onSelect(component.id)}>Abrir</button>
-                  <button
-                    type="button"
-                    disabled={readOnly}
-                    onClick={() => setRenaming({ id: component.id, value: component.designation })}
-                  >
-                    Cambiar nombre
-                  </button>
-                  <button type="button" disabled={readOnly} onClick={() => onDuplicate(component.id)}>Duplicar</button>
-                  <button type="button" onClick={() => onBulk("export", [component.id])}>Exportar</button>
-                  <button
-                    type="button"
-                    className="explorerDanger"
-                    disabled={readOnly || components.length <= 1}
-                    title={components.length <= 1 ? "Un proyecto conserva al menos un componente" : undefined}
-                    onClick={() => onDelete(component)}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </details>
-            </li>
+            <details key={group.name} className="componentGroup" open>
+              <summary className="componentGroupHead">
+                {/* El clic en la casilla selecciona el bloque; no debe además plegarlo. */}
+                <label className="componentCheck" onClick={(event) => event.stopPropagation()}>
+                  <span className="visuallyHidden">Seleccionar todo en {group.name}</span>
+                  <input
+                    type="checkbox"
+                    checked={allInGroup}
+                    ref={(node) => {
+                      if (node) node.indeterminate = someInGroup;
+                    }}
+                    onChange={(event) => toggleGroup(ids, event.target.checked)}
+                  />
+                </label>
+                <b className="componentGroupName">{group.name}</b>
+                <span className="componentGroupMeta">
+                  {group.items.length} {group.items.length === 1 ? "componente" : "componentes"} · {group.pieces}{" "}
+                  {group.pieces === 1 ? "pza" : "pzas"}
+                </span>
+                <span className="componentGroupTotal">{group.total > 0 ? money(group.total) : "—"}</span>
+              </summary>
+              <ul className="componentList">{group.items.map(renderRow)}</ul>
+            </details>
           );
-        })}
-      </ul>
+        })
+      ) : (
+        <ul className="componentList">{components.map(renderRow)}</ul>
+      )}
 
       <button type="button" className="fullButton" onClick={onAdd} disabled={busy || readOnly}>
         + Agregar componente

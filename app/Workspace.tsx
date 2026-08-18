@@ -964,6 +964,27 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
     }
   };
 
+  /** Cambia la ubicación de un componente sin abrirlo. Es lo que permite armar los bloques de la
+   *  lista (Torre B · Piso 3) sobre la marcha; si es el abierto, pasa por su propio estado, que ya
+   *  autoguarda junto con el resto de las propiedades. */
+  const handleSetComponentLocation = async (id: string, nextLocation: string) => {
+    if (!projectId) return;
+    // La lista se actualiza SIEMPRE, incluido el componente abierto: es la que alimenta el agrupado
+    // por ubicación, y si se omitiera, cambiar la ubicación del componente en edición no lo movería
+    // de bloque hasta recargar. Para el abierto no se llama a saveComponent porque su autoguardado
+    // ya persiste `location` junto con el resto de sus propiedades.
+    setComponents((prev) => prev.map((c) => (c.id === id ? { ...c, location: nextLocation } : c)));
+    if (id === componentId) {
+      setLocation(nextLocation);
+      return;
+    }
+    try {
+      await saveComponent(projectId, id, { location: nextLocation });
+    } catch {
+      await refreshComponentList(projectId);
+    }
+  };
+
   const handleChangeComponentQty = async (id: string, nextQty: number) => {
     if (!projectId) return;
     if (id === componentId) {
@@ -2297,6 +2318,7 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
                 onAdd={handleAddComponent}
                 onDuplicate={handleDuplicateComponent}
                 onRename={handleRenameComponent}
+                onSetLocation={handleSetComponentLocation}
                 onChangeQty={handleChangeComponentQty}
                 onDelete={handleDeleteComponent}
                 onBulk={handleBulkComponents}
