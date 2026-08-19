@@ -1,11 +1,26 @@
 import type { Brand, System } from "@/types/domain";
 
-// Reference EUR->MXN rate used only to convert the Aluplast EXWORK Veracruz price list
-// (rev. ABR_22, 01/05/2022) into MXN for the `sourced: true` systems below. Update if
-// quoting against a materially different exchange rate.
+// Tipo de cambio EUR->MXN con el que se convierten a pesos las listas EXWORK Veracruz de Aluplast
+// (tanto la rev. ABR_22 como la de IS V1.2.2.2, que también viene en euros).
 //
-// CALIBRAR: this rate is the one that was current when the ABR_22 list was extracted.
-// Quoting today against a stale rate silently understates every profile line.
+// DECISION DE NEGOCIO, NO UN DATO DE MERCADO. dc lo fijó el 2026-08-19: «mantén los 21 porque es el
+// precio que maneja la marca para evitar pérdidas». El tipo de cambio de mercado en esa fecha rondaba
+// 19.68, así que este 21.8 cotiza el perfil ~10.8% por encima de una conversión a tipo spot. Eso es
+// deliberado: es un colchón contra la variación del peso entre la cotización y la compra real.
+//
+// NO SE ACTUALIZA a tipo spot sin decidirlo expresamente, y hay una razón concreta para tener
+// cuidado: `IMPORT_FACTOR` (abajo) vale 1.0, es decir que el precio EXWORK se está cobrando como si
+// fuera costo puesto en planta, sin flete ni aduana. Ese subcosteo empuja en sentido CONTRARIO al
+// colchón de este tipo de cambio. Es decir que el 21.8 puede estar haciendo doble función: colchón
+// de divisa Y factor de importación implícito.
+//
+// La consecuencia práctica: bajar este número a 19.68 dejando IMPORT_FACTOR en 1.0 quitaría el
+// colchón sin poner nada en su lugar, y cada ventana con perfil `sourced` se vendería por debajo de
+// su costo real de importación. Si algún día se calibra IMPORT_FACTOR con un pedimento real, hay que
+// revisar los dos números A LA VEZ, no uno solo.
+//
+// tests/glazing.test.ts fija este valor a propósito: cambiarlo rompe una prueba, para que no se
+// pueda mover por descuido.
 export const EUR_MXN = 21.8;
 
 // Landed-cost multiplier applied on top of the EXWORK Veracruz profile prices. The source
@@ -15,6 +30,11 @@ export const EUR_MXN = 21.8;
 //
 // CALIBRAR: set this from a real recent import — (total landed cost) / (EXWORK invoice).
 // 1.0 reproduces the previous behaviour exactly (EXWORK charged as landed).
+//
+// Confirmado el 2026-08-19: la lista nueva del sistema IS vuelve a decir «PRECIOS EX WORK
+// ALUPLASTMEX-VERACRUZ», así que el subcosteo es real y sigue vigente. Léase junto al comentario de
+// EUR_MXN: hoy el colchón del tipo de cambio está compensando, en parte y sin medirlo, lo que este
+// factor debería recoger. No se toca ninguno de los dos por separado.
 export const IMPORT_FACTOR = 1.0;
 
 // The 5 systems marked sourced:true use real base (white) EUR/m frame+sash prices from the

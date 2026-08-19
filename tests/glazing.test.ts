@@ -3,9 +3,10 @@ import test from "node:test";
 import { buildCutList, calcQuote } from "@/lib/calc";
 import { beadFor, glassSizeMm, glazingFor, leafSizingFor, LEGACY_GLASS_DEDUCTION_MM, WELD_ALLOWANCE_MM } from "@/data/glazing";
 import { typologyDefs } from "@/data/typologies";
-import { catalog } from "@/data/catalog";
+import { catalog, EUR_MXN, IMPORT_FACTOR } from "@/data/catalog";
 import { colors } from "@/data/colors";
 import { glassCatalog } from "@/data/glass";
+import { buildPublicCatalog } from "@/lib/publicCatalog";
 
 // Estas pruebas existen por una razón concreta: la medida del pedido de vidrio salía de una
 // constante de 120 mm repetida en tres archivos, igual para los veinte sistemas del catálogo y sin
@@ -271,4 +272,30 @@ test("el dimensionado propio no altera el modelo genérico de un sistema vecino"
     assert.equal(l.wMm, 902);
     assert.equal(l.hMm, 1384);
   }
+});
+
+// ---------- Dos decisiones de negocio, fijadas a propósito ----------
+
+test("el tipo de cambio se mantiene en 21.8 por decisión de negocio", () => {
+  // dc lo fijó el 2026-08-19: «mantén los 21 porque es el precio que maneja la marca para evitar
+  // pérdidas». El mercado rondaba 19.68 ese día, así que este valor cotiza el perfil ~10.8% por
+  // encima del tipo spot, deliberadamente, como colchón de divisa.
+  //
+  // Esta prueba existe para que no se pueda mover por descuido. Y hay una razón concreta para el
+  // cuidado: IMPORT_FACTOR vale 1.0, o sea que el precio EXWORK se cobra como costo puesto en planta.
+  // Bajar el tipo de cambio a spot dejando ese factor en 1.0 quitaría el colchón sin poner nada en su
+  // lugar. Los dos números se revisan juntos o no se revisan.
+  assert.equal(EUR_MXN, 21.8, "cambiar el tipo de cambio es una decisión de negocio, no técnica");
+  assert.equal(IMPORT_FACTOR, 1.0, "si esto cambia, hay que revisar EUR_MXN en el mismo movimiento");
+});
+
+test("el sistema IS NO se expone en el cotizador público", () => {
+  // Decisión de dc el 2026-08-19: el IS es para que el arquitecto lo diseñe en la aplicación
+  // interna, no para el cliente final. Además su paquete de herraje aún no está validado, así que
+  // exponerlo permitiría cotizarlo por debajo de costo.
+  const publico = JSON.stringify(buildPublicCatalog());
+  assert.ok(!/IDEAL IS/.test(publico), "el nombre del sistema IS no debe cruzar al navegador");
+  assert.ok(!/Corredera mx/.test(publico), "ni su denominación");
+  // Y sí tiene que estar disponible internamente, que es el objetivo.
+  assert.ok(catalog.Aluplast.some((s) => s.name === IS), "el IS debe existir en el catálogo interno");
 });

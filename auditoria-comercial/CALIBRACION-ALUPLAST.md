@@ -193,8 +193,8 @@ Añadirlo bien es la pieza de mayor valor pendiente, y requiere decisión: su mo
 
 | Supuesto | Estado tras la documentación nueva |
 |---|---|
-| **`EUR_MXN = 21.8`**, fechado 2022-05-01 | **Sigue mal, y sigue haciendo falta.** Las dos listas —la de 2022 y `Lista de Precios IS_V1.2.2.2`— están en **euros EXWORK Veracruz**, así que el tipo de cambio no desaparece. El real ronda 19.68: actualizarlo **baja** el costo de perfil ~10% y con él los precios. Es una decisión comercial, no técnica |
-| **`IMPORT_FACTOR = 1.0`** | **Confirmado como subcosteo.** La lista nueva vuelve a decir «PRECIOS EX WORK ALUPLASTMEX-VERACRUZ»: el precio se detiene en el muelle del vendedor. Cobrarlo como costo puesto en planta es fuga de margen. Sigue faltando un pedimento real para fijar el factor |
+| **`EUR_MXN = 21.8`** | **RESUELTO como decisión de negocio, no como defecto.** dc lo fijó el 2026-08-19: es el tipo que maneja la marca, deliberadamente por encima del spot (~19.68) como colchón contra la variación del peso entre cotizar y comprar. Queda documentado en el código y **fijado con una prueba** para que no se mueva por descuido. Ojo a la interacción con `IMPORT_FACTOR`: ver la fila siguiente |
+| **`IMPORT_FACTOR = 1.0`** | **Confirmado como subcosteo**, y ahora con una consecuencia importante. La lista nueva vuelve a decir «PRECIOS EX WORK ALUPLASTMEX-VERACRUZ»: el precio se detiene en el muelle. Como `EUR_MXN` se mantiene 10.8% por encima del spot, **el colchón del tipo de cambio está compensando en parte, y sin medirlo, lo que este factor debería recoger.** Bajar el tipo de cambio a spot dejando este factor en 1.0 quitaría el colchón sin poner nada en su lugar. Los dos se revisan juntos o no se revisan |
 | **Lista de precios rev. ABR_22 (2022)** | **No se reemplaza.** `Lista de Precios IS_V1.2.2.2.xlsx` tiene **una sola hoja, «Ideal IS»**: es una orden de material de ese sistema, no un catálogo completo. La de 2022 sigue siendo la única lista con los 278 perfiles. **D-05 sigue abierto** |
 | Descuento de vidrio de 120 mm | **Desmentido** para correderas. Ver sección 1 |
 | Junquillos a 90° y a la medida de la hoja | **Desmentido**. Ver sección 1 |
