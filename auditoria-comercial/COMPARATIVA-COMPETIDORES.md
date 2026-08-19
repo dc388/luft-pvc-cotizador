@@ -1,5 +1,21 @@
 # Comparativa competitiva — LUFT PVC Cotizador
 
+> **CORREGIDO EL 2026-08-19.** Este documento midió LUFT contra cuatro productos de ERP industrial
+> (RA Workshop, Klaes, Logikal, Windowmaker) y de ahí sacó dos conclusiones que resultaron
+> equivocadas:
+>
+> 1. Marcó el cotizador público de cara al cliente como ventaja «Superior» porque ninguno de los
+>    cuatro lo documenta. Cierto de esos cuatro, engañoso sobre el mercado: **existe una categoría
+>    entera de configuradores de cara al cliente** —Vivid 3D, Twikit, IC COMPLEX, WindowPerfect,
+>    WinDoor Quote, Tommy Trinder— que este documento no consideró.
+> 2. Ignoró por completo **el mercado mexicano**, que es donde LUFT compite de verdad: Optiglass,
+>    SEIA, Megevand OP 2.1 y winDOS. Optiglass trae precargadas las líneas que el mercado usa
+>    (EuroVent, Panorama 2" y 3", EuroAlum, Línea Española).
+>
+> El análisis vigente, con opinión de usuarios, efectividad medida y requisitos del arquitecto,
+> está en **`INFORME-MERCADO.md`**. Este documento se conserva por su matriz de 24 capacidades
+> contra los cuatro productos industriales, que sigue siendo válida en su alcance.
+
 Fecha: 2026-08-15
 
 ## Advertencia de método
