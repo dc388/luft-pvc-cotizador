@@ -128,11 +128,20 @@ a{color:inherit}
 .presetRow{display:flex;gap:6px;padding:8px 22px;border-bottom:1px solid var(--line);background:var(--surface);overflow-x:auto}
 .presetRow button{border:1px solid var(--line);background:var(--paper);padding:6px 12px;border-radius:20px;font-size:9px;color:var(--ink);white-space:nowrap}
 .presetRow button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* Por que el 3D salia deformado (canvas de 510x1996 en un viewport de 1000 de alto):
+   .workspace es un grid y su fila toma la altura de la columna mas alta, que es la de propiedades.
+   El panel visual se estira a esa altura, y el slot del 3D estaba a height:100%, asi que heredaba
+   ~2000 px de un HERMANO -- no de su propio contenido. El 2D no lo notaba porque PanZoomViewport
+   se dimensiona por relacion de aspecto.
+   La correccion acota el slot al viewport en vez de a la columna vecina: ancho el del hueco, alto
+   una medida definida. Al ser definida tambien desaparece cualquier circularidad de medida. */
 .canvas.view-3D .canvasStage{padding:20px}
 .canvas3dWrap{display:contents}
 .canvas3dWrap.canvas3dWrapHidden{display:none}
-.scene3dSlot{width:100%;height:100%;position:relative;min-height:1px}
-.scene3dSlot canvas{display:block;border-radius:10px;cursor:grab}
+.scene3dSlot{position:relative;min-width:0;overflow:hidden;justify-self:stretch;align-self:center;height:min(70vh,720px)}
+/* El canvas va fuera del flujo: asi su tamano NUNCA vuelve a alimentar el del slot, que es la otra
+   mitad del bucle. El buffer de dibujo lo fija renderer.setSize; la caja la fija este inset. */
+.scene3dSlot canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-radius:10px;cursor:grab}
 .scene3dHint{position:absolute;bottom:14px;right:14px;font-size:8px;color:var(--muted);background:var(--surface);border:1px solid var(--line);padding:5px 9px;border-radius:20px;pointer-events:none}
 .canvas{position:relative;flex:1;min-height:500px;display:flex;align-items:stretch;gap:16px;padding:16px;background-color:var(--paper)}
 .canvasStage{position:relative;flex:1;min-width:0;display:grid;place-items:center;padding:54px;overflow:hidden}

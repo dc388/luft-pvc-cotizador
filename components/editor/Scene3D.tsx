@@ -160,10 +160,15 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
     const resize = () => {
       const slot = canvas.parentElement;
       if (!slot) return;
-      const w = Math.max(1, slot.clientWidth), h = Math.max(1, slot.clientHeight);
+      const w = slot.clientWidth, h = slot.clientHeight;
+      // Con el 3D oculto (display:none en un ancestro) el slot no tiene caja y esto medía 0, que
+      // antes se convertía en un buffer de 1x1 fijado para siempre. Ahora no se aplica una medida
+      // degenerada: se deja la anterior y el re-medido al entrar a la vista (ver presetToken)
+      // aplica la real cuando el slot ya tiene caja.
+      if (w < 2 || h < 2) return;
+      // `false`: no toca el estilo del canvas. La caja la pone el CSS (.scene3dSlot canvas está
+      // absoluto con inset:0), y así el tamaño del canvas no vuelve a alimentar el del slot.
       renderer.setSize(w, h, false);
-      canvas.style.width = `${w}px`;
-      canvas.style.height = `${h}px`;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     };
@@ -182,7 +187,14 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
       ray.setFromCamera(new THREE.Vector2(nx, ny), cam);
       const hits = ray.intersectObjects(clickableRef.current, false);
       if (!hits.length) return;
-      const hit = hits[0];
+      // El marco de conjunto tiene la PROFUNDIDAD COMPLETA del sistema y rodea todo el dibujo, así
+      // que en una vista orbitada se cruza en el camino de casi cualquier rayo y ganaría siempre por
+      // cercanía. Por eso cede el paso: se toma el primer impacto que sea de una hoja, y solo si no
+      // hay ninguno se resuelve el marco de conjunto. Es la misma intención que tenía el código
+      // cuando el marco exterior simplemente no era seleccionable ("clicking a leaf's own marco ring
+      // selects that leaf instead"), pero ahora sí se puede llegar a él clicando donde no hay hoja
+      // detrás.
+      const hit = hits.find((h) => (h.object.userData as ClickTag)?.scope !== "assembly") ?? hits[0];
       const tag = hit.object.userData as ClickTag;
       if (!tag) return;
       const { activeTool: tool, onSelect: select, onSelectAssemblyMarco: selectAssembly, onSplit: split, onAssignWing: assign } = stateRef.current;
