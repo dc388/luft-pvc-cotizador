@@ -50,13 +50,25 @@ test("una hoja fija se dimensiona contra el marco y una operable contra la hoja"
   assert.equal(movil.leaves[0].glassWMm, movil.leaves[0].wMm - spec.sashDeductionMm);
 });
 
-test("CORREDERA 60MM está calibrado y conserva el valor con el que se cotizó siempre", () => {
-  // Si esto cambia, cambian cotizaciones ya emitidas: tiene que ser una decisión explícita.
-  const spec = glazingFor("CORREDERA 60MM");
+test("CORREDERA 96MM lleva el descuento documentado por Aluplast, no el heredado", () => {
+  // 30 mm sale de seis tablas oficiales de "Deduction dimensions" (multi-slide págs. 24, 27, 88 y
+  // 89; easy-slide págs. 55 y 57). Si esto cambia, cambian precios ya cotizados: tiene que ser una
+  // decisión explícita y documentada en `source`.
+  const spec = glazingFor("CORREDERA 96MM");
   assert.equal(spec.calibrated, true);
-  assert.equal(spec.marcoDeductionMm, LEGACY_GLASS_DEDUCTION_MM);
+  assert.equal(spec.marcoDeductionMm, 30);
+  assert.equal(spec.sashDeductionMm, 30);
+  assert.notEqual(spec.marcoDeductionMm, LEGACY_GLASS_DEDUCTION_MM, "no debe volver al valor heredado");
+  assert.match(spec.source, /multi-slide/i, "un sistema calibrado tiene que citar su fuente");
+});
+
+test("CORREDERA 60MM ya no se declara calibrado", () => {
+  // Su 120 mm era el valor histórico de la aplicación, no una medición. Con los manuales de
+  // Aluplast dando 30 mm para correderas, afirmar que está calibrado seria peor que admitir que no
+  // lo está: sigue usando el valor heredado, pero el pedido de vidrio ahora lo advierte.
+  const spec = glazingFor("CORREDERA 60MM");
+  assert.equal(spec.calibrated, false);
   assert.equal(spec.sashDeductionMm, LEGACY_GLASS_DEDUCTION_MM);
-  assert.ok(spec.source.length > 20, "un sistema calibrado tiene que decir de dónde salió el número");
 });
 
 test("un sistema sin calibrar hereda el valor previo y queda marcado como tal", () => {

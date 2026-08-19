@@ -81,23 +81,47 @@ const UNCALIBRATED: GlazingSpec = {
  * entre marcas). Se indexa por nombre y no por marca+nombre para no tener que pasar la marca por
  * toda la cadena de cálculo, que hoy solo recibe el sistema.
  *
- * CORREDERA 60MM es el único con valor propio hoy, y no es una medición nueva: es la constante que
- * la aplicación ya venía aplicando, atribuida al sistema del que se portó. Se registra así para que
- * el número no cambie mientras se calibra el resto, y para que quede explícito de dónde viene.
+ * HALLAZGO DEL 2026-08-19, y es grande: la constante heredada de 120 mm NO se parece al dato del
+ * fabricante. Seis tablas oficiales de "Deduction dimensions" en dos manuales de fabricación de
+ * Aluplast (multi-slide y easy-slide) dan Vidrio = Hoja - 30 mm para sistemas de corredera. Ciento
+ * veinte milímetros es cuatro veces eso: la aplicación venía pidiendo el vidrio unos 90 mm más
+ * chico por eje de lo que especifica Aluplast.
  *
- * CALIBRAR: los 19 sistemas restantes. El de mayor prioridad es IDEAL 2000 · Practicable, porque
- * es el practicable más cotizado y su hoja (77 mm en el catálogo Aluplast del repositorio) es
- * visiblemente más ancha que la de una corredera de 60 mm, así que su descuento no puede ser 120.
+ * Por eso CORREDERA 60MM ya NO figura aquí como calibrado. Su 120 mm era el valor histórico de la
+ * aplicación, no una medición; ahora hay motivo documentado para dudarlo, y afirmar que está
+ * calibrado sería peor que admitir que no lo está. Vuelve al respaldo, con su aviso visible, hasta
+ * confirmarlo contra la ficha CORREDERA_60N+MONORIEL (que es un plano CAD, no texto).
+ *
+ * CALIBRAR, por prioridad:
+ *   1. CORREDERA 60MM y su Monorriel -- los más cotizados. La ficha mexicana existe pero es plano.
+ *   2. IDEAL 2000 · Practicable -- el practicable más vendido. El manual español de 268 páginas que
+ *      entregó dc es de procesamiento (drenaje, calzos, sellado) y no trae tabla de descuentos.
+ *   3. ELEVADORA 70MM -- su manual dice, pág. 95, "descuentos de vidrio acordes a las normas del
+ *      fabricante" sin dar la tabla.
  */
 const CALIBRATED: Record<string, GlazingSpec> = {
-  "CORREDERA 60MM": {
-    marcoDeductionMm: 120,
-    sashDeductionMm: 120,
+  // multi-slide 96, calibrado el 2026-08-19 contra los manuales de fabricación de Aluplast que
+  // entregó dc. Las tablas oficiales de "Deduction dimensions" dan, en cuatro esquemas distintos:
+  //
+  //   HB_Schiebefenster_multi-slide 2023-11, pág. 24   Hoja (B/2)-158     Vidrio (B/2)-188
+  //   HB_Schiebefenster_multi-slide 2023-11, pág. 27   Hoja (B/4)-130.75  Vidrio (B/4)-160.75
+  //   HB_Schiebefenster_multi-slide 2023-11, pág. 88   Hoja (B/2)-140     Vidrio (B/2)-170
+  //   HB_Schiebefenster_multi-slide 2023-11, pág. 89   Hoja (B/4)-121.75  Vidrio (B/4)-151.75
+  //
+  // Vidrio menos hoja = 30 mm en los cuatro. El manual easy-slide 2023-09 (págs. 55, 56 y 57) da el
+  // mismo 30 mm, y 33 mm en una variante de perfil (pág. 58), lo que confirma el orden de magnitud.
+  //
+  // El nombre del sistema en el catálogo se ata a este manual por la ficha mexicana
+  // "MULTI SLIDE _96_MX_X.pdf", que es la del mismo producto.
+  "CORREDERA 96MM": {
+    marcoDeductionMm: 30,
+    sashDeductionMm: 30,
     calibrated: true,
     source:
-      "Valor histórico de la aplicación (constante de 120 mm), atribuido a este sistema por ser " +
-      "el que se portó de static/cotizador.html. Confirmar contra la ficha de fabricación " +
-      "Aluplast y separar marco de hoja cuando esté a la mano.",
+      "Aluplast HB_Schiebefenster_multi-slide_VM_Verarbeiter_en 2023-11, tablas 'Deduction " +
+      "dimensions' págs. 24, 27, 88 y 89: Vidrio = Hoja - 30 mm en los cuatro esquemas. " +
+      "Corroborado por easy-slide 2023-09 págs. 55-57. Falta separar marco de hoja: el manual da " +
+      "un solo descuento para el acristalamiento en hoja.",
   },
 };
 
