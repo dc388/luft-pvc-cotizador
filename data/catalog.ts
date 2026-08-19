@@ -41,6 +41,31 @@ export const catalog: Record<Brand, System[]> = {
     { name: "IDEAL 8000 85", category: "Premium", depth: 85, chambers: "6 cámaras · triple junta", glazing: 44, maxW: 3200, maxH: 2700, rails: [0], frame: 258, sash: 224, hardware: 2650, uf: "1.0 W/m²K", frameSeatMm: 8, centerOverlapMm: 0 },
     { name: "neo smart-slide", category: "Especial", depth: 70, chambers: "cierre perimetral", glazing: 41, maxW: 6000, maxH: 2500, rails: [1, 2], frame: 245, sash: 218, hardware: 4200, uf: "1.3 W/m²K", frameSeatMm: 8, centerOverlapMm: 24 },
     { name: "Lift-slide 85 (HS)", category: "Especial", depth: 85, chambers: "umbral especial", glazing: 52, maxW: 6500, maxH: 2800, rails: [2], frame: 320, sash: 285, hardware: 7600, uf: "1.1 W/m²K", frameSeatMm: 8, centerOverlapMm: 32 },
+    // IDEAL IS · Corredera mx -- el sistema que aluplastmex suministra hoy, y el unico del catalogo
+    // con ficha de fabricacion propia y lista de precios vigente. Anadido el 2026-08-19 desde la
+    // documentacion que entrego dc.
+    //
+    // Precios de "Lista de Precios IS_V1.2.2.2.xlsx" (EXWORK Veracruz, en euros), convertidos con
+    // EUR_MXN igual que el resto de los sistemas `sourced`:
+    //   Marco de 58 mm 2 rieles IS        1.71 EUR/m  ->  37 MXN/m
+    //   Hoja corrediza c/felpillo 19 mm   1.20 EUR/m  ->  26 MXN/m   (el traslape es 1.19, casi igual)
+    //   Cerradero media luna 0.90 + Carro p/hoja 0.90 = 1.80 EUR  ->  39 MXN por ventana
+    //
+    // Medidas maximas y numero de rieles vienen del manual «Ventana corredera mx» ed. 2025-10 pag. 2.
+    //
+    // frameSeatMm y centerOverlapMm van en 0 A PROPOSITO: este sistema NO usa el modelo generico de
+    // hoja. Su descuento esta documentado en la ficha y vive en data/glazing.ts (leafSizingFor), que
+    // manda sobre esos dos campos. Se dejan en 0 para que quede claro que no se leen.
+    //
+    // CALIBRAR, y es importante antes de cotizar vidrio doble en este sistema: `glazing` es el espesor
+    // maximo que acepta el galce, y la ficha que entrego dc NO lo publica. Se pone en 24 --el maximo
+    // del catalogo de vidrio de la aplicacion-- para no bloquear nada por error, pero eso significa
+    // que hoy la aplicacion NO valida el espesor en este sistema. Confirmar contra el catalogo de
+    // junquillos (alturas de 10 a 40 mm) o midiendo el galce.
+    //
+    // CALIBRAR: el paquete de herraje puede estar incompleto. La lista de precios del IS solo
+    // documenta cerradero y carro; si el taller monta algo mas, sumarlo aqui.
+    { name: "IDEAL IS · Corredera mx", category: "Corredera", depth: 58, chambers: "no publicado en la ficha", glazing: 24, maxW: 1500, maxH: 1500, rails: [2], frame: 37, sash: 26, hardware: 39, uf: "no publicado", sourced: true, frameSeatMm: 0, centerOverlapMm: 0 },
   ],
   Deceuninck: [
     { name: "Sliding 2 rieles", category: "Corredera", depth: 60, chambers: "multicámara", glazing: 24, maxW: 4000, maxH: 2400, rails: [2], frame: 148, sash: 126, hardware: 930, uf: "según configuración", frameSeatMm: 8, centerOverlapMm: 20 },

@@ -47,7 +47,7 @@ export function FrameCanvas({
   onCentralLockClick,
 }: Props) {
   const light = color.name === "Blanco";
-  const frames = flattenToLeafFrames(tree, width, height, system.frameSeatMm, system.centerOverlapMm);
+  const frames = flattenToLeafFrames(tree, width, height, system);
   return (
     <div className="modelStage" style={{ "--ar": `${width}/${height}` } as CSSProperties}>
       <div className={`window ${light ? "whiteFrame" : ""}`} style={{ "--frame": color.hex ?? "#dfe2dc" } as CSSProperties}>

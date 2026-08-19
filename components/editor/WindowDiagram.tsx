@@ -22,7 +22,7 @@ const noop = () => {};
 // whatever happens to be selected in the live editor at print time.
 export function WindowDiagram({ tree, width, height, color, system }: Props) {
   const light = color.name === "Blanco";
-  const frames = flattenToLeafFrames(tree, width, height, system.frameSeatMm, system.centerOverlapMm);
+  const frames = flattenToLeafFrames(tree, width, height, system);
   return (
     <div className={`window ${light ? "whiteFrame" : ""}`} style={{ "--frame": color.hex ?? "#dfe2dc", "--ar": `${width}/${height}` } as React.CSSProperties}>
       {frames.map((frame, i) => (

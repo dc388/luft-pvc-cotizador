@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 import { buildCutList, calcQuote } from "@/lib/calc";
-import { beadFor, glassSizeMm, glazingFor, LEGACY_GLASS_DEDUCTION_MM, WELD_ALLOWANCE_MM } from "@/data/glazing";
+import { beadFor, glassSizeMm, glazingFor, leafSizingFor, LEGACY_GLASS_DEDUCTION_MM, WELD_ALLOWANCE_MM } from "@/data/glazing";
 import { typologyDefs } from "@/data/typologies";
 import { catalog } from "@/data/catalog";
 import { colors } from "@/data/colors";
@@ -198,4 +198,77 @@ test("la soldadura no altera el precio, solo la lista de corte", () => {
   assert.ok(neto > 0);
   assert.ok(c.profileCost > neto * 1.1, "la merma debe seguir aplicándose sobre el neto");
   assert.ok(Number.isFinite(c.total) && c.total > 0);
+});
+
+// ---------- Sistema IDEAL IS · Corredera mx ----------
+// Añadido el 2026-08-19 desde la documentación de Aluplast. Es el único sistema del catálogo con
+// ficha de fabricación propia, y el primero que usa `leafSizingFor` en lugar del modelo genérico.
+
+const IS = "IDEAL IS · Corredera mx";
+
+test("el sistema IS existe en el catálogo con los datos de su ficha", () => {
+  const sys = catalog.Aluplast.find((s) => s.name === IS);
+  assert.ok(sys, "el sistema IS tiene que estar en el catálogo");
+  assert.equal(sys.depth, 58, "«Marco de 58 mm 2 rieles IS» en la lista de precios");
+  assert.equal(sys.maxW, 1500, "manual «Ventana corredera mx» 2025-10, pág. 2");
+  assert.equal(sys.maxH, 1500);
+  assert.equal(sys.sourced, true, "sus precios salen de la lista vigente del proveedor");
+});
+
+test("el IS reproduce exactamente las medidas de deducción de su manual", () => {
+  // Manual Aluplast «Ventana corredera mx», ed. 2025-10, págs. 6 y 7, con B=1800 y H=1400:
+  //   Hoja             C = (B/2) − 52,2 = 847,8      I = H − 74   = 1326
+  //   Acristalamiento  E = (B/2) − 71,6 = 828,4      K = H − 93,4 = 1306,6
+  const c = quote("corr-2-fija-movil", IS, 1800, 1400);
+  assert.equal(c.leaves.length, 2);
+  for (const l of c.leaves) {
+    assert.ok(Math.abs(l.wMm - 847.8) < 1e-9, `hoja ancho ${l.wMm} debería ser 847.8`);
+    assert.ok(Math.abs(l.hMm - 1326) < 1e-9, `hoja alto ${l.hMm} debería ser 1326`);
+    assert.ok(Math.abs(l.glassWMm - 828.4) < 1e-9, `vidrio ancho ${l.glassWMm} debería ser 828.4`);
+    assert.ok(Math.abs(l.glassHMm - 1306.6) < 1e-9, `vidrio alto ${l.glassHMm} debería ser 1306.6`);
+    assert.equal(l.glassCalibrated, true);
+  }
+});
+
+test("el junquillo del IS se descuenta y el marco lleva soldadura", () => {
+  const sys = catalog.Aluplast.find((s) => s.name === IS)!;
+  const def = typologyDefs.find((t) => t.id === "corr-2-fija-movil")!;
+  const cut = buildCutList(def.build(), 1800, 1400, sys);
+  const w = 2 * WELD_ALLOWANCE_MM;
+  // Marco: medida del elemento más la soldadura.
+  assert.ok(cut.marco.some((p) => Math.abs(p.length - (1800 + w)) < 1e-9), "marco 1800+6");
+  assert.ok(cut.marco.some((p) => Math.abs(p.length - (1400 + w)) < 1e-9), "marco 1400+6");
+  // Junquillo: hoja menos 89, y SIN soldadura. La lista de corte trabaja en milímetros enteros
+  // (buildCutList redondea la medida de fabricación antes de despiezar), así que 848 − 89 = 759.
+  assert.equal(beadFor(IS).deductionMm, 89);
+  assert.ok(cut.junquillos.some((p) => p.length === 759), `junquillo 759, hay ${cut.junquillos.map((p) => p.length).join()}`);
+  assert.ok(!cut.junquillos.some((p) => p.length === 848 + w), "el junquillo no debe llevar soldadura");
+  for (const p of cut.junquillos) assert.equal(p.angle, "45°");
+});
+
+test("NINGÚN sistema anterior al IS usa dimensionado propio de hoja", () => {
+  // Ésta es la garantía que pidió dc: añadir el IS sin interferir con los demás. Cualquier sistema
+  // que gane un dimensionado propio cambia sus medidas de hoja, y por tanto su precio, así que tiene
+  // que ser una decisión explícita que rompa esta prueba a propósito.
+  const conDimensionadoPropio = [IS];
+  for (const brand of ["Aluplast", "Deceuninck"] as const) {
+    for (const sys of catalog[brand]) {
+      const propio = leafSizingFor(sys.name) !== null;
+      if (conDimensionadoPropio.includes(sys.name)) {
+        assert.equal(propio, true, `${sys.name} debería tener dimensionado propio`);
+      } else {
+        assert.equal(propio, false, `${sys.name} no debe tener dimensionado propio sin decidirlo`);
+      }
+    }
+  }
+});
+
+test("el dimensionado propio no altera el modelo genérico de un sistema vecino", () => {
+  // El caso de referencia de CORREDERA 60MM tiene que seguir dando 902x1384 con el IS ya en el
+  // catálogo: son 8 mm de asiento y 20 de traslape, no el descuento del IS.
+  const c = quote("corr-2-moviles", "CORREDERA 60MM", 1800, 1400);
+  for (const l of c.leaves) {
+    assert.equal(l.wMm, 902);
+    assert.equal(l.hMm, 1384);
+  }
 });

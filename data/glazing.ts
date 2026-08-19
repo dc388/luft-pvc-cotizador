@@ -100,6 +100,19 @@ const UNCALIBRATED: GlazingSpec = {
  *      fabricante" sin dar la tabla.
  */
 const CALIBRATED: Record<string, GlazingSpec> = {
+  // El sistema mejor documentado del paquete, y el unico con manual en espanol de 2025.
+  // «Ventana corredera mx», edición 2025-10: Hoja C = (B/2) − 52,2 y Acristalamiento E = (B/2) − 71,6
+  // en ancho; Hoja I = H − 74 y Acristalamiento K = H − 93,4 en alto. La diferencia es 19,4 mm en los
+  // dos ejes, y también para el campo fijo (Cf/Ef y If/Kf dan lo mismo). Cuatro tablas coincidentes.
+  "IDEAL IS · Corredera mx": {
+    marcoDeductionMm: 19.4,
+    sashDeductionMm: 19.4,
+    calibrated: true,
+    source:
+      "Aluplast «Ventana corredera mx» (sliding-window mx), edición 2025-10, págs. 6, 7 y 8: " +
+      "71,6 − 52,2 = 19,4 en ancho y 93,4 − 74 = 19,4 en alto, idéntico para hoja corrediza y " +
+      "campo fijo.",
+  },
   // multi-slide 96, calibrado el 2026-08-19 contra los manuales de fabricación de Aluplast que
   // entregó dc. Las tablas oficiales de "Deduction dimensions" dan, en cuatro esquemas distintos:
   //
@@ -193,8 +206,62 @@ const BEAD_UNCALIBRATED: BeadSpec = {
   source: "Sin calibrar: el junquillo sale a la medida de la hoja. Referencia Aluplast (sistema IS): hoja - 89 mm.",
 };
 
-const BEAD_CALIBRATED: Record<string, BeadSpec> = {};
+const BEAD_CALIBRATED: Record<string, BeadSpec> = {
+  // 47,3 es el ancho de cara del junquillo 020073, confirmado en el plano del sistema
+  // (HB_Schiebetür_sliding_door_mx, pág. 2, junto a 93,5 del marco y 27,8 de la hoja). El 2,8 es el
+  // solape del galce. La hoja de material de Aluplast lo aplica como (47,3 − 2,8) × 2.
+  "IDEAL IS · Corredera mx": {
+    deductionMm: 89,
+    calibrated: true,
+    source:
+      "Aluplast, hoja «CALCULO DE MATERIAL SISTEMA IS v2.1»: junquillo = hoja − (47,3 − 2,8) × 2, " +
+      "a 45°. El 47,3 es el ancho de cara del perfil 020073, confirmado en el plano del sistema.",
+  },
+};
 
 export function beadFor(systemName: string): BeadSpec {
   return BEAD_CALIBRATED[systemName] ?? BEAD_UNCALIBRATED;
+}
+
+/**
+ * DIMENSIONADO DE HOJA POR SISTEMA
+ *
+ * El modelo genérico de la aplicación calcula la medida de fabricación de una hoja corredera a
+ * partir de `frameSeatMm` (cuánto se mete la hoja en el canal del marco) y `centerOverlapMm` (el
+ * traslape entre hojas). Sirve para los sistemas del catálogo de 2022, que es lo que había.
+ *
+ * Pero las fichas de fabricación de Aluplast no expresan la hoja así: dan un descuento directo sobre
+ * la medida nominal. El manual mexicano «Ventana corredera mx» (sliding-window mx, edición 2025-10),
+ * págs. 6 y 7, da para el Esquema A:
+ *
+ *     Hoja, ancho   C = (B/2) − 52,2      (igual para la hoja corrediza y para el campo fijo)
+ *     Hoja, alto    I = H − 74
+ *
+ * Cuando un sistema trae su propio descuento documentado, manda ese y no el modelo genérico. Un
+ * sistema SIN entrada aquí se comporta EXACTAMENTE como antes: `leafSizingFor` devuelve `null` y
+ * `flattenToLeafFrames` sigue el camino de `frameSeatMm`/`centerOverlapMm` sin tocar nada. Es la
+ * condición que pidió dc: añadir el IS sin interferir con los demás sistemas.
+ */
+export type LeafSizingSpec = {
+  /** Se resta al ancho nominal de cada hoja. Incluye la parte de marco y el traslape que le toquen. */
+  perLeafWidthDeductionMm: number;
+  /** Se resta a la altura nominal de cada hoja. */
+  perLeafHeightDeductionMm: number;
+  source: string;
+};
+
+const LEAF_SIZING: Record<string, LeafSizingSpec> = {
+  "IDEAL IS · Corredera mx": {
+    perLeafWidthDeductionMm: 52.2,
+    perLeafHeightDeductionMm: 74,
+    source:
+      "Aluplast «Ventana corredera mx» (sliding-window mx), edición 2025-10, págs. 6 y 7: " +
+      "Hoja C = (B/2) − 52,2 en ancho y I = H − 74 en alto, iguales para la hoja corrediza y " +
+      "para el campo fijo. Las tablas indican «¡Añadir soldadura!», que se aplica aparte.",
+  },
+};
+
+/** `null` cuando el sistema no trae descuento propio: se usa el modelo genérico de siempre. */
+export function leafSizingFor(systemName: string): LeafSizingSpec | null {
+  return LEAF_SIZING[systemName] ?? null;
 }

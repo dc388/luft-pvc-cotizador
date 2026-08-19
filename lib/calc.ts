@@ -198,7 +198,7 @@ export function calcQuote({
   // it, and extends sys.centerOverlapMm/2 past the nominal centerline on the side where it
   // traslapes a sliding sibling, so the two closed leaves actually overlap instead of just
   // butting edge to edge. See flattenToLeafFrames.
-  const frames = flattenToLeafFrames(tree, width, height, sys.frameSeatMm, sys.centerOverlapMm);
+  const frames = flattenToLeafFrames(tree, width, height, sys);
   const leaves: LeafCalc[] = frames.map((r) => {
     const wM = r.fabW / 1000, hM = r.fabH / 1000;
     // Fixed/inactive leaves glaze straight into the marco/travesaño -- no sash profile to
@@ -391,7 +391,7 @@ export function buildCutList(
   // Real hoja/junquillo cut length: fabW/fabH already fold in each sliding leaf's marco-seat
   // inset and center-traslape extension (flattenToLeafFrames), so two correderas meeting
   // mid-run are cut to actually overlap there instead of butting edge to edge at width/2.
-  (leafFrames ?? flattenToLeafFrames(tree, width, height, sys.frameSeatMm, sys.centerOverlapMm)).forEach((r, i) => {
+  (leafFrames ?? flattenToLeafFrames(tree, width, height, sys)).forEach((r, i) => {
     const label = `Hoja ${String.fromCharCode(65 + i)}`;
     const w = Math.round(r.fabW), h = Math.round(r.fabH);
     if (r.wing !== "fixed" && r.wing !== "inactive") {
