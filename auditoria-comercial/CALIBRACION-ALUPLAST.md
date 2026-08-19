@@ -22,9 +22,68 @@ dos veces.
 
 ---
 
-## 2. Encontrado en los manuales pero NO aplicado, y por qué
+## 2. HALLAZGO PRINCIPAL: el manual mexicano en español
 
-### 2.1 El descuento del junquillo: 89 mm
+Dentro de `Ventana IS.zip` estaba `Manual y Especificaciones/Manual_ventana_corredera_sliding_window_mx_sp.pdf`:
+**«Ventana corredera mx», sliding-window mx, edición 2025-10**, en español, con las tablas de
+«Medidas de deducción» completas y la leyenda escrita, no concatenada.
+
+### Anchos — pág. 6, Esquema A, perfiles 020070 + 020071 + 020072
+
+```
+Elemento                         B
+Apertura libre               D = (B/2) − 12,9      Df = (B/2) − 12,9
+Hoja                         C = (B/2) − 52,2      Cf = (B/2) − 52,2   (campo fijo)
+Acristalamiento              E = (B/2) − 71,6      Ef = (B/2) − 71,6   (campo fijo)
+                                 (B/2) − 48,3  = Ancho libre de la hoja corredera
+¡Añadir soldadura!
+```
+
+### Alturas — págs. 7 y 8
+
+```
+Elemento                     H
+Altura libre de la hoja      J  = H − 35      Jf = H − 35
+Hoja                         I  = H − 74      If = H − 74
+Acristalamiento              K  = H − 93,4    Kf = H − 93,4
+¡Añadir soldadura!
+```
+
+### Lo que sale de ahí
+
+| Dato | Valor | Consistencia |
+|---|---|---|
+| **Vidrio = Hoja − 19,4 mm** | 71,6 − 52,2 = **19,4** (ancho) · 93,4 − 74 = **19,4** (alto) | Idéntico en los cuatro ejes, y también para el campo fijo |
+| **Hoja, ancho** | `(B/2) − 52,2` | — |
+| **Hoja, alto** | `H − 74` | — |
+| **Soldadura** | «¡Añadir soldadura!» impreso en las tres tablas | Confirma lo ya implementado |
+| **Máximo del sistema** | 1500 × 1500 mm (la puerta: 2000 × 2000) | pág. 2 |
+| **Perfiles** | 020070 Marco · 020071 Hoja · 020072 Hoja con cierre central integrado · 020073 Junquillo | pág. 2 |
+
+**Nótese que no es 30 mm.** Los manuales europeos de multi-slide y easy-slide dan 30; este sistema
+mexicano da 19,4. Sistemas distintos, números distintos — que es exactamente la razón por la que una
+constante única no podía funcionar.
+
+### Y confirma la sospecha de la sección 3.2, con fuente en español
+
+```
+Aluplast (sliding-window mx 2025-10)   Hoja = (B/2) − 52,2
+La aplicación (CORREDERA 60MM)         Hoja = (B/2) + 2
+```
+
+Para B = 1800: Aluplast **847,8** contra los **902** de la aplicación. La hoja de la aplicación es
+**~54 mm más ancha** de lo que especifica el fabricante, y dos hojas de 902 en un marco de 1800 suman
+1804 mientras que dos de 847,8 suman 1695,6, que sí cabe dentro del marco.
+
+Sigue sin aplicarse porque son **sistemas distintos**: el manual es del IS / sliding-window mx, y la
+aplicación cotiza CORREDERA 60MM del catálogo de 2022. Pero la dirección del error ya no es una
+sospecha, y el orden de magnitud es el mismo.
+
+---
+
+## 3. Encontrado en los manuales pero NO aplicado, y por qué
+
+### 3.1 El descuento del junquillo: 89 mm
 
 La hoja da `junquillo = hoja − (47.3 − 2.8) × 2 = hoja − 89`. El 47.3 es el ancho de cara del perfil
 y el 2.8 el solape del galce — la misma estructura del descuento de vidrio.
@@ -33,7 +92,7 @@ y el 2.8 el solape del galce — la misma estructura del descuento de vidrio.
 `data/catalog.ts`. Atribuirlo a CORREDERA 60MM o a IDEAL 2000 sería inventar. El parámetro existe ya
 (`beadFor`), vale 0 sin calibrar, y el reporte de corte lo advierte.
 
-### 2.2 La medida de la hoja corredera — el hallazgo que más conviene verificar
+### 3.2 La medida de la hoja corredera — CONFIRMADO por el manual mexicano, ver sección 2
 
 Las tablas de Aluplast dan, para dos hojas:
 
@@ -65,14 +124,72 @@ hoja sin certeza movería metros de perfil, vidrio, corte y precio a la vez.
 fabricada de 1800 mm de ancho. Si mide ~902 la aplicación está bien; si mide ~740–780, está mal y
 hay que corregir `frameSeatMm` / `centerOverlapMm` con el ancho de cara del marco.
 
-### 2.3 `centerOverlapMm` sigue siendo un placeholder
+### 3.3 `centerOverlapMm` sigue siendo un placeholder
 
 El código lo declara «PLACEHOLDER pending Aluplast's fabrication datasheet». Los datasheets ya
-están, pero mientras no se resuelva 2.2 no tiene sentido calibrar la mitad del modelo.
+están, pero mientras no se resuelva 3.2 no tiene sentido calibrar la mitad del modelo.
 
 ---
 
-## 3. Supuestos de la carga anterior: qué confirma y qué no la documentación nueva
+## 3.4 El tema de los junquillos, cerrado con lo que hay
+
+De `14 Junquillos.pdf` (edición 2020-11) y del manual mexicano:
+
+**1. La selección del junquillo es por espesor de acristalamiento.** El catálogo cruza alturas de
+junquillo de **10 a 40 mm en pasos de 2** contra rangos de espesor de vidrio (3-4, 6-8, 10-11, 12-13,
+… hasta 58-59 mm). La aplicación **no implementa nada de esto**: el junquillo es solo una categoría
+de la lista de corte, sin código ni altura.
+
+Hay materia prima en el modelo de datos para hacerlo: `glassCatalog` ya guarda `thickness` por vidrio
+y `System.glazing` es el espesor máximo que acepta el galce. Falta la tabla exacta de rangos, que en
+el PDF está dispuesta espacialmente y la extracción de texto no permite reconstruir con seguridad.
+
+**2. Accesorios que cambian el galce**, y que la aplicación tampoco modela:
+`Prolongador de galce de vidrio` (h = 10 mm) y `Adaptador de junquillo` (h = 10 mm). Con ellos, un
+mismo perfil acepta espesores distintos.
+
+**3. El descuento de longitud sigue siendo por sistema.** El único documentado es el de la puerta IS:
+`junquillo = hoja − (47.3 − 2.8) × 2 = hoja − 89`, a 45°. El 47.3 es el ancho de cara del perfil
+020073 y aparece confirmado en el plano del sistema (`HB_Schiebetür_sliding_door_mx`, pág. 2, junto a
+93.5 del marco, 27.8 de la hoja y 35.1 del traslape).
+
+**Estado en el código:** el ángulo ya está corregido a 45° para todos los sistemas. El descuento de
+longitud existe como parámetro por sistema (`beadFor`), vale 0 sin calibrar, y el reporte de corte lo
+advierte. No se calibra ninguno porque el único dato disponible es del sistema IS, que no está en
+`data/catalog.ts`.
+
+---
+
+## 3.5 El sistema IS es el que se fabrica hoy, y no está en la aplicación
+
+Los zips lo dejan claro. `Ventana IS.zip` y `Puerta IS.zip` traen, para el sistema
+**sliding-window mx / sliding-door mx**:
+
+- Manual de fabricación en español, edición **2025-10** (ventana) y alemán **2025-11** (puerta)
+- Tablas de deducción completas, que es lo que ningún otro sistema del paquete tiene
+- Planos de liberación de construcción (`KS-Konstruktionsfreigabe`) de los perfiles 020070, 020072,
+  020074, 020075, 020076
+- CAD en DWG y DXF de cada perfil, del riel de aluminio y de la contraforma
+- `SB0003 Schweißzulage` — la hoja de descuento de soldadura del fabricante
+- Fotos de la ventana fabricada y de sus herrajes
+- Hoja de cálculo de material con las fórmulas de despiece
+- **La única lista de precios nueva del paquete** (`Lista de Precios IS_V1.2.2.2.xlsx`)
+- `COMPARACION_ALUPLAST_IS_VS_ALUMINIO_SIN_RPT.pdf` — material comercial contra aluminio
+
+Es, con diferencia, el sistema mejor documentado del paquete, y el único con precios actualizados.
+**No existe en `data/catalog.ts`**, que sigue con los 12 sistemas Aluplast de la lista de 2022.
+
+Añadirlo bien es la pieza de mayor valor pendiente, y requiere decisión: su modelo de hoja
+(`(B/2) − 52,2` en ancho, `H − 74` en alto) **no es el modelo genérico de la aplicación**
+(`frameSeatMm` / `centerOverlapMm`), así que o se generaliza el modelo o el sistema se trata aparte.
+
+---
+
+---
+
+---
+
+## 4. Supuestos de la carga anterior: qué confirma y qué no la documentación nueva
 
 | Supuesto | Estado tras la documentación nueva |
 |---|---|
@@ -85,13 +202,13 @@ están, pero mientras no se resuelva 2.2 no tiene sentido calibrar la mitad del 
 
 ---
 
-## 4. Lo que el ZIP trae y todavía no se ha explotado
+## 5. Lo que el ZIP trae y todavía no se ha explotado
 
 - **`Ventana IS.zip` (49 MB)** y **`Puerta IS.zip`** — sin abrir. Probablemente traen la ficha completa
   del sistema IS, que es el que la lista de precios nueva cotiza.
 - **`ACTUALIZACION TECNICA.zip`** — sin abrir.
 - **`14 Junquillos.pdf`** — catálogo de junquillos de 10 a 32 mm, cada uno con su junta. Es la pieza
-  que define el galce; sirve para calibrar 2.1 por sistema.
+  que define el galce; sirve para calibrar 3.1 por sistema.
 - **`REFUERZOS_MX_X.pdf`** — refuerzos. Hoy el costeo usa una estimación plana de 78 $/m cuando no
   hay código de refuerzo (D-12).
 - **`catalogo de folios 2025.pdf`** e **`información técnica_Folios.pdf`** — colores/folios 2025. El
@@ -103,7 +220,7 @@ están, pero mientras no se resuelva 2.2 no tiene sentido calibrar la mitad del 
 
 ---
 
-## 5. Notas de método
+## 6. Notas de método
 
 - Los PDFs de ficha por sistema (`CORREDERA_60N+MONORIEL_MX-Model_X.pdf`, `IDEAL 2000_MX_X.pdf`,
   `ELEVADORA_70mm_MX_X.pdf`, `MULTI SLIDE _96_MX_X.pdf`) son **planos CAD**: el texto sale
