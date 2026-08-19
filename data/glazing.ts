@@ -150,3 +150,51 @@ export function glassSizeMm(
     calibrated: spec.calibrated,
   };
 }
+
+/**
+ * DESCUENTO DE SOLDADURA
+ *
+ * Milímetros que se añaden a CADA EXTREMO soldado de una pieza a inglete. La máquina fresa el
+ * extremo antes de soldar, así que la pieza se corta más larga que su medida terminada.
+ *
+ * Fuente: hoja "CALCULO DE MATERIAL SISTEMA IS v2.1" de Aluplast, celda F5 = 3 mm, aplicada como
+ * `Medida con Soldadura = Medida Final + (F5 * 2)`. Confirmado por dc el 2026-08-19 como el valor
+ * con el que fabrica el taller.
+ *
+ * Se aplica SOLO a las piezas a 45°, que son las que se sueldan: marco y hoja. En la misma hoja de
+ * Aluplast, las piezas a 90° (el traslape vertical del fijo) y los junquillos usan la medida final
+ * directa, sin descuento, porque no se sueldan. Ese es el criterio que sigue buildCutList.
+ *
+ * NO se suma al costeo del perfil. `profileCost` se calcula sobre metros netos con la merma de
+ * DEFAULT_WASTE_PCT, que por definición ya absorbe el material que se consume de más; sumarlo en los
+ * dos sitios sería contarlo dos veces. Aquí sirve para que la LISTA DE CORTE sea fabricable.
+ */
+export const WELD_ALLOWANCE_MM = 3;
+
+/**
+ * DESCUENTO DEL JUNQUILLO
+ *
+ * Cuánto mide menos el junquillo que la pieza de hoja o marco en la que se aloja, sumando los dos
+ * lados del eje. El junquillo no se corta a la medida exterior de la hoja: se aloja dentro del galce.
+ *
+ * Dato del fabricante, para referencia de calibración: en la hoja de material del sistema Ideal IS,
+ * el junquillo sale a `hoja - (47.3 - 2.8) * 2 = hoja - 89 mm`, y a 45°. Ese 47.3 es el ancho de
+ * cara del perfil y el 2.8 el solape del galce, que es exactamente la estructura de esta constante.
+ *
+ * El sistema Ideal IS todavía NO está en data/catalog.ts, así que ese 89 no se puede atribuir a
+ * ningún sistema del catálogo actual. Sin calibrar queda en 0 --el comportamiento anterior, que
+ * corta el junquillo a la medida de la hoja-- y el reporte de corte lo advierte.
+ */
+export type BeadSpec = { deductionMm: number; calibrated: boolean; source: string };
+
+const BEAD_UNCALIBRATED: BeadSpec = {
+  deductionMm: 0,
+  calibrated: false,
+  source: "Sin calibrar: el junquillo sale a la medida de la hoja. Referencia Aluplast (sistema IS): hoja - 89 mm.",
+};
+
+const BEAD_CALIBRATED: Record<string, BeadSpec> = {};
+
+export function beadFor(systemName: string): BeadSpec {
+  return BEAD_CALIBRATED[systemName] ?? BEAD_UNCALIBRATED;
+}

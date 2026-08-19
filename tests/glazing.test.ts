@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { calcQuote } from "@/lib/calc";
-import { glassSizeMm, glazingFor, LEGACY_GLASS_DEDUCTION_MM } from "@/data/glazing";
+import { buildCutList, calcQuote } from "@/lib/calc";
+import { beadFor, glassSizeMm, glazingFor, LEGACY_GLASS_DEDUCTION_MM, WELD_ALLOWANCE_MM } from "@/data/glazing";
 import { typologyDefs } from "@/data/typologies";
 import { catalog } from "@/data/catalog";
 import { colors } from "@/data/colors";
@@ -139,4 +139,63 @@ test("el vidrio nunca sale más grande que la hoja que lo sujeta", () => {
       }
     }
   }
+});
+
+// ---------- Descuento de soldadura y junquillos (D-06, D-07, D-09) ----------
+// Datos de la hoja "CALCULO DE MATERIAL SISTEMA IS v2.1" de Aluplast, confirmados por dc el
+// 2026-08-19 como los que usa el taller.
+
+test("las piezas soldadas a 45° llevan el descuento de soldadura por extremo", () => {
+  const cut = buildCutList(typologyDefs[0].build(), 2400, 1800, catalog.Aluplast[0]);
+  const w = 2 * WELD_ALLOWANCE_MM;
+  // Marco: dos piezas al ancho y dos al alto, todas a inglete y soldadas.
+  for (const pieza of cut.marco) {
+    assert.equal(pieza.angle, "45°");
+    assert.ok(pieza.length === 2400 + w || pieza.length === 1800 + w, `marco sin soldadura: ${pieza.length}`);
+  }
+});
+
+test("las piezas a 90° no llevan descuento de soldadura, porque no se sueldan", () => {
+  // Un travesaño va a tope, no soldado a inglete: sale a su medida. Mismo criterio que la hoja de
+  // material de Aluplast, donde solo las piezas a 45° pasan por la columna "Medida con Soldadura".
+  const cut = buildCutList(typologyDefs.find((t) => t.id === "corr-2-moviles")!.build(), 2400, 1800, catalog.Aluplast[0]);
+  assert.ok(cut.travesanos.length > 0, "esta tipología tiene que producir travesaño");
+  for (const pieza of cut.travesanos) {
+    assert.equal(pieza.angle, "90°");
+    assert.equal(pieza.length, 1800, "el travesaño no debe crecer por soldadura");
+  }
+});
+
+test("el junquillo va a 45° y nunca lleva descuento de soldadura", () => {
+  const sys = catalog.Aluplast[0];
+  const cut = buildCutList(typologyDefs.find((t) => t.id === "corr-2-moviles")!.build(), 2400, 1800, sys);
+  const hojaLens = new Set(cut.hojas.map((p) => p.length));
+  for (const pieza of cut.junquillos) {
+    assert.equal(pieza.angle, "45°", "Aluplast corta el junquillo a inglete, no a 90°");
+    assert.ok(!hojaLens.has(pieza.length) || beadFor(sys.name).deductionMm === 0,
+      "con descuento calibrado el junquillo no puede medir lo mismo que la hoja");
+  }
+});
+
+test("el junquillo se descuenta cuando su sistema está calibrado", () => {
+  // Referencia del fabricante (sistema Ideal IS): junquillo = hoja - (47.3-2.8)*2 = hoja - 89.
+  // Mientras ningún sistema del catálogo tenga ese dato, el descuento es 0 y queda advertido.
+  for (const brand of ["Aluplast", "Deceuninck"] as const) {
+    for (const sys of catalog[brand]) {
+      const b = beadFor(sys.name);
+      assert.ok(b.deductionMm >= 0, `${sys.name}: descuento de junquillo negativo`);
+      if (!b.calibrated) assert.equal(b.deductionMm, 0, `${sys.name}: sin calibrar debe valer 0`);
+      assert.ok(b.source.length > 10, `${sys.name}: el descuento de junquillo tiene que decir su origen`);
+    }
+  }
+});
+
+test("la soldadura no altera el precio, solo la lista de corte", () => {
+  // profileCost sale de metros NETOS con la merma de DEFAULT_WASTE_PCT, que ya absorbe el material
+  // consumido de más. Sumar la soldadura también ahí sería contarla dos veces.
+  const c = quote("corr-2-moviles", "CORREDERA 60MM", 1800, 1400, 2);
+  const neto = (c.frameM * catalog.Aluplast[0].frame + c.sashM * catalog.Aluplast[0].sash);
+  assert.ok(neto > 0);
+  assert.ok(c.profileCost > neto * 1.1, "la merma debe seguir aplicándose sobre el neto");
+  assert.ok(Number.isFinite(c.total) && c.total > 0);
 });

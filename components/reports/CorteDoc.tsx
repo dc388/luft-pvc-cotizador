@@ -1,5 +1,6 @@
 import type { FrameNode, System } from "@/types/domain";
 import { buildCutList, packBars, BAR_LENGTH_MM, KERF_MM, type CutPiece } from "@/lib/calc";
+import { beadFor, WELD_ALLOWANCE_MM } from "@/data/glazing";
 
 function todayStr() {
   const d = new Date();
@@ -68,10 +69,21 @@ export function CorteDoc({ tree, width, height, qty, designation, location, syst
         <CorteCategory title="Travesaño" pieces={cut.travesanos} qty={qty} barLengthMm={barLengthMm} />
         <CorteCategory title="Hoja" pieces={cut.hojas} qty={qty} barLengthMm={barLengthMm} />
         <CorteCategory title="Junquillo" pieces={cut.junquillos} qty={qty} barLengthMm={barLengthMm} />
+        {/* Este pie decía antes que el reporte "valida ángulos, soldadura y reglas específicas del
+            catálogo", y ninguna de las tres validaciones existía: el taller leía una garantía
+            inventada en el documento con el que corta. Ahora dice exactamente lo que el reporte hace,
+            y advierte lo que falta por calibrar. */}
         <p className="docIntro">
-          Barra comercial de {barLengthMm} mm, tolerancia de corte de {KERF_MM} mm entre piezas. Optimización por primer ajuste descendente
-          (first-fit-decreasing); valida ángulos, soldadura y reglas específicas del catálogo antes de fabricar.
+          Barra comercial de {barLengthMm} mm, tolerancia de corte de {KERF_MM} mm entre piezas. Optimización por primer ajuste
+          descendente (first-fit-decreasing). Las piezas a 45° llevan {WELD_ALLOWANCE_MM} mm de descuento de soldadura por extremo;
+          las de 90° y los junquillos van a su medida, porque no se sueldan.
         </p>
+        {!beadFor(system.name).calibrated && (
+          <p className="docWarning">
+            <b>Verificar antes de cortar.</b> El descuento de junquillo de este sistema no está calibrado:
+            los junquillos de arriba salen a la medida de la hoja. Ver <code>data/glazing.ts</code>.
+          </p>
+        )}
       </div>
     </div>
   );

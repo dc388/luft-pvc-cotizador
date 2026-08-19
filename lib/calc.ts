@@ -4,7 +4,7 @@ import { profileFamilies } from "@/data/families";
 import { glassCatalog } from "@/data/glass";
 import { EUR_MXN, IMPORT_FACTOR } from "@/data/catalog";
 import { resolveHardwareCost, type VerifiedHardwareCosting } from "./maco/costing";
-import { glassSizeMm } from "@/data/glazing";
+import { beadFor, glassSizeMm, WELD_ALLOWANCE_MM } from "@/data/glazing";
 
 // ---------- MALLORQUINA (exterior louvre shutter) ----------
 // Modeled as a per-leaf add-on, not a wing type: it's an exterior shading accessory mounted
@@ -364,11 +364,16 @@ export function buildCutList(
   sys: System,
   leafFrames?: LeafFrame[]
 ): CutList {
+  // Las piezas a 45° se sueldan, y la soldadora fresa cada extremo antes de unir: se cortan más
+  // largas que su medida terminada. Es el `Medida Final + (F5*2)` de la hoja de material de Aluplast,
+  // con F5 = 3 mm. Las piezas a 90° no se sueldan y van a su medida, igual que en esa misma hoja.
+  const weld = 2 * WELD_ALLOWANCE_MM;
+  const bead = beadFor(sys.name).deductionMm;
   const marco: CutPiece[] = [
-    { label: "Marco: Abajo", length: width, angle: "45°" },
-    { label: "Marco: Arriba", length: width, angle: "45°" },
-    { label: "Marco: Izquierda", length: height, angle: "45°" },
-    { label: "Marco: Derecha", length: height, angle: "45°" },
+    { label: "Marco: Abajo", length: width + weld, angle: "45°" },
+    { label: "Marco: Arriba", length: width + weld, angle: "45°" },
+    { label: "Marco: Izquierda", length: height + weld, angle: "45°" },
+    { label: "Marco: Derecha", length: height + weld, angle: "45°" },
   ];
   const travesanos: CutPiece[] = [];
   (function walk(node: FrameNode, w: number, h: number) {
@@ -391,17 +396,22 @@ export function buildCutList(
     const w = Math.round(r.fabW), h = Math.round(r.fabH);
     if (r.wing !== "fixed" && r.wing !== "inactive") {
       hojas.push(
-        { label: `${label}: Arriba`, length: w, angle: "45°" },
-        { label: `${label}: Abajo`, length: w, angle: "45°" },
-        { label: `${label}: Izquierda`, length: h, angle: "45°" },
-        { label: `${label}: Derecha`, length: h, angle: "45°" }
+        { label: `${label}: Arriba`, length: w + weld, angle: "45°" },
+        { label: `${label}: Abajo`, length: w + weld, angle: "45°" },
+        { label: `${label}: Izquierda`, length: h + weld, angle: "45°" },
+        { label: `${label}: Derecha`, length: h + weld, angle: "45°" }
       );
     }
+    // El junquillo va a 45°, no a 90°: así lo corta la hoja de material de Aluplast. Y se aloja
+    // DENTRO del galce, así que mide menos que la hoja -- `bead` es ese descuento, por sistema.
+    // Sin calibrar vale 0 y el junquillo sale a la medida de la hoja, que es como estaba; el reporte
+    // de corte lo advierte en vez de callarlo. Nunca lleva descuento de soldadura: no se suelda.
+    const bw = Math.max(0, w - bead), bh = Math.max(0, h - bead);
     junquillos.push(
-      { label: `${label}: Arriba`, length: w, angle: "90°" },
-      { label: `${label}: Abajo`, length: w, angle: "90°" },
-      { label: `${label}: Izquierda`, length: h, angle: "90°" },
-      { label: `${label}: Derecha`, length: h, angle: "90°" }
+      { label: `${label}: Arriba`, length: bw, angle: "45°" },
+      { label: `${label}: Abajo`, length: bw, angle: "45°" },
+      { label: `${label}: Izquierda`, length: bh, angle: "45°" },
+      { label: `${label}: Derecha`, length: bh, angle: "45°" }
     );
   });
   return { marco, travesanos, hojas, junquillos };
