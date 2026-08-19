@@ -1,6 +1,6 @@
 import { and, eq, like, or, sql } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
-import { customers, quoteEvents, quotes } from "@/db/schema";
+import { customers, projects, quoteEvents, quotes } from "@/db/schema";
 import { INITIAL_QUOTE_STATUS, type QuoteStatus } from "@/lib/quoteStatus";
 import type { QuoteCustomerInput } from "@/lib/quoteDocument";
 import type { QuoteEventRow, QuoteListRow, QuoteSnapshot } from "@/types/quote";
@@ -89,12 +89,27 @@ export function formatFolio(year: number, seq: number): string {
   return `LUFT-${year}-${String(seq).padStart(6, "0")}`;
 }
 
+// El consecutivo se calcula contra LAS DOS tablas, no solo contra `quotes`.
+//
+// Un folio ya estampado en un proyecto está consumido igual que uno guardado en una cotización:
+// `projects.folio` lleva índice único parcial, así que reemitirlo hace fallar el etiquetado. Mirando
+// solo `max(quotes.folioSeq)` eso pasaba en dos escenarios reales:
+//   - se borra una cotización y el contador RETROCEDE, mientras el proyecto conserva su folio;
+//   - una importación trae el folio dentro del archivo (ver lib/projectImport.ts).
+// En ambos, el siguiente envío chocaba y el cliente veía "no pudimos guardar tu cotización".
 async function nextSeq(db: Db, year: number): Promise<number> {
-  const [row] = await db
+  const prefix = `LUFT-${year}-`;
+  const [fromQuotes] = await db
     .select({ max: sql<number>`coalesce(max(${quotes.folioSeq}), 0)` })
     .from(quotes)
     .where(eq(quotes.folioYear, year));
-  return Number(row?.max ?? 0) + 1;
+  const [fromProjects] = await db
+    .select({
+      max: sql<number>`coalesce(max(cast(substr(${projects.folio}, ${prefix.length + 1}) as integer)), 0)`,
+    })
+    .from(projects)
+    .where(sql`${projects.folio} like ${`${prefix}%`}`);
+  return Math.max(Number(fromQuotes?.max ?? 0), Number(fromProjects?.max ?? 0)) + 1;
 }
 
 export type CreateQuoteInput = {
@@ -108,6 +123,11 @@ export type CreateQuoteInput = {
   /** Recibe el folio ya reservado y devuelve el documento congelado. El snapshot lleva el folio
    *  dentro (encabezado y códigos de renglón), así que no se puede armar antes de tenerlo. */
   snapshotFor: (folio: string, issuedAt: string) => QuoteSnapshot;
+  /** Estampa el folio en la carpeta de trabajo. Se ejecuta DENTRO del reintento y ANTES de insertar
+   *  la cotización, a propósito: es la escritura que puede chocar contra el índice único parcial de
+   *  `projects.folio`, y si choca aquí todavía no existe ninguna cotización que quede huérfana.
+   *  Opcional: quien no tenga carpeta que etiquetar lo omite. */
+  reserveFolioOnProject?: (folio: string) => Promise<void>;
 };
 
 export type CreatedQuote = { id: string; folio: string; token: string; snapshot: QuoteSnapshot };
@@ -126,6 +146,10 @@ export async function createQuote(db: Db, input: CreateQuoteInput): Promise<Crea
     const snapshot = input.snapshotFor(folio, issuedAt);
 
     try {
+      // PRIMERO la carpeta. Si el folio ya lo tiene otro proyecto, esto lanza y el reintento pasa al
+      // siguiente consecutivo sin haber creado nada: ni cotización huérfana, ni folio quemado, ni el
+      // "no pudimos guardar tu cotización" que veía el cliente al terminar el embudo.
+      if (input.reserveFolioOnProject) await input.reserveFolioOnProject(folio);
       await db.insert(quotes).values({
         id,
         folio,
