@@ -2664,6 +2664,7 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
                   viewPreset={viewPreset}
                   presetToken={presetToken}
                   onSelect={handle3DSelect}
+                  onSelectAssemblyMarco={handleAssemblyFocus}
                   onSplit={handle3DSplit}
                   onAssignWing={handle3DAssignWing}
                   onReady={() => setThreeReady(true)}

@@ -534,6 +534,8 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .docDiagramBox{display:flex;align-items:center;justify-content:center;padding:16px;background:var(--paper);border-left:1px solid var(--line)}
 .docDiagramBox .window{width:min(100%,220px,calc(140px * var(--ar,1.818)));aspect-ratio:var(--ar,1.818);min-height:0}
 .docDiagramBox .paneHardware,.docDiagramBox .paneRail,.docDiagramBox .paneDim,.docDiagramBox .pane em,.docDiagramBox .hitHerraje,.docDiagramBox .cierreCentral{display:none}
+.docWarning{margin:0 0 10px;padding:9px 11px;border:1px solid var(--danger-fg);border-radius:8px;background:rgba(190,60,60,.07);color:var(--ink);font-size:11px;line-height:1.45}
+.docWarning code{font-size:10.5px}
 .docTable{border-collapse:collapse;width:100%;font-size:9px;margin-bottom:4px}
 .docTable th,.docTable td{border:1px solid var(--line);padding:6px 8px;text-align:left}
 .docTable th{background:color-mix(in srgb, var(--accent) 8%, var(--paper));font-size:8.5px;letter-spacing:.02em;color:var(--ink)}

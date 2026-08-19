@@ -25,8 +25,9 @@ export function ProjectVidrioDoc({ components, projectName }: Props) {
       list.push({
         designation: c.designation,
         posIndex: i,
-        w: Math.max(0, Math.round(l.wMm - 120)),
-        h: Math.max(0, Math.round(l.hMm - 120)),
+        // Misma fuente que el costeo: data/glazing.ts vía LeafCalc.
+        w: Math.round(l.glassWMm),
+        h: Math.round(l.glassHMm),
         qty: c.qty,
         glassArea: l.glassArea,
       });

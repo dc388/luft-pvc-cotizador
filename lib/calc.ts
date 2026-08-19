@@ -4,6 +4,7 @@ import { profileFamilies } from "@/data/families";
 import { glassCatalog } from "@/data/glass";
 import { EUR_MXN, IMPORT_FACTOR } from "@/data/catalog";
 import { resolveHardwareCost, type VerifiedHardwareCosting } from "./maco/costing";
+import { glassSizeMm } from "@/data/glazing";
 
 // ---------- MALLORQUINA (exterior louvre shutter) ----------
 // Modeled as a per-leaf add-on, not a wing type: it's an exterior shading accessory mounted
@@ -68,6 +69,14 @@ export type LeafCalc = {
   hMm: number;
   glassArea: number;
   sashPerimeter: number;
+  /** Medida con la que se COMPRA el vidrio de esta hoja, en mm. Sale de data/glazing.ts según el
+   *  sistema y según si la hoja acristala contra el marco (fija/inactiva) o contra la hoja. Antes
+   *  cada reporte la recalculaba restando 120 mm por su cuenta, en tres archivos distintos. */
+  glassWMm: number;
+  glassHMm: number;
+  /** `false` cuando el descuento del sistema todavía no está calibrado y se está usando el valor
+   *  heredado. Los reportes lo advierten en lugar de callarlo. */
+  glassCalibrated: boolean;
   /** The glass actually costed for this leaf -- spec.glass's own catalog entry when the leaf
    * overrides the window's general glass, otherwise the general glass itself. */
   glassUsed: GlassItem;
@@ -196,13 +205,21 @@ export function calcQuote({
     // cut, matching buildCutList's own condition below. Charging sash length here for a
     // leaf the cut list never produces pieces for double-counted profile cost.
     const hasSash = r.wing !== "fixed" && r.wing !== "inactive";
+    // Una hoja sin perfil de hoja acristala directo en el marco, y el descuento de vidrio del marco
+    // no es el de la hoja: son perfiles con caras distintas. `hasSash` es exactamente esa condición.
+    const gl = glassSizeMm(r.fabW, r.fabH, sys.name, !hasSash);
     return {
       id: r.id,
       wing: r.wing,
       spec: r.spec,
       wMm: r.fabW,
       hMm: r.fabH,
-      glassArea: Math.max(0, (wM - 0.12) * (hM - 0.12)),
+      glassWMm: gl.wMm,
+      glassHMm: gl.hMm,
+      glassCalibrated: gl.calibrated,
+      // El área se deriva de la medida real del vidrio, no de una resta propia: así el costeo y el
+      // pedido de vidrio no pueden desacoplarse nunca.
+      glassArea: (gl.wMm / 1000) * (gl.hMm / 1000),
       sashPerimeter: hasSash ? 2 * (wM + hM) : 0,
       glassUsed: resolveLeafGlass(r.spec, glass),
     };
