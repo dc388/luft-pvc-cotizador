@@ -2008,9 +2008,12 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
     setHeight(value);
   };
 
+  // En modo seleccion no hay pista: la leyenda de componentes ya nombra las piezas, y la pista
+  // repetia lo mismo ocupando 221x65 px flotando encima del dibujo. Solo se dice lo que la leyenda
+  // no puede decir: que hay una herramienta armada y donde hay que pulsar para aplicarla.
   const toolHint =
     activeTool.mode === "select"
-      ? "Haz clic en el marco, la hoja, el vidrio o el herraje para seleccionar esa parte"
+      ? null
       : activeTool.mode === "split"
       ? `Haz clic dentro de una hoja para dividirla (${activeTool.axis === "col" ? "vertical" : "horizontal"})`
       : `Haz clic en una hoja para asignarle "${wingDefs.find((w) => w.id === activeTool.wing)?.name}"`;
@@ -2589,7 +2592,19 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
 
         <section className="visualPanel">
           <div className="visualHeader">
-            <div><span className="statusDot" />VISTA {view.toUpperCase()}{view === "3D" ? ` · ${viewPreset}` : ""} · {configSummary}</div>
+            {/* La cabecera dice QUE estas viendo: vista, composicion y sistema. La ficha del
+                sistema estaba flotando sobre el dibujo, donde solo restaba sitio y repetia lo que
+                ya dicen el paso 01 y el panel de propiedades. Aqui es un rotulo de estado, que es
+                lo que siempre fue. El pie queda para la leyenda, que dice COMO leer el dibujo. */}
+            <div className="visualWhat">
+              <span><span className="statusDot" />VISTA {view.toUpperCase()}{view === "3D" ? ` · ${viewPreset}` : ""} · {configSummary}</span>
+              <small
+                className="visualSystem"
+                title={`${brand} · ${sys.name} · ${sys.depth} mm · ${sys.chambers} · ${rail ? `${rail} riel${rail > 1 ? "es" : ""}` : "practicable"} · ${glass.name} · ${face}`}
+              >
+                {brand} · {sys.name} · {sys.depth} mm · {rail ? `${rail} riel${rail > 1 ? "es" : ""}` : "practicable"} · {glass.name} · {face}
+              </small>
+            </div>
             <div className="viewSwitch">
               {VIEW_MODES.map((v) => (
                 <button key={v} className={view === v ? "active" : ""} onClick={() => changeView(v)}>{v}</button>
@@ -2658,9 +2673,6 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
                   </FrameCanvas>
                 </PanZoomViewport>
               )}
-              {/* La leyenda va FUERA del viewport: es rotulacion de la interfaz, no parte del
-                  dibujo, asi que no debe moverse ni escalarse con el zoom. */}
-              {view === "2D" && <ElevationKey focusPart={focusPart} hasRail={hasSliding} frameHex={color.hex ?? "#dfe2dc"} />}
               <div className={`canvas3dWrap ${view === "3D" ? "" : "canvas3dWrapHidden"}`}>
                 <Scene3D
                   tree={tree}
@@ -2682,13 +2694,15 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
                   onReady={() => setThreeReady(true)}
                 />
               </div>
-              <div className="editHint">{toolHint}</div>
-              <div className="specChip">
-                <b>{brand} · {sys.name}</b>
-                <span>{sys.depth} mm · {sys.chambers} · {rail ? `${rail} riel${rail > 1 ? "es" : ""}` : "practicable"}</span>
-                <span>{glass.name} · {face}</span>
-              </div>
             </div>
+          </div>
+          {/* Pie del lienzo. Antes eran cuatro cajas flotando sobre un lienzo de 441x314 px, con
+              solapes medidos de 227x28 px entre la ficha del sistema y la leyenda, y de 66x14
+              entre la pista y los controles de zoom. En una fila compartida el solape es
+              imposible por construccion, no por haber elegido bien los desplazamientos. */}
+          <div className="canvasFooter">
+            {view === "2D" && <ElevationKey focusPart={focusPart} hasRail={hasSliding} frameHex={color.hex ?? "#dfe2dc"} />}
+            {toolHint && <div className="editHint">{toolHint}</div>}
           </div>
           <div className="metricRow">
             <div><span>SUPERFICIE</span><strong>{calc.area.toFixed(3)} m²</strong></div>
