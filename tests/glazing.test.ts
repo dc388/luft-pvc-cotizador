@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 import { buildCutList, calcQuote } from "@/lib/calc";
-import { beadFor, glassSizeMm, glazingFor, leafSizingFor, LEGACY_GLASS_DEDUCTION_MM, WELD_ALLOWANCE_MM } from "@/data/glazing";
+import { beadFor, glassSizeMm, glazingFor, leafSizingFor, LEGACY_GLASS_DEDUCTION_MM, PUERTA_IS_BEAD_DEDUCTION_MM, WELD_ALLOWANCE_MM } from "@/data/glazing";
 import { typologyDefs } from "@/data/typologies";
 import { catalog, EUR_MXN, IMPORT_FACTOR } from "@/data/catalog";
 import { colors } from "@/data/colors";
@@ -178,6 +178,39 @@ test("el junquillo va a 45° y nunca lleva descuento de soldadura", () => {
   }
 });
 
+test("un junquillo NUNCA puede quedar por dentro del vidrio que sujeta", () => {
+  // La prueba que faltaba. El 2026-08-20 se le atribuyó a la VENTANA IS un descuento de junquillo de
+  // 89 mm que era de la PUERTA IS, y nadie lo detectó: con hoja de 800 el vidrio entra a 9,7 mm por
+  // lado y el junquillo quedaba a 44,5, o sea 34,8 mm DENTRO del vidrio. Eso no se puede fabricar, y
+  // corrompía la lista de corte en silencio.
+  //
+  // La regla es geométrica y no depende de ningún documento: el junquillo sujeta el vidrio contra el
+  // galce, así que su descuento nunca puede ser mayor que el del vidrio.
+  const HOJA = 800;
+  for (const sys of Object.values(catalog).flat()) {
+    const bead = beadFor(sys.name);
+    if (bead.deductionMm === 0) continue;
+    for (const enMarco of [true, false]) {
+      const vidrio = glassSizeMm(HOJA, HOJA, sys.name, enMarco);
+      const descuentoVidrio = HOJA - vidrio.wMm;
+      assert.ok(
+        bead.deductionMm <= descuentoVidrio,
+        `${sys.name}: el junquillo se descuenta ${bead.deductionMm} mm y el vidrio solo ${descuentoVidrio} mm, ` +
+          `asi que el junquillo quedaria ${(bead.deductionMm - descuentoVidrio) / 2} mm por dentro del vidrio`
+      );
+    }
+  }
+});
+
+test("el descuento del junquillo se atribuye al sistema del que salio el dato", () => {
+  // El 89 de la Puerta IS no puede volver a colarse en la ventana. Cuando la puerta exista en el
+  // catalogo, este numero es SUYO.
+  assert.equal(PUERTA_IS_BEAD_DEDUCTION_MM, 89);
+  const ventana = beadFor("IDEAL IS · Corredera mx");
+  assert.equal(ventana.deductionMm, 0, "la ventana IS no tiene su junquillo calibrado todavia");
+  assert.equal(ventana.calibrated, false, "y tiene que decir que no lo esta, para que el corte avise");
+});
+
 test("el junquillo se descuenta cuando su sistema está calibrado", () => {
   // Referencia del fabricante (sistema Ideal IS): junquillo = hoja - (47.3-2.8)*2 = hoja - 89.
   // Mientras ningún sistema del catálogo tenga ese dato, el descuento es 0 y queda advertido.
@@ -231,18 +264,22 @@ test("el IS reproduce exactamente las medidas de deducción de su manual", () =>
   }
 });
 
-test("el junquillo del IS se descuenta y el marco lleva soldadura", () => {
+test("el marco del IS lleva soldadura y su junquillo va a 45 sin descuento todavia", () => {
+  // Esta prueba AFIRMABA el error: exigia junquillo 759, o sea hoja 848 menos los 89 de la PUERTA
+  // IS aplicados a la ventana. Estaba fijando un dato imposible de fabricar (ver la prueba de que un
+  // junquillo no puede quedar por dentro de su vidrio), asi que la prueba tambien estaba mal.
   const sys = catalog.Aluplast.find((s) => s.name === IS)!;
   const def = typologyDefs.find((t) => t.id === "corr-2-fija-movil")!;
   const cut = buildCutList(def.build(), 1800, 1400, sys);
   const w = 2 * WELD_ALLOWANCE_MM;
-  // Marco: medida del elemento más la soldadura.
+  // Marco: medida del elemento mas la soldadura. Esto si estaba bien y se conserva.
   assert.ok(cut.marco.some((p) => Math.abs(p.length - (1800 + w)) < 1e-9), "marco 1800+6");
   assert.ok(cut.marco.some((p) => Math.abs(p.length - (1400 + w)) < 1e-9), "marco 1400+6");
-  // Junquillo: hoja menos 89, y SIN soldadura. La lista de corte trabaja en milímetros enteros
-  // (buildCutList redondea la medida de fabricación antes de despiezar), así que 848 − 89 = 759.
-  assert.equal(beadFor(IS).deductionMm, 89);
-  assert.ok(cut.junquillos.some((p) => p.length === 759), `junquillo 759, hay ${cut.junquillos.map((p) => p.length).join()}`);
+  // Junquillo: sin descuento calibrado sale a la medida de la hoja, y el reporte de corte lo avisa.
+  assert.equal(beadFor(IS).deductionMm, 0, "el junquillo de la VENTANA IS no esta calibrado");
+  assert.ok(cut.junquillos.length > 0, "tiene que haber junquillos despiezados");
+  assert.ok(!cut.junquillos.some((p) => p.length === 759), "759 era el numero de la puerta aplicado a la ventana");
+  // Y nunca lleva soldadura: no se suelda, se aloja.
   assert.ok(!cut.junquillos.some((p) => p.length === 848 + w), "el junquillo no debe llevar soldadura");
   for (const p of cut.junquillos) assert.equal(p.angle, "45°");
 });
