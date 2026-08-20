@@ -22,6 +22,9 @@ export function VidrioDoc({ calc, glass, qty, designation, location }: Props) {
   });
 
   let rowNum = 0;
+  // Si el sistema no tiene descuento de vidrio calibrado, el pedido lo dice. Callarlo es lo que
+  // convierte un dato provisional en vidrio comprado de la medida equivocada.
+  const sinCalibrar = calc.leaves.some((l) => !l.glassCalibrated);
   return (
     <div className="reportDoc">
       <div className="docPage">
@@ -38,6 +41,13 @@ export function VidrioDoc({ calc, glass, qty, designation, location }: Props) {
             <div>Fecha: <b>{todayStr()}</b></div>
           </div>
         </div>
+        {sinCalibrar && (
+          <p className="docWarning">
+            <b>Verificar antes de comprar.</b> El descuento de vidrio de este sistema todavía no está
+            calibrado contra su ficha de fabricación: las medidas de abajo usan el valor heredado y
+            deben confirmarse en taller. Ver <code>data/glazing.ts</code>.
+          </p>
+        )}
         <table className="docTable">
           <thead>
             <tr>
@@ -63,8 +73,10 @@ export function VidrioDoc({ calc, glass, qty, designation, location }: Props) {
                   </tr>
                   {items.map((l) => {
                     rowNum++;
-                    const w = Math.max(0, Math.round(l.wMm - 120));
-                    const h = Math.max(0, Math.round(l.hMm - 120));
+                    // La medida sale del motor (data/glazing.ts), no de una resta propia: este
+                    // reporte es el que se manda al proveedor y no puede discrepar del costeo.
+                    const w = Math.round(l.glassWMm);
+                    const h = Math.round(l.glassHMm);
                     return (
                       <tr key={l.id}>
                         <td>{rowNum}</td>

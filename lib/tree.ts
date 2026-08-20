@@ -11,6 +11,8 @@ import type {
   WingType,
 } from "@/types/domain";
 import { wingDefs } from "@/data/wings";
+import { leafSizingFor } from "@/data/glazing";
+import { newId } from "@/lib/uuid";
 
 const OPENING_BY_WING: Record<WingType, string> = {
   fixed: "Sin apertura",
@@ -100,7 +102,7 @@ export function defaultMarco(): Marco {
 export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>): LeafNode {
   return {
     kind: "leaf",
-    id: crypto.randomUUID(),
+    id: newId(),
     wing,
     spec: {
       glass: "Heredar vidrio general",
@@ -117,7 +119,7 @@ export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>): 
 
 // Default starting shape for a new item: a 2-panel sliding window, the most
 // common opening — the same idea as the app's old "slide2" preset default.
-// Fixed ids (not crypto.randomUUID()): this tree is built inside a useState
+// Fixed ids (not newId()): this tree is built inside a useState
 // initializer that runs once during SSR and again during client hydration —
 // random ids would differ between the two passes and React would flag a
 // hydration mismatch on every load.
@@ -204,8 +206,8 @@ export function splitLeaf(tree: FrameNode, id: string, axis: "row" | "col", frac
     axis,
     ratios: [f, 1 - f],
     children: [
-      { ...leaf, id: crypto.randomUUID() },
-      { ...leaf, id: crypto.randomUUID() },
+      { ...leaf, id: newId() },
+      { ...leaf, id: newId() },
     ],
   }));
 }
@@ -314,12 +316,27 @@ export function flattenToLeafFrames(
   tree: FrameNode,
   width: number,
   height: number,
-  seatMm: number,
-  overlapMm: number,
+  sys: System,
   edges: Edges = OUTER_EDGES,
   x = 0,
   y = 0
 ): LeafFrame[] {
+  // Un sistema con descuento de hoja documentado en su ficha manda sobre el modelo genérico. Sin
+  // entrada en data/glazing.ts esto es `null` y todo sigue por el camino de siempre
+  // (frameSeatMm/centerOverlapMm), byte por byte: es lo que permite añadir sistemas calibrados sin
+  // mover ni un milímetro de los que ya estaban.
+  const sizing = leafSizingFor(sys.name);
+  const seatMm = sys.frameSeatMm, overlapMm = sys.centerOverlapMm;
+  if (tree.kind === "leaf" && sizing) {
+    // La hoja se centra en su hueco nominal: el marco se reparte a partes iguales a cada lado, que
+    // es como lo expresa la ficha (un solo descuento por eje, no uno por cara).
+    const dw = Math.min(sizing.perLeafWidthDeductionMm, width), dh = Math.min(sizing.perLeafHeightDeductionMm, height);
+    const fabW = width - dw, fabH = height - dh;
+    return [{
+      id: tree.id, wing: tree.wing, spec: tree.spec, x, y, w: width, h: height, edges,
+      fabX: x + dw / 2, fabY: y + dh / 2, fabW, fabH,
+    }];
+  }
   if (tree.kind === "leaf") {
     const sliding = isSlidingLeaf(tree);
     const leftD = !sliding ? 0 : edges.left === true ? seatMm : edges.left === "overlap" ? -overlapMm / 2 : 0;
@@ -354,11 +371,11 @@ export function flattenToLeafFrames(
     const ratio = tree.ratios[i];
     if (tree.axis === "col") {
       const w = width * ratio;
-      frames.push(...flattenToLeafFrames(child, w, height, seatMm, overlapMm, childEdges, x + offset, y));
+      frames.push(...flattenToLeafFrames(child, w, height, sys, childEdges, x + offset, y));
       offset += w;
     } else {
       const h = height * ratio;
-      frames.push(...flattenToLeafFrames(child, width, h, seatMm, overlapMm, childEdges, x, y + offset));
+      frames.push(...flattenToLeafFrames(child, width, h, sys, childEdges, x, y + offset));
       offset += h;
     }
   });

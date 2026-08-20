@@ -8,6 +8,11 @@ import type { PartKind, SideKey } from "./frameTypes";
 
 const MM = 0.001; // scene units are meters; geometry is built directly from mm state
 const FRAME_RING_MM = 55;
+// Junquillo: la banda perimetral que sujeta el vidrio contra el galce. La vista 3D no la dibujaba,
+// y al no existir como geometria tampoco habia donde hacer clic para seleccionar UN lado del
+// vidrio, que es algo que el editor 2D si permite y que guarda datos de fabricacion reales
+// (angulo1, angulo2, radio y arco por canto, en spec.glassSides).
+const BEAD_MM = 16;
 
 // overallW/overallH are the whole-window mm dimensions in effect at the moment this mesh was
 // built (see the `walk()` rebuild effect below) -- NOT necessarily the current `width`/`height`
@@ -17,7 +22,19 @@ const FRAME_RING_MM = 55;
 // here previously mixed a stale hit-point with fresh overall dimensions whenever a user changed
 // Ancho/Alto and clicked to split before the next scene rebuild committed, producing a fraction
 // computed in mismatched units (a real instance of "unidades mezcladas" from the bug checklist).
-type ClickTag = { id: string; part: PartKind; side?: SideKey; rect: { x: number; y: number; w: number; h: number }; overallW: number; overallH: number };
+//
+// `scope: "assembly"` marca las cuatro caras del marco de conjunto (state.marco), que no pertenecen
+// a ninguna hoja y por eso no llevan `id`. En 2D se seleccionan con AssemblyMarcoHits; sin esta
+// marca la vista 3D era la única de las dos donde el marco exterior no se podía tocar.
+type ClickTag = {
+  id: string;
+  part: PartKind;
+  side?: SideKey;
+  scope?: "assembly";
+  rect: { x: number; y: number; w: number; h: number };
+  overallW: number;
+  overallH: number;
+};
 
 function colorToHex3D(color: ColorItem): string {
   if (color.hex) return color.hex;
@@ -47,6 +64,10 @@ type Props = {
    * (matches static's presetPending behavior — clicking the same preset button re-applies it). */
   presetToken: number;
   onSelect: (id: string, part: PartKind, side: SideKey | null) => void;
+  /** Foco en un lado del marco de conjunto. Va aparte de `onSelect` porque el marco de conjunto no
+   *  es una hoja: no tiene id, y las herramientas de dividir y asignar apertura no le aplican
+   *  --exactamente el mismo criterio que handleAssemblyFocus en el editor 2D. */
+  onSelectAssemblyMarco: (side: SideKey) => void;
   onSplit: (id: string, axis: "row" | "col", fraction: number) => void;
   onAssignWing: (id: string) => void;
   onReady?: () => void;
@@ -58,7 +79,7 @@ type Props = {
 // a persistent <div ref> + imperative appendChild), so React's reconciliation never fights the
 // WebGL render loop; the model itself is fully rebuilt on every relevant prop change since the
 // scene is cheap (a few dozen boxes).
-export function Scene3D({ tree, width, height, sys, color, selectedId, focusScope, focusPart, focusSide, activeTool, viewPreset, presetToken, onSelect, onSplit, onAssignWing, onReady }: Props) {
+export function Scene3D({ tree, width, height, sys, color, selectedId, focusScope, focusPart, focusSide, activeTool, viewPreset, presetToken, onSelect, onSelectAssemblyMarco, onSplit, onAssignWing, onReady }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -67,10 +88,10 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const raycasterRef = useRef<THREE.Raycaster | null>(null);
   const clickableRef = useRef<THREE.Object3D[]>([]);
-  const stateRef = useRef({ tree, width, height, activeTool, onSelect, onSplit, onAssignWing });
+  const stateRef = useRef({ tree, width, height, activeTool, onSelect, onSelectAssemblyMarco, onSplit, onAssignWing });
   useEffect(() => {
-    stateRef.current = { tree, width, height, activeTool, onSelect, onSplit, onAssignWing };
-  }, [tree, width, height, activeTool, onSelect, onSplit, onAssignWing]);
+    stateRef.current = { tree, width, height, activeTool, onSelect, onSelectAssemblyMarco, onSplit, onAssignWing };
+  }, [tree, width, height, activeTool, onSelect, onSelectAssemblyMarco, onSplit, onAssignWing]);
   // Scene3D mounts once on page load, while the 2D view is active and .canvas3dWrap has
   // display:none -- so the very first resize() below measures a 0-size .scene3dSlot (a
   // display:none ancestor gives it no layout box at all) and pins the canvas at 1x1 forever via
@@ -139,10 +160,15 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
     const resize = () => {
       const slot = canvas.parentElement;
       if (!slot) return;
-      const w = Math.max(1, slot.clientWidth), h = Math.max(1, slot.clientHeight);
+      const w = slot.clientWidth, h = slot.clientHeight;
+      // Con el 3D oculto (display:none en un ancestro) el slot no tiene caja y esto medía 0, que
+      // antes se convertía en un buffer de 1x1 fijado para siempre. Ahora no se aplica una medida
+      // degenerada: se deja la anterior y el re-medido al entrar a la vista (ver presetToken)
+      // aplica la real cuando el slot ya tiene caja.
+      if (w < 2 || h < 2) return;
+      // `false`: no toca el estilo del canvas. La caja la pone el CSS (.scene3dSlot canvas está
+      // absoluto con inset:0), y así el tamaño del canvas no vuelve a alimentar el del slot.
       renderer.setSize(w, h, false);
-      canvas.style.width = `${w}px`;
-      canvas.style.height = `${h}px`;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     };
@@ -161,10 +187,25 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
       ray.setFromCamera(new THREE.Vector2(nx, ny), cam);
       const hits = ray.intersectObjects(clickableRef.current, false);
       if (!hits.length) return;
-      const hit = hits[0];
+      // El marco de conjunto tiene la PROFUNDIDAD COMPLETA del sistema y rodea todo el dibujo, así
+      // que en una vista orbitada se cruza en el camino de casi cualquier rayo y ganaría siempre por
+      // cercanía. Por eso cede el paso: se toma el primer impacto que sea de una hoja, y solo si no
+      // hay ninguno se resuelve el marco de conjunto. Es la misma intención que tenía el código
+      // cuando el marco exterior simplemente no era seleccionable ("clicking a leaf's own marco ring
+      // selects that leaf instead"), pero ahora sí se puede llegar a él clicando donde no hay hoja
+      // detrás.
+      const hit = hits.find((h) => (h.object.userData as ClickTag)?.scope !== "assembly") ?? hits[0];
       const tag = hit.object.userData as ClickTag;
-      if (!tag || !tag.id) return;
-      const { activeTool: tool, onSelect: select, onSplit: split, onAssignWing: assign } = stateRef.current;
+      if (!tag) return;
+      const { activeTool: tool, onSelect: select, onSelectAssemblyMarco: selectAssembly, onSplit: split, onAssignWing: assign } = stateRef.current;
+
+      // El marco de conjunto se resuelve ANTES del guard de id: no tiene hoja a la que pertenecer.
+      // Siempre enfoca, nunca divide ni asigna apertura, igual que en 2D.
+      if (tag.scope === "assembly") {
+        if (tag.side) selectAssembly(tag.side);
+        return;
+      }
+      if (!tag.id) return;
 
       if (tool.mode === "select") {
         select(tag.id, tag.part, tag.side ?? null);
@@ -215,21 +256,44 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
     const w = width, h = height;
     const depthMm = sys.depth;
     const frameHex = colorToHex3D(color);
-    const isSelectedPart = (id: string, part: PartKind, side?: SideKey) =>
-      focusScope !== "assembly" && selectedId === id && (!focusPart || focusPart === part) && (part !== "marco" || !focusSide || !side || focusSide === side);
+    const isSelectedPart = (id: string, part: PartKind, side?: SideKey) => {
+      if (focusScope === "assembly" || selectedId !== id) return false;
+      if (focusPart && focusPart !== part) return false;
+      // El marco conserva el criterio de antes: sin lado enfocado, las cuatro caras se resaltan.
+      if (part === "marco") return !focusSide || !side || focusSide === side;
+      // El vidrio SÍ distingue lado, porque cada canto guarda su propia geometría de fabricación
+      // (angulo1, angulo2, radio y arco en spec.glassSides). Sin lado enfocado se resalta el paño;
+      // con lado enfocado, solo su junquillo.
+      if (part === "vidrio") return focusSide ? focusSide === side : !side;
+      return true;
+    };
+    const isAssemblyMarcoSelected = (side: SideKey | undefined) =>
+      focusScope === "assembly" && focusPart === "marco" && !!side && focusSide === side;
 
-    const frameMat = new THREE.MeshStandardMaterial({ color: frameHex, roughness: 0.5, metalness: 0.12 });
-    const sashMat = new THREE.MeshStandardMaterial({ color: frameHex, roughness: 0.55, metalness: 0.1 });
+    // Marco, hoja y junquillo compartian frameHex y se distinguian solo por la rugosidad, o sea por
+    // nada: en pantalla eran una masa del color del folio. Cada pieza recibe ahora un tono DERIVADO
+    // de ese color, oscureciendolo hacia dentro igual que en la alzada 2D (ver las capas en
+    // app/globals.css). El folio sigue mandando -- un bronce sigue siendo bronce -- y las dos vistas
+    // cuentan lo mismo, que es lo que permite pasar de una a otra sin volver a orientarse.
+    const tono = (mezcla: number) => new THREE.Color(frameHex).lerp(new THREE.Color(0x1b2a24), mezcla);
+    const frameMat = new THREE.MeshStandardMaterial({ color: tono(0.12), roughness: 0.5, metalness: 0.12 });
+    const sashMat = new THREE.MeshStandardMaterial({ color: tono(0.26), roughness: 0.55, metalness: 0.1 });
     const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xdcecef, roughness: 0.06, transmission: 0.88, thickness: 0.02, ior: 1.5, transparent: true, opacity: 0.95 });
     const handleMat = new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: 0.35, metalness: 0.6 });
+    const beadMat = new THREE.MeshStandardMaterial({ color: tono(0.42), roughness: 0.62, metalness: 0.06 });
     const selMat = new THREE.MeshStandardMaterial({ color: "#1D6CA6", roughness: 0.35, metalness: 0.2, emissive: "#1D6CA6", emissiveIntensity: 0.22 });
     const glassSelMat = () =>
       new THREE.MeshPhysicalMaterial({ color: "#1D6CA6", roughness: 0.06, transmission: 0.6, thickness: 0.02, ior: 1.5, transparent: true, opacity: 0.95, emissive: "#1D6CA6", emissiveIntensity: 0.15 });
 
     function addBox(x: number, y: number, z: number, sx: number, sy: number, sz: number, mat: THREE.Material, tag: ClickTag | null, selMatOverride?: THREE.Material) {
+      const selected = tag
+        ? tag.scope === "assembly"
+          ? isAssemblyMarcoSelected(tag.side)
+          : isSelectedPart(tag.id, tag.part, tag.side)
+        : false;
       const mesh = new THREE.Mesh(
         new THREE.BoxGeometry(Math.max(0.0005, sx), Math.max(0.0005, sy), Math.max(0.0005, sz)),
-        tag && isSelectedPart(tag.id, tag.part, tag.side) ? selMatOverride ?? selMat : mat
+        selected ? selMatOverride ?? selMat : mat
       );
       mesh.position.set(x, y, z);
       if (tag) {
@@ -241,11 +305,32 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
     }
 
     const W = w * MM, H = h * MM, D = depthMm * MM, FW = FRAME_RING_MM * MM;
-    // outer marco (not individually clickable — clicking a leaf's own marco ring selects that leaf instead)
-    addBox(0, H / 2 - FW / 2, 0, W, FW, D, frameMat, null);
-    addBox(0, -H / 2 + FW / 2, 0, W, FW, D, frameMat, null);
-    addBox(-W / 2 + FW / 2, 0, 0, FW, H, D, frameMat, null);
-    addBox(W / 2 - FW / 2, 0, 0, FW, H, D, frameMat, null);
+    // Marco de conjunto: cada cara es seleccionable por su lado, igual que en 2D con
+    // AssemblyMarcoHits. Antes iba sin tag y era la única parte del dibujo que se podía tocar en
+    // 2D pero no en 3D -- y es la que guarda el refuerzo perimetral en data.marco.sides.
+    const assemblyTag = (side: SideKey): ClickTag => ({
+      id: "", part: "marco", side, scope: "assembly",
+      rect: { x: 0, y: 0, w, h }, overallW: w, overallH: h,
+    });
+    addBox(0, H / 2 - FW / 2, 0, W, FW, D, frameMat, assemblyTag("top"));
+    addBox(0, -H / 2 + FW / 2, 0, W, FW, D, frameMat, assemblyTag("bottom"));
+    addBox(-W / 2 + FW / 2, 0, 0, FW, H, D, frameMat, assemblyTag("left"));
+    addBox(W / 2 - FW / 2, 0, 0, FW, H, D, frameMat, assemblyTag("right"));
+
+    // Acristalamiento completo: el paño, mas sus cuatro junquillos como piezas propias. El paño
+    // conserva el tag sin lado (selecciona el vidrio entero, como antes); cada junquillo lleva su
+    // lado, con lo que la vista 3D iguala las nueve zonas por hoja que ya tenia la 2D.
+    function addGlazing(cx: number, cy: number, gw: number, gh: number, id: string, tagBase: { rect: { x: number; y: number; w: number; h: number }; overallW: number; overallH: number }) {
+      const B = Math.min(BEAD_MM * MM, gw / 3, gh / 3);
+      const paneW = Math.max(0.005, gw - B * 2), paneH = Math.max(0.005, gh - B * 2);
+      addBox(cx, cy, 0, paneW, paneH, 6 * MM, glassMat, { id, part: "vidrio", ...tagBase }, glassSelMat());
+      // Reparto de marco de cuadro: arriba y abajo toman el ancho completo; los costados, lo que queda.
+      const zB = 3 * MM, dB = 10 * MM;
+      addBox(cx, cy + gh / 2 - B / 2, zB, gw, B, dB, beadMat, { id, part: "vidrio", side: "top", ...tagBase });
+      addBox(cx, cy - gh / 2 + B / 2, zB, gw, B, dB, beadMat, { id, part: "vidrio", side: "bottom", ...tagBase });
+      addBox(cx - gw / 2 + B / 2, cy, zB, B, paneH, dB, beadMat, { id, part: "vidrio", side: "left", ...tagBase });
+      addBox(cx + gw / 2 - B / 2, cy, zB, B, paneH, dB, beadMat, { id, part: "vidrio", side: "right", ...tagBase });
+    }
 
     function walk(node: FrameNode, x: number, y: number, ww: number, hh: number) {
       if (node.kind === "split") {
@@ -289,12 +374,12 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
         addBox(cx - sw / 2 + SR / 2, cy, 0, SR, sh, D * 0.82, sashMat, { id: node.id, part: "hoja", ...tagBase });
         addBox(cx + sw / 2 - SR / 2, cy, 0, SR, sh, D * 0.82, sashMat, { id: node.id, part: "hoja", ...tagBase });
         const gw = Math.max(0.01, sw - SR * 2), gh = Math.max(0.01, sh - SR * 2);
-        addBox(cx, cy, 0, gw, gh, 6 * MM, glassMat, { id: node.id, part: "vidrio", ...tagBase }, glassSelMat());
+        addGlazing(cx, cy, gw, gh, node.id, tagBase);
         const handleX = node.spec.direction === "Izquierda" ? cx - sw / 2 + SR + 18 * MM : cx + sw / 2 - SR - 18 * MM;
         addBox(handleX, cy, D * 0.5, 10 * MM, 70 * MM, 14 * MM, handleMat, { id: node.id, part: "herraje", ...tagBase });
       } else {
         const gw = Math.max(0.01, leafW - FW * 2), gh = Math.max(0.01, leafH - FW * 2);
-        addBox(cx, cy, 0, gw, gh, 6 * MM, glassMat, { id: node.id, part: "vidrio", ...tagBase }, glassSelMat());
+        addGlazing(cx, cy, gw, gh, node.id, tagBase);
       }
     }
     walk(tree, 0, 0, w, h);

@@ -2,6 +2,7 @@ import { desc, gte, sql } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { quoteLearningEvents } from "@/db/schema";
 import { sanitizeEvent, summarize, type LearningEventKind, type LearningStats } from "@/lib/learningRules";
+import { newId } from "@/lib/uuid";
 
 /**
  * El acceso a la bitácora estadística de la mejora continua: escribir un evento, leer las
@@ -19,7 +20,7 @@ type Db = DrizzleD1Database<Record<string, unknown>>;
 
 export async function recordLearningEvent(db: Db, kind: LearningEventKind, payload: unknown): Promise<void> {
   await db.insert(quoteLearningEvents).values({
-    id: crypto.randomUUID(),
+    id: newId(),
     kind,
     payload: JSON.stringify(sanitizeEvent(kind, payload)),
     createdAt: Date.now(),

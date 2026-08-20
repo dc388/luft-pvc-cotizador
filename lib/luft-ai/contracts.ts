@@ -9,6 +9,7 @@ import type {
   LuftRole,
   SourceEvidence,
 } from "@/types/luft-ai";
+import { newId } from "@/lib/uuid";
 
 export type LuftActor = { id: string; role: LuftRole; displayName?: string };
 
@@ -64,7 +65,7 @@ export const LOW_CONFIDENCE: Confidence = { level: "low", score: 0.35, reasons: 
 export const BLOCKED_CONFIDENCE: Confidence = { level: "blocked", score: 0, reasons: ["Falta una fuente técnica verificable."] };
 
 export function makeId(prefix: string): string {
-  return `${prefix}-${crypto.randomUUID()}`;
+  return `${prefix}-${newId()}`;
 }
 
 const CONFIDENCE_RANK: Record<Confidence["level"], number> = { high: 3, medium: 2, low: 1, blocked: 0 };

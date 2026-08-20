@@ -106,6 +106,10 @@ export async function POST(request: Request) {
       },
     });
 
+    // El folio se estampa en la carpeta DENTRO del reintento de createQuote y ANTES de insertar la
+    // cotización: es la escritura que puede chocar contra el índice único parcial de projects.folio,
+    // y hacerla primero es lo que evita que un choque deje una cotización huérfana con folio
+    // consumido mientras el cliente lee "no pudimos guardar tu cotización". Ver lib/quoteRepo.ts.
     const quote = await createQuote(db, {
       customerId,
       projectId: project.id,
@@ -116,12 +120,11 @@ export async function POST(request: Request) {
       total: price.total,
       snapshotFor: (folio, issuedAt) =>
         buildQuoteSnapshot(configs, customer, { name: projectName, notes: contact.notes }, folio, issuedAt),
+      reserveFolioOnProject: (folio) =>
+        labelProjectWithFolio(db, project.id, folio, `Cotización WEB ${folio} · ${projectName}`),
     });
 
-    // El folio real se conoce al reservarlo, así que la carpeta se etiqueta después. Es lo que
-    // permite reconocer la cotización desde la lista de carpetas del editor.
     await createProjectComponents(db, project.id, configs, quote.folio, contact, itemPrices);
-    await labelProjectWithFolio(db, project.id, quote.folio, `Cotización WEB ${quote.folio} · ${projectName}`);
 
     return Response.json({ folio: quote.folio, documentPath: `/cotizacion/${quote.token}` }, { status: 201 });
   } catch (error) {

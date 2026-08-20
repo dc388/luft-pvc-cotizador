@@ -20,6 +20,9 @@
  * autenticación por usuario que sigue pendiente (ver PROCESO_POST_COTIZACION.md).
  */
 
+import { newId } from "@/lib/uuid";
+
+
 const KEY = "luft-pvc-cotizador:open-components:v1";
 /** Cada cuánto una pestaña renueva su anuncio. */
 export const HEARTBEAT_MS = 4000;
@@ -61,7 +64,7 @@ function prune(claims: Claims, now: number): Claims {
 }
 
 export function newTabId(): string {
-  return crypto.randomUUID();
+  return newId();
 }
 
 // ---------- Suscripción ----------

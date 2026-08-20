@@ -21,6 +21,7 @@ import type {
   ProjectVersionRow,
   Requester,
 } from "@/types/project";
+import { newId } from "@/lib/uuid";
 
 type Db = DrizzleD1Database<Record<string, unknown>>;
 
@@ -168,15 +169,21 @@ export function formatProjectFolio(year: number, seq: number): string {
 
 async function nextProjectSeq(db: Db, year: number): Promise<number> {
   const prefix = `LP-${year}-`;
-  const rows = await db
-    .select({ folio: projects.folio })
+  // Un solo renglón desde la base, en vez de traer el folio de TODOS los proyectos del año para
+  // reducirlos en memoria: el consecutivo se pide en cada alta, y el costo de esa consulta crecía
+  // con el histórico completo del negocio.
+  //
+  // El CAST sobre la parte numérica —y no un max() de texto— conserva el orden numérico aunque el
+  // consecutivo pase de cuatro dígitos, igual que hacía la reducción anterior. Un folio con texto
+  // no numérico después del prefijo castea a 0, que es exactamente lo que el `Number.isFinite`
+  // anterior descartaba. `substr` de SQLite empieza en 1, de ahí el +1.
+  const [row] = await db
+    .select({
+      max: sql<number>`coalesce(max(cast(substr(${projects.folio}, ${prefix.length + 1}) as integer)), 0)`,
+    })
     .from(projects)
     .where(sql`${projects.folio} like ${`${prefix}%`}`);
-  const max = rows.reduce((highest, row) => {
-    const seq = Number(row.folio.slice(prefix.length));
-    return Number.isFinite(seq) ? Math.max(highest, seq) : highest;
-  }, 0);
-  return max + 1;
+  return Number(row?.max ?? 0) + 1;
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -347,8 +354,8 @@ function draftRequester(draft: ProjectDraft, now: string): Requester {
 
 /** Proyecto nuevo creado en la plataforma, con su primera ventana genérica lista para editar. */
 export async function createProject(db: Db, draft: ProjectDraft = { name: "" }): Promise<ProjectRecord> {
-  const projectId = crypto.randomUUID();
-  const componentId = crypto.randomUUID();
+  const projectId = newId();
+  const componentId = newId();
   const now = nowIso();
   const requester = draftRequester(draft, now);
 
@@ -428,7 +435,7 @@ export async function createEmptyProject(
   name: string,
   origin: EmptyProjectOrigin = {}
 ): Promise<ProjectRecord> {
-  const id = crypto.randomUUID();
+  const id = newId();
   const now = nowIso();
   const createdAt = origin.createdAt ?? now;
   // normalizeRequester y no mergeRequester: si la ficha llega de un archivo o de un duplicado, trae
@@ -590,7 +597,7 @@ export async function duplicateProject(db: Db, projectId: string, name?: string)
 
   let firstComponentId = "";
   for (const [index, source] of sourceComponents.entries()) {
-    const id = crypto.randomUUID();
+    const id = newId();
     if (!firstComponentId) firstComponentId = id;
     await db.insert(components).values({
       id,
@@ -623,7 +630,7 @@ export async function createComponent(
 ): Promise<ComponentRecord> {
   const now = nowIso();
   const position = await nextPosition(db, projectId);
-  const id = crypto.randomUUID();
+  const id = newId();
 
   let seed: ComponentSeed;
   if (opts?.duplicateFromId) {
@@ -666,7 +673,7 @@ export async function createComponent(
 export async function createComponentWithData(db: Db, projectId: string, seed: ComponentSeed): Promise<ComponentRecord> {
   const now = nowIso();
   const position = await nextPosition(db, projectId);
-  const id = crypto.randomUUID();
+  const id = newId();
 
   await db.insert(components).values({
     id,
@@ -791,7 +798,7 @@ export async function transferComponents(
   for (const row of rows) {
     if (mode === "copy") {
       await db.insert(components).values({
-        id: crypto.randomUUID(),
+        id: newId(),
         projectId: toProjectId,
         position: position++,
         createdAt: now,
@@ -866,7 +873,7 @@ export async function saveProjectVersion(
   snapshot: string,
   meta: { label?: string; reason?: ProjectVersionReason; componentCount: number; total: number }
 ): Promise<ProjectVersionRow> {
-  const id = crypto.randomUUID();
+  const id = newId();
   const createdAt = nowIso();
   await db.insert(projectVersions).values({
     id,

@@ -1,9 +1,10 @@
 import type { ColorItem, FrameNode, GlassItem, Marco, PaneSpec, System, WingType } from "@/types/domain";
-import { buildReinforcementCutList, flattenToLeafFrames } from "./tree";
+import { buildReinforcementCutList, flattenToLeafFrames, type LeafFrame } from "./tree";
 import { profileFamilies } from "@/data/families";
 import { glassCatalog } from "@/data/glass";
 import { EUR_MXN, IMPORT_FACTOR } from "@/data/catalog";
 import { resolveHardwareCost, type VerifiedHardwareCosting } from "./maco/costing";
+import { beadFor, glassSizeMm, WELD_ALLOWANCE_MM } from "@/data/glazing";
 
 // ---------- MALLORQUINA (exterior louvre shutter) ----------
 // Modeled as a per-leaf add-on, not a wing type: it's an exterior shading accessory mounted
@@ -68,6 +69,14 @@ export type LeafCalc = {
   hMm: number;
   glassArea: number;
   sashPerimeter: number;
+  /** Medida con la que se COMPRA el vidrio de esta hoja, en mm. Sale de data/glazing.ts según el
+   *  sistema y según si la hoja acristala contra el marco (fija/inactiva) o contra la hoja. Antes
+   *  cada reporte la recalculaba restando 120 mm por su cuenta, en tres archivos distintos. */
+  glassWMm: number;
+  glassHMm: number;
+  /** `false` cuando el descuento del sistema todavía no está calibrado y se está usando el valor
+   *  heredado. Los reportes lo advierten en lugar de callarlo. */
+  glassCalibrated: boolean;
   /** The glass actually costed for this leaf -- spec.glass's own catalog entry when the leaf
    * overrides the window's general glass, otherwise the general glass itself. */
   glassUsed: GlassItem;
@@ -189,20 +198,28 @@ export function calcQuote({
   // it, and extends sys.centerOverlapMm/2 past the nominal centerline on the side where it
   // traslapes a sliding sibling, so the two closed leaves actually overlap instead of just
   // butting edge to edge. See flattenToLeafFrames.
-  const frames = flattenToLeafFrames(tree, width, height, sys.frameSeatMm, sys.centerOverlapMm);
+  const frames = flattenToLeafFrames(tree, width, height, sys);
   const leaves: LeafCalc[] = frames.map((r) => {
     const wM = r.fabW / 1000, hM = r.fabH / 1000;
     // Fixed/inactive leaves glaze straight into the marco/travesaño -- no sash profile to
     // cut, matching buildCutList's own condition below. Charging sash length here for a
     // leaf the cut list never produces pieces for double-counted profile cost.
     const hasSash = r.wing !== "fixed" && r.wing !== "inactive";
+    // Una hoja sin perfil de hoja acristala directo en el marco, y el descuento de vidrio del marco
+    // no es el de la hoja: son perfiles con caras distintas. `hasSash` es exactamente esa condición.
+    const gl = glassSizeMm(r.fabW, r.fabH, sys.name, !hasSash);
     return {
       id: r.id,
       wing: r.wing,
       spec: r.spec,
       wMm: r.fabW,
       hMm: r.fabH,
-      glassArea: Math.max(0, (wM - 0.12) * (hM - 0.12)),
+      glassWMm: gl.wMm,
+      glassHMm: gl.hMm,
+      glassCalibrated: gl.calibrated,
+      // El área se deriva de la medida real del vidrio, no de una resta propia: así el costeo y el
+      // pedido de vidrio no pueden desacoplarse nunca.
+      glassArea: (gl.wMm / 1000) * (gl.hMm / 1000),
       sashPerimeter: hasSash ? 2 * (wM + hM) : 0,
       glassUsed: resolveLeafGlass(r.spec, glass),
     };
@@ -271,7 +288,7 @@ export function calcQuote({
   // via barLengthMm -- see the Consumo tab's "Longitud de barra" selector), instead of a flat
   // (frameM+sashM)/6m estimate that ignored kerf and ignored qty>1's opportunity to share bars
   // across units -- this now matches exactly what CorteDoc's cut-optimization report shows.
-  const cutForBars = buildCutList(tree, width, height, sys);
+  const cutForBars = buildCutList(tree, width, height, sys, frames);
   const packedCategories = [cutForBars.marco, cutForBars.travesanos, cutForBars.hojas, cutForBars.junquillos, reinforcementPieces].map((pieces) => {
     const qtyPieces: CutPiece[] = [];
     for (let i = 0; i < qty; i++) qtyPieces.push(...pieces);
@@ -300,23 +317,35 @@ export type CutPiece = { label: string; length: number; angle: string };
 export type PackedBar = { pieces: CutPiece[]; used: number; waste: number };
 export type CutList = { marco: CutPiece[]; travesanos: CutPiece[]; hojas: CutPiece[]; junquillos: CutPiece[] };
 
+// El acumulado de cada barra se lleva incrementalmente en vez de recalcularse con un `reduce` por
+// cada barra candidata y por cada pieza. Ese reduce anidado hacía que el costo creciera con el
+// CUADRADO de las piezas multiplicado por las piezas que ya llevaba cada barra: medido, pasar de
+// 100 a 1000 piezas multiplicaba el tiempo por 112. Un pedido de 50 ventanas iguales son ya ~800
+// piezas por categoría, así que el caso grande es el normal, no el raro.
+//
+// `reserved` es EXACTAMENTE la cantidad que comprobaba el reduce que sustituye —suma de longitudes
+// más un corte de sierra por pieza colocada— para que el empaquetado dé pieza por pieza el mismo
+// resultado que antes. El `used` final sigue contando (n-1) cortes, como siempre. La diferencia
+// entre ambos criterios es real y está registrada como defecto aparte (D-16): NO se corrige aquí,
+// porque cambiaría las barras y la merma de cotizaciones ya emitidas.
 export function packBars(pieces: CutPiece[], barLength: number, kerf: number): PackedBar[] {
   const sorted = [...pieces].sort((a, b) => b.length - a.length);
-  const bars: { pieces: CutPiece[] }[] = [];
+  const bars: { pieces: CutPiece[]; reserved: number; cut: number }[] = [];
   for (const piece of sorted) {
     let placed = false;
     for (const bar of bars) {
-      const used = bar.pieces.reduce((a, p) => a + p.length, 0) + bar.pieces.length * kerf;
-      if (used + piece.length <= barLength) {
+      if (bar.reserved + piece.length <= barLength) {
         bar.pieces.push(piece);
+        bar.reserved += piece.length + kerf;
+        bar.cut += piece.length;
         placed = true;
         break;
       }
     }
-    if (!placed) bars.push({ pieces: [piece] });
+    if (!placed) bars.push({ pieces: [piece], reserved: piece.length + kerf, cut: piece.length });
   }
   return bars.map((bar) => {
-    const used = bar.pieces.reduce((a, p) => a + p.length, 0) + Math.max(0, bar.pieces.length - 1) * kerf;
+    const used = bar.cut + Math.max(0, bar.pieces.length - 1) * kerf;
     return { pieces: bar.pieces, used, waste: barLength - used };
   });
 }
@@ -325,12 +354,26 @@ export function packBars(pieces: CutPiece[], barLength: number, kerf: number): P
 // travesaño per internal divider (its own actual cross-axis length), 4 hoja pieces per
 // non-fixed/inactive leaf (fixed/inactive leaves glaze straight into marco/travesaño, no
 // sash), and 4 junquillo (glazing bead) pieces per leaf.
-export function buildCutList(tree: FrameNode, width: number, height: number, sys: System): CutList {
+// `leafFrames` es opcional y solo evita trabajo repetido: aplanar el árbol es la parte cara de esta
+// función, y `calcQuote` ya lo hizo con exactamente los mismos argumentos unas líneas antes. Quien
+// llame sin ese parámetro —los reportes y la exportación a CSV— se comporta igual que siempre.
+export function buildCutList(
+  tree: FrameNode,
+  width: number,
+  height: number,
+  sys: System,
+  leafFrames?: LeafFrame[]
+): CutList {
+  // Las piezas a 45° se sueldan, y la soldadora fresa cada extremo antes de unir: se cortan más
+  // largas que su medida terminada. Es el `Medida Final + (F5*2)` de la hoja de material de Aluplast,
+  // con F5 = 3 mm. Las piezas a 90° no se sueldan y van a su medida, igual que en esa misma hoja.
+  const weld = 2 * WELD_ALLOWANCE_MM;
+  const bead = beadFor(sys.name).deductionMm;
   const marco: CutPiece[] = [
-    { label: "Marco: Abajo", length: width, angle: "45°" },
-    { label: "Marco: Arriba", length: width, angle: "45°" },
-    { label: "Marco: Izquierda", length: height, angle: "45°" },
-    { label: "Marco: Derecha", length: height, angle: "45°" },
+    { label: "Marco: Abajo", length: width + weld, angle: "45°" },
+    { label: "Marco: Arriba", length: width + weld, angle: "45°" },
+    { label: "Marco: Izquierda", length: height + weld, angle: "45°" },
+    { label: "Marco: Derecha", length: height + weld, angle: "45°" },
   ];
   const travesanos: CutPiece[] = [];
   (function walk(node: FrameNode, w: number, h: number) {
@@ -348,22 +391,27 @@ export function buildCutList(tree: FrameNode, width: number, height: number, sys
   // Real hoja/junquillo cut length: fabW/fabH already fold in each sliding leaf's marco-seat
   // inset and center-traslape extension (flattenToLeafFrames), so two correderas meeting
   // mid-run are cut to actually overlap there instead of butting edge to edge at width/2.
-  flattenToLeafFrames(tree, width, height, sys.frameSeatMm, sys.centerOverlapMm).forEach((r, i) => {
+  (leafFrames ?? flattenToLeafFrames(tree, width, height, sys)).forEach((r, i) => {
     const label = `Hoja ${String.fromCharCode(65 + i)}`;
     const w = Math.round(r.fabW), h = Math.round(r.fabH);
     if (r.wing !== "fixed" && r.wing !== "inactive") {
       hojas.push(
-        { label: `${label}: Arriba`, length: w, angle: "45°" },
-        { label: `${label}: Abajo`, length: w, angle: "45°" },
-        { label: `${label}: Izquierda`, length: h, angle: "45°" },
-        { label: `${label}: Derecha`, length: h, angle: "45°" }
+        { label: `${label}: Arriba`, length: w + weld, angle: "45°" },
+        { label: `${label}: Abajo`, length: w + weld, angle: "45°" },
+        { label: `${label}: Izquierda`, length: h + weld, angle: "45°" },
+        { label: `${label}: Derecha`, length: h + weld, angle: "45°" }
       );
     }
+    // El junquillo va a 45°, no a 90°: así lo corta la hoja de material de Aluplast. Y se aloja
+    // DENTRO del galce, así que mide menos que la hoja -- `bead` es ese descuento, por sistema.
+    // Sin calibrar vale 0 y el junquillo sale a la medida de la hoja, que es como estaba; el reporte
+    // de corte lo advierte en vez de callarlo. Nunca lleva descuento de soldadura: no se suelda.
+    const bw = Math.max(0, w - bead), bh = Math.max(0, h - bead);
     junquillos.push(
-      { label: `${label}: Arriba`, length: w, angle: "90°" },
-      { label: `${label}: Abajo`, length: w, angle: "90°" },
-      { label: `${label}: Izquierda`, length: h, angle: "90°" },
-      { label: `${label}: Derecha`, length: h, angle: "90°" }
+      { label: `${label}: Arriba`, length: bw, angle: "45°" },
+      { label: `${label}: Abajo`, length: bw, angle: "45°" },
+      { label: `${label}: Izquierda`, length: bh, angle: "45°" },
+      { label: `${label}: Derecha`, length: bh, angle: "45°" }
     );
   });
   return { marco, travesanos, hojas, junquillos };

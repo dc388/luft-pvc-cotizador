@@ -127,6 +127,7 @@ import { EditableDim } from "@/components/editor/EditableDim";
 import { DimensionField } from "@/components/editor/DimensionField";
 import { TypologyPicker } from "@/components/editor/TypologyPicker";
 import { PanZoomViewport } from "@/components/editor/PanZoomViewport";
+import { ElevationKey } from "@/components/editor/ElevationKey";
 import type { TypologyDef } from "@/data/typologies";
 import type { PartKind, SideKey } from "@/components/editor/frameTypes";
 import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
@@ -1798,6 +1799,9 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
   const hasRailOptions = sys.rails.some((x) => x > 0);
 
   const leaves = useMemo(() => walkLeaves(tree), [tree]);
+  // La leyenda solo nombra el riel si la composicion tiene alguna corrediza: una practicable no
+  // tiene guia, y anunciar una pieza que no existe es peor que no nombrarla.
+  const hasSliding = useMemo(() => leaves.some((l) => SLIDING_WINGS.includes(l.wing)), [leaves]);
   const leafGlassWarnings = leaves
     .filter((l) => l.spec.glass !== "Heredar vidrio general")
     .map((l) => {
@@ -2629,8 +2633,6 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
               )}
               {view === "2D" && (
                 <PanZoomViewport onBackgroundClick={clearFocus} aspect={width / height}>
-                  <div className="dim top"><EditableDim label="W" valueMm={width} min={MIN_OPENING_MM} onCommit={commitWidth} /></div>
-                  <div className="dim side"><EditableDim label="H" valueMm={height} min={MIN_OPENING_MM} onCommit={commitHeight} /></div>
                   <FrameCanvas
                     tree={tree}
                     width={width}
@@ -2646,9 +2648,19 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
                     onPartClick={handlePartClick}
                     onAssemblyMarcoClick={handleAssemblyFocus}
                     onCentralLockClick={handleCentralLockClick}
-                  />
+                  >
+                    {/* Las cotas totales van pegadas al dibujo, no a una esquina del lienzo. Antes
+                        estaban ancladas al viewport (top:40px, left:42px) con un margen del 19%, asi
+                        que no cerraban con los bordes del producto: la cota general de una alzada
+                        tiene que arrancar y terminar en la ventana, o no es una cota. */}
+                    <div className="cotaTotal cotaTotalX"><EditableDim label="W" valueMm={width} min={MIN_OPENING_MM} onCommit={commitWidth} /></div>
+                    <div className="cotaTotal cotaTotalY"><EditableDim label="H" valueMm={height} min={MIN_OPENING_MM} onCommit={commitHeight} /></div>
+                  </FrameCanvas>
                 </PanZoomViewport>
               )}
+              {/* La leyenda va FUERA del viewport: es rotulacion de la interfaz, no parte del
+                  dibujo, asi que no debe moverse ni escalarse con el zoom. */}
+              {view === "2D" && <ElevationKey focusPart={focusPart} hasRail={hasSliding} frameHex={color.hex ?? "#dfe2dc"} />}
               <div className={`canvas3dWrap ${view === "3D" ? "" : "canvas3dWrapHidden"}`}>
                 <Scene3D
                   tree={tree}
@@ -2664,6 +2676,7 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
                   viewPreset={viewPreset}
                   presetToken={presetToken}
                   onSelect={handle3DSelect}
+                  onSelectAssemblyMarco={handleAssemblyFocus}
                   onSplit={handle3DSplit}
                   onAssignWing={handle3DAssignWing}
                   onReady={() => setThreeReady(true)}

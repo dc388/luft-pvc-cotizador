@@ -11,6 +11,7 @@ import { QuoteAssistant } from "./QuoteAssistant";
 import type { PublicAssistantAction, PublicAssistantContext } from "./publicAssistant";
 import { WindowPreview } from "./WindowPreview";
 import { availabilityLabel, sizeRejection, type AvailabilityStatus } from "./availability";
+import { newId } from "@/lib/uuid";
 
 const WHATSAPP_NUMBER = "529932211158";
 
@@ -196,7 +197,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
       // esto disparaba una petición de precios; sin importes que pedir, la restauración es local.
       const savedConfigs = Array.isArray(draft.savedConfigs) ? draft.savedConfigs.slice(0, 100) : [];
       const valid = savedConfigs.filter((config) => catalog.styles.some((entry) => entry.id === config?.styleId));
-      if (valid.length) setSavedItems(valid.map((config) => ({ id: crypto.randomUUID(), config })));
+      if (valid.length) setSavedItems(valid.map((config) => ({ id: newId(), config })));
     } catch {
       sessionStorage.removeItem(DRAFT_KEY);
     } finally {
@@ -373,7 +374,7 @@ export function QuoteWizard({ catalog }: { catalog: PublicCatalog }) {
 
   function addAnotherItem() {
     if (currentItem) {
-      setSavedItems((items) => [...items, { ...currentItem, id: crypto.randomUUID() }]);
+      setSavedItems((items) => [...items, { ...currentItem, id: newId() }]);
     }
     setLockedItems([]);
     setProjectError("");

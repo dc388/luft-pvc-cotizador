@@ -14,6 +14,7 @@ import type {
   ProjectStatus,
   Requester,
 } from "@/types/project";
+import { newId } from "@/lib/uuid";
 
 /**
  * El archivo de proyecto: guardar un proyecto completo en disco y volver a abrirlo.
@@ -246,7 +247,7 @@ function readFrameNode(value: unknown, depth: number, budget: TreeBudget): Frame
     const sum = ratios.reduce((total, ratio) => total + ratio, 0);
     return {
       kind: "split",
-      id: crypto.randomUUID(),
+      id: newId(),
       axis: source.axis === "row" ? "row" : "col",
       ratios: ratios.map((ratio) => ratio / sum),
       children,
@@ -255,7 +256,7 @@ function readFrameNode(value: unknown, depth: number, budget: TreeBudget): Frame
 
   if (budget.leaves >= MAX_LEAVES) return null;
   budget.leaves += 1;
-  return { kind: "leaf", id: crypto.randomUUID(), wing: readWing(source.wing), spec: readPaneSpec(source.spec) };
+  return { kind: "leaf", id: newId(), wing: readWing(source.wing), spec: readPaneSpec(source.spec) };
 }
 
 function readMarco(value: unknown): Marco {

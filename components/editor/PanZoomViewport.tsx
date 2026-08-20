@@ -10,29 +10,11 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { fitBox } from "./fitBox";
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 2.5;
 const SCALE_STEP = 0.15;
-
-// Margen que el dibujo deja libre dentro del lienzo, y es simétrico porque el dibujo va centrado:
-// reservar de más por un solo lado no lo correría, solo lo encogería. Los valores salen de las
-// cotas generales, que se dibujan sobre el lienzo y no deben quedar encima del producto
-// (.dim.side arranca en left:42px y su etiqueta girada ocupa hasta ~66px; .dim.top en top:40px).
-const FIT_INSET_X = 76;
-const FIT_INSET_Y = 58;
-// Por debajo de esto no hay lienzo real que medir (primer render, panel plegado): se deja que el
-// CSS aplique su valor de reserva en vez de fijar un tamaño absurdo.
-const MIN_FIT_PX = 80;
-
-/** El rectángulo más grande con proporción `aspect` que cabe en el lienzo, sin deformarlo. */
-function fitBox(containerWidth: number, containerHeight: number, aspect: number) {
-  const availableWidth = containerWidth - FIT_INSET_X * 2;
-  const availableHeight = containerHeight - FIT_INSET_Y * 2;
-  if (!(aspect > 0) || availableWidth < MIN_FIT_PX || availableHeight < MIN_FIT_PX) return null;
-  const width = Math.min(availableWidth, availableHeight * aspect);
-  return { width, height: width / aspect };
-}
 
 type Viewport = {
   x: number;
@@ -251,7 +233,7 @@ export function PanZoomViewport({ children, onBackgroundClick, aspect }: PanZoom
         <button type="button" onClick={zoomIn} aria-label="Acercar">+</button>
         <button type="button" className="viewportCenter" onClick={reset}>Centrar</button>
       </div>
-      <div className="viewportHint">Rueda para zoom · arrastra el fondo para mover · Espacio + arrastra sobre el modelo</div>
+      <div className="viewportHint" title="Rueda para zoom · arrastra el fondo para mover · Espacio + arrastra sobre el modelo">Rueda: zoom · arrastra: mover</div>
     </div>
   );
 }
