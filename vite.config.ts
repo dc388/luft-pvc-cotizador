@@ -1,9 +1,24 @@
+import { execSync } from "node:child_process";
 import vinext from "vinext";
 import { defineConfig } from "vite";
 import { sites } from "./build/sites-vite-plugin";
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
+
+/** El commit de esta copia de trabajo, para que un despliegue manual sepa decir quien es.
+ *  Sin git disponible devuelve null y se cae al valor de siempre. */
+function localGitSha(): string | null {
+  try {
+    const sha = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    if (!sha) return null;
+    const sucio = execSync("git status --porcelain", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    // Un build con cambios sin confirmar no es ese commit: decirlo evita perseguir fantasmas.
+    return sucio ? `${sha}+local` : sha;
+  } catch {
+    return null;
+  }
+}
 
 export default defineConfig(async ({ command }) => {
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
@@ -16,9 +31,16 @@ export default defineConfig(async ({ command }) => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
   // Se incrusta en cliente y servidor. Una pestaña antigua consulta /api/version del
   // despliegue nuevo, detecta el cambio y se recarga sobre el mismo URL permanente.
+  // Las tres primeras las pone la integracion continua. La cuarta es la que faltaba: un despliegue
+  // hecho a mano desde una computadora se quedaba en "development", asi que produccion no sabia
+  // decir que version estaba sirviendo. Eso costo una sesion entera de confusion -- se reviso el
+  // codigo tres veces buscando un defecto que ya estaba corregido, porque el navegador miraba un
+  // build viejo y el endpoint de version no lo delataba. Un despliegue tiene que saber decir quien
+  // es, venga de donde venga.
   const buildId = process.env.NEXT_PUBLIC_BUILD_ID
     ?? process.env.GITHUB_SHA
     ?? process.env.CF_PAGES_COMMIT_SHA
+    ?? localGitSha()
     ?? "development";
 
   return {
