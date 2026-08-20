@@ -91,6 +91,38 @@ dos sólo la medida.
   el problema: 538 px de slot en un lienzo de 373, o sea 202 px de 3D recortados. Ahora se estira a
   su padre, que ya es una medida definida y de fiar.
 
+## 4b. El lienzo colapsado, encontrado por el usuario
+
+Quitarle a `.canvas` su mínimo de 500 px cambió un problema por otro, y **la primera medición no lo
+vio porque se hizo a 1366×768 CSS**. La ventana real tenía zoom del 125 %, o sea un viewport de
+**1044 × 443 CSS px**, y ahí:
+
+- el panel de cotización se reordena a una segunda fila (`@media(max-width:1150px)`),
+- el grid repartía la altura **a partes iguales entre las dos filas**: 122.4 px cada una de 275,
+- al lienzo le quedaban **34 px de alto**. El dibujo no se veía.
+
+Soltar la altura (`height:auto`) tampoco era la salida: probado y medido, devuelve el crecimiento
+sin techo — lienzo de 1555 px y 3234 px de desplazamiento de página.
+
+Lo que faltaba no era altura, era **suelo y prioridad de reparto**:
+
+- `.internalApp .workspace` tiene un piso (560 px, 680 en la reordenación a dos filas) en vez de
+  `min-height:0`. Un `overflow` que encoge sin suelo no es mejor que una caja que crece sin techo.
+- `.internalApp .visualPanel{min-height:520px}` — cabecera 58 + métricas 74 son 132 px fijos que el
+  dibujo no ve, así que este piso le garantiza ~390 px de lienzo.
+- En la reordenación, las filas se declaran: `minmax(520px,1fr) minmax(140px,.6fr)`. El dibujo tiene
+  un mínimo que el reparto no puede tocar; la cotización se queda con lo que sobre y hace su scroll.
+- `main.internalApp` gana `overflow-y:auto`, para que si los pisos no caben se desplace eso y no se
+  derrame sobre el pie.
+
+Medido a **1044 × 443** después: filas 520 + 140, lienzo 643 × 362, **dibujo 288 × 224**, cotas
+parciales dibujándose, configuración y cotización con scroll propio, la página sin desplazarse.
+A **1366 × 768** no cambia nada respecto a la medición anterior: una sola fila de 575, dibujo
+257 × 200, sin scroll.
+
+Lección concreta: medir en el viewport del usuario, no en el nominal. Un zoom del 125 % en Windows
+cambia de rama de `@media` y con ella el reparto del grid.
+
 ## 5. Lo que NO se tocó, y por qué
 
 - **El aspecto del vidrio** (degradado azul, brillo blanco en diagonal). Es lo que más se parece a

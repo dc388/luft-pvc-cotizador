@@ -732,11 +732,22 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
   display:flex;
   flex-direction:column;
   height:100dvh;
+  /* Si los pisos de abajo no caben en el viewport, se desplaza ESTO y no se derrama sobre el pie. */
+  overflow-y:auto;
 }
-/* min-height:0 es lo que permite que la fila del grid encoja por debajo de su contenido, y
-   entonces si el overflow:auto de cada columna entra en juego. */
-.internalApp .workspace{flex:1 1 auto;min-height:0}
+/* min-height en las columnas es lo que permite que la fila del grid encoja por debajo de su
+   contenido, y entonces si el overflow:auto de cada una entra en juego.
+   El piso del conjunto, en cambio, NO puede ser 0. Sin el, medido a 1044x443 (una ventana con
+   zoom al 125 %): el conjunto se quedaba en 275 px y el lienzo en 34 px de alto -- el dibujo
+   desaparecia entre la cabecera y la fila de metricas. Un overflow que encoge sin suelo no es
+   mejor que una caja que crece sin techo; hay una altura por debajo de la cual esto no sirve. */
+.internalApp .workspace{flex:1 1 auto;min-height:560px}
 .internalApp .workspace>*{min-height:0}
+/* Cabecera 58 + lienzo + fila de metricas 74 son 132 px fijos que el dibujo no ve. Este piso es
+   el que le garantiza unos 390 px de lienzo pase lo que pase con las columnas de al lado. En una
+   ventana comoda no llega a actuar -- el conjunto reparte mas que esto -- y en una ventana baja es
+   lo unico que separa un dibujo que se ve de uno de 34 px. */
+.internalApp .visualPanel{min-height:520px}
 .internalApp button,.internalApp input,.internalApp select,.internalApp textarea{font-family:inherit}
 .internalApp .topbar{
   top:12px;height:auto;min-height:64px;margin:12px 14px 0;padding:10px 14px 10px 18px;
@@ -911,6 +922,13 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 @media(max-width:1150px){
   .internalApp .workspace{padding:10px;gap:10px}
   .internalApp .quotePanel{grid-column:1/3;border:1px solid rgba(255,255,255,.7)}
+  /* Aqui la cotizacion baja a una segunda fila, y el grid repartia la altura a partes iguales
+     entre las dos: medido a 1044x443, 122.4 px cada una de 275, con lo que al lienzo le quedaban
+     34 px de alto. Soltar la altura no es la salida -- probado, y devuelve el crecimiento sin
+     techo: 1555 px de lienzo y 3234 px de desplazamiento. Lo que hay que arreglar es el reparto.
+     Las filas se declaran: el dibujo tiene un minimo que el reparto no puede tocar, y la
+     cotizacion se queda con lo que sobre, haciendo su propio scroll. */
+  .internalApp .workspace{min-height:680px;grid-template-rows:minmax(520px,1fr) minmax(140px,.6fr)}
 }
 @media(max-width:760px){
   .internalApp .topbar{position:relative;top:auto;margin:8px 8px 0;min-height:0;border-radius:22px;padding:11px 12px}
