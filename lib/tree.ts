@@ -328,9 +328,16 @@ export function flattenToLeafFrames(
   const sizing = leafSizingFor(sys.name);
   const seatMm = sys.frameSeatMm, overlapMm = sys.centerOverlapMm;
   if (tree.kind === "leaf" && sizing) {
+    // Una hoja MOVIL y un CAMPO FIJO no descuentan lo mismo. En la ventana IS coinciden, y por eso
+    // durante un dia basto un solo par de numeros; en la puerta IS no: la hoja corredera descuenta
+    // 157,8 mm de alto y el campo fijo 56,8. Aplicarle a un panel fijo el descuento de la hoja
+    // movil lo dejaria 101 mm mas corto de lo que debe -- y eso se corta, se suelda y se paga.
+    const esFijo = !isSlidingLeaf(tree);
+    const dwSpec = esFijo ? sizing.fixedWidthDeductionMm : sizing.perLeafWidthDeductionMm;
+    const dhSpec = esFijo ? sizing.fixedHeightDeductionMm : sizing.perLeafHeightDeductionMm;
     // La hoja se centra en su hueco nominal: el marco se reparte a partes iguales a cada lado, que
     // es como lo expresa la ficha (un solo descuento por eje, no uno por cara).
-    const dw = Math.min(sizing.perLeafWidthDeductionMm, width), dh = Math.min(sizing.perLeafHeightDeductionMm, height);
+    const dw = Math.min(dwSpec, width), dh = Math.min(dhSpec, height);
     const fabW = width - dw, fabH = height - dh;
     return [{
       id: tree.id, wing: tree.wing, spec: tree.spec, x, y, w: width, h: height, edges,

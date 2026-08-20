@@ -113,6 +113,18 @@ const CALIBRATED: Record<string, GlazingSpec> = {
       "71,6 − 52,2 = 19,4 en ancho y 93,4 − 74 = 19,4 en alto, idéntico para hoja corrediza y " +
       "campo fijo.",
   },
+  // La PUERTA IS descuenta lo mismo que la ventana, 19,4 mm, y sale de su propia tabla: en el plano
+  // «sliding-door mx» ed. 2025-11 la hoja va a (B/2) − 73,6 y su vidrio a (B/2) − 93, o sea 19,4; y
+  // en alto, hoja H − 157,8 y vidrio H − 177,2, otra vez 19,4. El campo fijo repite el mismo 19,4
+  // (Cf − Ef y If − Kf). No es el numero de la ventana copiado: es el suyo, que coincide.
+  "IDEAL IS · Puerta corredera mx": {
+    marcoDeductionMm: 19.4,
+    sashDeductionMm: 19.4,
+    calibrated: true,
+    source:
+      "Aluplast «Puerta corredera mx» (sliding-door mx), edición 2025-11, págs. 6 a 8: la diferencia " +
+      "entre hoja y vidrio es 19,4 mm en ancho y en alto, tanto en la hoja corredera como en el campo fijo.",
+  },
   // multi-slide 96, calibrado el 2026-08-19 contra los manuales de fabricación de Aluplast que
   // entregó dc. Las tablas oficiales de "Deduction dimensions" dan, en cuatro esquemas distintos:
   //
@@ -257,10 +269,20 @@ export function beadFor(systemName: string): BeadSpec {
  * condición que pidió dc: añadir el IS sin interferir con los demás sistemas.
  */
 export type LeafSizingSpec = {
-  /** Se resta al ancho nominal de cada hoja. Incluye la parte de marco y el traslape que le toquen. */
+  /** Se resta al ancho nominal de una hoja MÓVIL. Incluye la parte de marco y el traslape. */
   perLeafWidthDeductionMm: number;
-  /** Se resta a la altura nominal de cada hoja. */
+  /** Se resta a la altura nominal de una hoja MÓVIL. */
   perLeafHeightDeductionMm: number;
+  /**
+   * Los mismos descuentos para un CAMPO FIJO, que no siempre coinciden con los de la hoja móvil.
+   *
+   * En la ventana IS coinciden (52,2 y 74 en los dos casos), y por eso al principio bastaba un solo
+   * par de números. En la PUERTA IS no: la hoja corredera descuenta 157,8 de alto y el campo fijo
+   * solo 56,8 -- son 101 mm de diferencia. Aplicarle a un panel fijo el descuento de la hoja móvil
+   * daría un panel 101 mm más corto de lo que debe.
+   */
+  fixedWidthDeductionMm: number;
+  fixedHeightDeductionMm: number;
   source: string;
 };
 
@@ -268,10 +290,26 @@ const LEAF_SIZING: Record<string, LeafSizingSpec> = {
   "IDEAL IS · Corredera mx": {
     perLeafWidthDeductionMm: 52.2,
     perLeafHeightDeductionMm: 74,
+    // En la ventana el campo fijo descuenta lo mismo que la hoja móvil: Cf = C y If = I.
+    fixedWidthDeductionMm: 52.2,
+    fixedHeightDeductionMm: 74,
     source:
-      "Aluplast «Ventana corredera mx» (sliding-window mx), edición 2025-10, págs. 6 y 7: " +
-      "Hoja C = (B/2) − 52,2 en ancho y I = H − 74 en alto, iguales para la hoja corrediza y " +
-      "para el campo fijo. Las tablas indican «¡Añadir soldadura!», que se aplica aparte.",
+      "Aluplast «Ventana corredera mx» (sliding-window mx), edición 2025-10, págs. 6 a 8: " +
+      "hoja C = (B/2) − 52,2 y I = H − 74; campo fijo Cf = (B/2) − 52,2 y If = H − 74, iguales. " +
+      "El vidrio va 19,4 mm por dentro (E = (B/2) − 71,6, K = H − 93,4). Las tablas indican " +
+      "«¡Añadir soldadura!», que se aplica aparte.",
+  },
+  "IDEAL IS · Puerta corredera mx": {
+    perLeafWidthDeductionMm: 73.6,
+    perLeafHeightDeductionMm: 157.8,
+    // Aquí NO coinciden, y es la razón de que este tipo tenga cuatro números en vez de dos.
+    fixedWidthDeductionMm: 74.3,
+    fixedHeightDeductionMm: 56.8,
+    source:
+      "Aluplast «Puerta corredera mx» (sliding-door mx), edición 2025-11, págs. 6 a 8: " +
+      "hoja C = (B/2) − 73,6 y I = H − 157,8; campo fijo Cf = (B/2) − 74,3 y If = H − 56,8. " +
+      "El vidrio va 19,4 mm por dentro en los cuatro casos (E = (B/2) − 93, K = H − 177,2, " +
+      "Ef = (B/2) − 93,7, Kf = H − 76,2). Las tablas indican «Schweißzugabe hinzufügen!».",
   },
 };
 
