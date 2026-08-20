@@ -104,12 +104,22 @@ export function FrameNodeView({ frame, overallWidthMm, overallHeightMm, zIndex, 
           ⚙
         </button>
       )}
-      <em>{wingName(wing)}</em>
-      <small className="paneHardware">{spec.hardware.replace("Roto · ", "")}</small>
-      {isSliding && <small className="paneRail">Riel {spec.railIndex}</small>}
-      <b className="paneDim">
-        {Math.round(frame.fabW)} × {Math.round(frame.fabH)}
-      </b>
+      {/* Todo lo que la hoja tiene que decir, en UN bloque apilado en su esquina.
+          Antes eran cuatro pastillas sueltas, cada una anclada a una esquina distinta, y a tamaño
+          real no cabían: medido en una hoja de 80 px de ancho sumaban 178 px de etiqueta, con
+          solapes de 28x16 y 16x15 px, y "Corrediza" salía cortada por el overflow de .pane.
+          Apiladas en columna no pueden solaparse entre sí, y el detalle se va retirando por
+          tamaño de hoja (ver la consulta de contenedor de .pane en app/globals.css) en vez de
+          quedar amontonado: primero el riel y el herraje, luego el tipo, y en las hojas más
+          pequeñas solo la medida. La hoja seleccionada siempre lo muestra todo. */}
+      <span className="paneTags">
+        <b className="tagDim" title="Medida de fabricación de la hoja">
+          {Math.round(frame.fabW)} × {Math.round(frame.fabH)}
+        </b>
+        <em className="tagWing" title={wingName(wing)}>{wingName(wing)}</em>
+        <small className="tagHw" title={spec.hardware}>{spec.hardware.replace("Roto · ", "")}</small>
+        {isSliding && <small className="tagRail">Riel {spec.railIndex}</small>}
+      </span>
     </div>
   );
 }

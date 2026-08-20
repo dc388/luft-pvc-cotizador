@@ -2629,8 +2629,6 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
               )}
               {view === "2D" && (
                 <PanZoomViewport onBackgroundClick={clearFocus} aspect={width / height}>
-                  <div className="dim top"><EditableDim label="W" valueMm={width} min={MIN_OPENING_MM} onCommit={commitWidth} /></div>
-                  <div className="dim side"><EditableDim label="H" valueMm={height} min={MIN_OPENING_MM} onCommit={commitHeight} /></div>
                   <FrameCanvas
                     tree={tree}
                     width={width}
@@ -2646,7 +2644,14 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
                     onPartClick={handlePartClick}
                     onAssemblyMarcoClick={handleAssemblyFocus}
                     onCentralLockClick={handleCentralLockClick}
-                  />
+                  >
+                    {/* Las cotas totales van pegadas al dibujo, no a una esquina del lienzo. Antes
+                        estaban ancladas al viewport (top:40px, left:42px) con un margen del 19%, asi
+                        que no cerraban con los bordes del producto: la cota general de una alzada
+                        tiene que arrancar y terminar en la ventana, o no es una cota. */}
+                    <div className="cotaTotal cotaTotalX"><EditableDim label="W" valueMm={width} min={MIN_OPENING_MM} onCommit={commitWidth} /></div>
+                    <div className="cotaTotal cotaTotalY"><EditableDim label="H" valueMm={height} min={MIN_OPENING_MM} onCommit={commitHeight} /></div>
+                  </FrameCanvas>
                 </PanZoomViewport>
               )}
               <div className={`canvas3dWrap ${view === "3D" ? "" : "canvas3dWrapHidden"}`}>

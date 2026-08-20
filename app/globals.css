@@ -138,24 +138,40 @@ a{color:inherit}
 .canvas.view-3D .canvasStage{padding:20px}
 .canvas3dWrap{display:contents}
 .canvas3dWrap.canvas3dWrapHidden{display:none}
-.scene3dSlot{position:relative;min-width:0;overflow:hidden;justify-self:stretch;align-self:center;height:min(70vh,720px)}
+/* Aquella altura fija de min(70vh,720px) era una tirita: el slot no podia colgar de su padre
+   porque el padre medía 2000 px heredados de una columna vecina. Con la raíz acotada al viewport
+   (ver .internalApp) el padre ya dice la verdad, y la tirita se volvió el problema: 538 px de
+   slot dentro de un lienzo de 373, o sea 202 px de 3D recortados por el overflow del panel.
+   Ahora se estira a su padre, que sigue siendo una medida definida -- no hay circularidad. */
+.scene3dSlot{position:relative;min-width:0;overflow:hidden;justify-self:stretch;align-self:stretch;height:auto;min-height:0}
 /* El canvas va fuera del flujo: asi su tamano NUNCA vuelve a alimentar el del slot, que es la otra
    mitad del bucle. El buffer de dibujo lo fija renderer.setSize; la caja la fija este inset. */
 .scene3dSlot canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-radius:10px;cursor:grab}
 .scene3dHint{position:absolute;bottom:14px;right:14px;font-size:8px;color:var(--muted);background:var(--surface);border:1px solid var(--line);padding:5px 9px;border-radius:20px;pointer-events:none}
 .canvas{position:relative;flex:1;min-height:500px;display:flex;align-items:stretch;gap:16px;padding:16px;background-color:var(--paper)}
+/* Con el panel visual acotado al viewport, un minimo de 500 px lo desborda en 1366x768 y el
+   overflow:hidden del panel recortaba el lienzo por abajo. El lienzo toma lo que hay. */
+.internalApp .canvas{min-height:0}
 .canvasStage{position:relative;flex:1;min-width:0;display:grid;place-items:center;padding:54px;overflow:hidden}
 .panZoomViewport{position:absolute;inset:0;touch-action:none;cursor:grab;background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:var(--viewport-grid-size,28px) var(--viewport-grid-size,28px);background-position:var(--viewport-pan-x,0) var(--viewport-pan-y,0)}
 .panZoomViewport.isPanning,.panZoomViewport.isPanning *{cursor:grabbing!important}
-.panZoomLayer{position:absolute;inset:0;box-sizing:border-box;padding:54px;display:grid;place-items:center;transform-origin:center;will-change:transform;pointer-events:none}
+/* El hueco reservado va donde estan las cotas -- abajo y a la izquierda -- y no repartido a los
+   cuatro lados. Estos numeros son los mismos que FIT_PAD en PanZoomViewport.tsx: el dibujo se
+   centra en la caja ya descontada, asi que si no coinciden, se sale o se queda corto. */
+.panZoomLayer{position:absolute;inset:0;box-sizing:border-box;padding:44px 18px 60px 56px;display:grid;place-items:center;transform-origin:center;will-change:transform;pointer-events:none}
 .panZoomLayer>.modelStage,.panZoomLayer>.dim{pointer-events:auto}
-.viewportControls{position:absolute;top:18px;right:18px;z-index:9;display:flex;align-items:center;overflow:hidden;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:0 5px 16px var(--shadow)}
-.viewportControls button{height:30px;min-width:32px;padding:0 9px;border:0;border-right:1px solid var(--line);background:transparent;color:var(--ink);font-size:11px;cursor:pointer}
+/* Los controles y la pista viven en la franja de arriba, que es hueco reservado (FIT_PAD.top en
+   components/editor/fitBox.ts), no encima del dibujo. Al ensanchar el dibujo se comprobo que el
+   grupo de zoom le pisaba la esquina superior derecha 171x32 px: en un dibujo tecnico eso tapa
+   perfil de marco, que es justo lo que se ha ido a mirar. Por eso son compactos: cada pixel de
+   alto que ocupan aqui se lo quitan al dibujo. */
+.viewportControls{position:absolute;top:10px;right:12px;z-index:9;display:flex;align-items:center;overflow:hidden;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:0 5px 16px var(--shadow)}
+.viewportControls button{height:24px;min-width:26px;padding:0 7px;border:0;border-right:1px solid var(--line);background:transparent;color:var(--ink);font-size:10px;cursor:pointer}
 .viewportControls button:hover{background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent-text)}
 .viewportControls button:last-child{border-right:0}
-.viewportControls .viewportScale{min-width:52px;font-variant-numeric:tabular-nums}
+.viewportControls .viewportScale{min-width:44px;font-variant-numeric:tabular-nums}
 .viewportControls .viewportCenter{font-size:8px;letter-spacing:.05em;text-transform:uppercase}
-.viewportHint{position:absolute;right:18px;bottom:20px;z-index:6;max-width:45%;padding:6px 9px;border:1px solid var(--line);border-radius:20px;background:color-mix(in srgb,var(--surface) 92%,transparent);color:var(--muted);font-size:8px;text-align:center;pointer-events:none}
+.viewportHint{position:absolute;left:12px;top:10px;z-index:6;max-width:42%;padding:4px 9px;border:1px solid var(--line);border-radius:20px;background:color-mix(in srgb,var(--surface) 92%,transparent);color:var(--muted);font-size:8px;line-height:16px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 /* El tamaño del dibujo lo mide PanZoomViewport y lo entrega en --fit-w/--fit-h: el rectángulo
    más grande con la proporción REAL de la ventana que cabe en el lienzo disponible. Los topes
    fijos que había aquí (650px de ancho y un presupuesto de alto de 420px) no eran un ajuste sino
@@ -188,7 +204,7 @@ a{color:inherit}
 /* --ring = ancho del perfil de hoja; --stile = eje del montante, donde se monta la herrajería
    (a media madera entre el canto de la hoja y el vidrio). Todo el dibujo de manillas, bisagras
    y cierres se posiciona contra --stile, así que sigue cuadrando a cualquier tamaño de hoja. */
-.pane{flex:1;position:relative;border-style:solid;border-color:#24352e;background:var(--frame,#dfe2dc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);overflow:hidden;min-width:0;--ring:max(9%,12px);--stile:max(13%,17px)}
+.pane{flex:1;position:relative;border-style:solid;border-color:#24352e;background:var(--frame,#dfe2dc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);overflow:hidden;min-width:0;--ring:max(9%,12px);--stile:max(13%,17px);container-type:size}
 .whiteFrame .pane{border-color:#e8eae5}
 /* Selección: una línea separada del producto por unos píxeles de fondo, no un anillo metido
    dentro de la hoja. El anillo interior anterior (con su reflejo blanco y su filo oscuro) se
@@ -219,7 +235,7 @@ a{color:inherit}
 .hitVidrioBottom{bottom:max(17%,22px);left:max(17%,22px);right:max(17%,22px);height:10px}
 .hitVidrioLeft{top:max(17%,22px);bottom:max(17%,22px);left:max(17%,22px);width:10px}
 .hitVidrioRight{top:max(17%,22px);bottom:max(17%,22px);right:max(17%,22px);width:10px}
-.hitHerraje{position:absolute;z-index:5;bottom:6px;left:6px;width:24px;height:24px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:12px;display:grid;place-items:center}
+.hitHerraje{position:absolute;z-index:5;bottom:6px;right:6px;width:24px;height:24px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:12px;display:grid;place-items:center}
 /* Zonas de clic del marco de conjunto. Viven en el margen, sobre el fondo del lienzo y no sobre
    el producto: son transparentes salvo al apuntarlas o al quedar seleccionadas, así que ya no
    pintan ninguna franja permanente alrededor de la ventana. Cuando se marcan, el relleno tenue
@@ -238,13 +254,35 @@ a{color:inherit}
    no quede tapada en el traslape (ver FrameNodeView), y sin este margen de altura acabaría
    tapando ella el marcador del cierre. */
 .cierreCentral{position:absolute;top:50%;transform:translate(-50%,-50%);z-index:200;width:22px;height:22px;border-radius:50%;background:#ffffffd9;color:#274d3e;font-size:11px;border:0;padding:0;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}
-.motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#1d4f74;font-size:18px;font-weight:bold;text-shadow:0 1px 0 rgba(255,255,255,.75);pointer-events:none}
+/* El glifo escala con la hoja: a 18 px fijos ocupaba media hoja de 80 px (medido: 49.7 px de
+   ancho de texto sobre 79.7 px de hoja) y se perdia en las hojas grandes. cqmin es el lado corto
+   de la hoja, asi que una hoja apaisada y una esbelta reciben el mismo tratamiento. */
+.motion{position:absolute;z-index:3;inset:0;display:grid;place-items:center;color:#1d4f74;font-size:clamp(7px,15cqmin,20px);font-weight:bold;text-shadow:0 1px 0 rgba(255,255,255,.75);pointer-events:none}
 /* El nombre de la hoja cae sobre la banda de perfil, que puede ser un folio oscuro (nogal,
    antracita): sin fondo propio desaparecía. Mismo tratamiento de placa que las demás etiquetas. */
-.pane em{position:absolute;z-index:6;bottom:4px;right:34px;font-size:8px;font-style:normal;background:#ffffffe8;color:#1f4034;padding:2px 4px;border-radius:4px;pointer-events:none}
-.paneHardware{position:absolute;z-index:6;top:5px;left:5px;background:#ffffffe8;color:#1f4034;padding:3px 5px;border-radius:4px;font-size:7px;pointer-events:none}
-.paneRail{position:absolute;z-index:6;top:5px;right:5px;background:#ffffffe8;color:#1f4034;padding:3px 5px;border-radius:4px;font-size:7px;font-weight:bold;pointer-events:none}
-.paneDim{position:absolute;z-index:6;bottom:5px;right:5px;background:#ffffffe8;color:#1f4034;padding:3px 5px;border-radius:4px;font-size:7px;font-weight:normal;font-style:normal;pointer-events:none}
+/* Un solo bloque apilado en la esquina de la hoja (ver el comentario de FrameNodeView.tsx).
+   En columna las etiquetas no pueden solaparse entre si, y max-width con ellipsis es lo que
+   impide que vuelva a salir una palabra cortada a media letra por el overflow de .pane. */
+.paneTags{position:absolute;z-index:6;bottom:5px;left:5px;max-width:calc(100% - 10px);display:flex;flex-direction:column;align-items:flex-start;gap:2px;pointer-events:none}
+.paneTags>*{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#ffffffe8;color:#1f4034;padding:2px 5px;border-radius:4px;font-style:normal;font-weight:normal;line-height:1.35}
+.paneTags .tagDim{font-size:8px;font-weight:bold;font-variant-numeric:tabular-nums}
+.paneTags .tagWing{font-size:8px}
+.paneTags .tagHw{font-size:7px}
+.paneTags .tagRail{font-size:7px;font-weight:bold}
+/* El detalle se retira segun el tamano REAL de la hoja en pantalla, no segun el de la ventana del
+   navegador: una hoja estrecha en una pantalla grande tiene el mismo problema de sitio que una
+   hoja en una pantalla chica. Por eso la consulta es de contenedor y el contenedor es .pane.
+   La hoja seleccionada se salta el recorte: si la estas mirando, quieres verlo todo. */
+@container (max-width:150px) or (max-height:118px){
+  .pane:not(.selectedPane) .paneTags .tagHw,
+  .pane:not(.selectedPane) .paneTags .tagRail{display:none}
+}
+@container (max-width:104px) or (max-height:82px){
+  .pane:not(.selectedPane) .paneTags .tagWing{display:none}
+}
+@container (max-width:62px) or (max-height:52px){
+  .pane:not(.selectedPane) .paneTags{display:none}
+}
 
 /* ---------- Herrajería dibujada ----------
    Manilla, bisagras, pivotes, puntos de cierre y símbolo de apertura de cada hoja. La posición
@@ -305,6 +343,57 @@ a{color:inherit}
 /* Rieles del marco inferior, uno por carril en uso (ver components/editor/RailGuides.tsx). */
 .railGuides{position:absolute;left:0;right:0;bottom:0;z-index:5;height:max(4%,7px);display:flex;flex-direction:column;justify-content:space-evenly;pointer-events:none}
 .railGuide{height:2px;background:rgba(24,36,44,.5);box-shadow:0 1px 0 rgba(255,255,255,.35)}
+/* ---------- Cotas de la vista 2D ----------
+   Una alzada de carpinteria se lee por sus cotas, y aqui solo habia dos: el ancho y el alto
+   totales, ancladas al lienzo (top:40px, left:42px) con un margen del 19%, asi que ni cerraban
+   con los bordes del producto ni decian nada del reparto. El ancho de cada hoja iba dentro de su
+   vidrio, en una pastilla, y para comprobar si el reparto cuadraba habia que sumarlas a mano.
+   Ahora las totales cierran contra el dibujo y por dentro va la cadena parcial, que SUMA la total
+   por construccion (ver DimensionChain.tsx). Es la comprobacion que un arquitecto hace primero. */
+/* pointer-events solo en la etiqueta. La caja de la cota vertical no lleva `right`, asi que su
+   ancho lo fija su contenido: la etiqueta girada media 90 px sin girar y la caja se metia 44 px
+   ENCIMA del dibujo. No se veia -- la etiqueta se dibuja fuera por el giro -- pero ahi habia una
+   caja invisible con un boton dentro robandole el clic al marco de la hoja de la izquierda.
+   width:0 la deja pegada a su linea y el giro sigue sacando la etiqueta al hueco reservado. */
+.modelStage .cotaTotal{position:absolute;color:var(--muted);font-size:10px;letter-spacing:.06em;pointer-events:none}
+.modelStage .cotaTotal .dimLabel{pointer-events:auto}
+.modelStage .cotaTotalX{left:0;right:0;bottom:-50px;border-top:1px solid var(--line);text-align:center}
+.modelStage .cotaTotalX .dimLabel{background:var(--paper);padding:0 8px;position:relative;top:-8px}
+.modelStage .cotaTotalY{top:0;bottom:0;left:-46px;width:0;border-left:1px solid var(--line);display:flex;align-items:center}
+.modelStage .cotaTotalY .dimLabel{background:var(--paper);padding:6px;transform:rotate(-90deg);margin-left:-25px}
+.modelStage .cotaTotalY input.dimLabel{transform:rotate(-90deg)}
+/* Los extremos de la cota total, para que se vea contra que bordes cierra. */
+.modelStage .cotaTotalX::before,.modelStage .cotaTotalX::after,
+.modelStage .cotaTotalY::before,.modelStage .cotaTotalY::after{content:"";position:absolute;background:var(--line)}
+.modelStage .cotaTotalX::before,.modelStage .cotaTotalX::after{top:-6px;width:1px;height:13px}
+.modelStage .cotaTotalX::before{left:0}
+.modelStage .cotaTotalX::after{right:0}
+.modelStage .cotaTotalY::before,.modelStage .cotaTotalY::after{left:-6px;height:1px;width:13px}
+.modelStage .cotaTotalY::before{top:0}
+.modelStage .cotaTotalY::after{bottom:0}
+
+.cotaChain{position:absolute;pointer-events:none;color:var(--muted);font-variant-numeric:tabular-nums}
+.cotaChainX{left:0;right:0;bottom:-26px;height:18px}
+.cotaChainY{top:0;bottom:0;left:-26px;width:18px}
+/* Cada tramo es su propio contenedor de consulta: un tramo estrecho esconde su numero en vez de
+   pisar al de al lado. Es la misma idea que en las etiquetas de la hoja. */
+.cotaSeg{position:absolute;container-type:size}
+.cotaChainX .cotaSeg{top:9px;height:0;border-top:1px solid currentColor;opacity:.75}
+.cotaChainX .cotaSeg::before,.cotaChainX .cotaSeg::after{content:"";position:absolute;top:-4px;height:9px;border-left:1px solid currentColor}
+.cotaChainX .cotaSeg::before{left:0}
+.cotaChainX .cotaSeg::after{right:-1px}
+.cotaChainX .cotaSeg b{position:absolute;left:50%;bottom:3px;transform:translateX(-50%);font-size:8px;font-weight:600;white-space:nowrap;background:var(--paper);padding:0 3px}
+.cotaChainY .cotaSeg{left:9px;width:0;border-left:1px solid currentColor;opacity:.75}
+.cotaChainY .cotaSeg::before,.cotaChainY .cotaSeg::after{content:"";position:absolute;left:-4px;width:9px;border-top:1px solid currentColor}
+.cotaChainY .cotaSeg::before{top:0}
+.cotaChainY .cotaSeg::after{bottom:-1px}
+/* De abajo hacia arriba, como se rotula una cota vertical en un plano. */
+.cotaChainY .cotaSeg b{position:absolute;top:50%;left:3px;transform:translateY(-50%) rotate(180deg);writing-mode:vertical-rl;font-size:8px;font-weight:600;background:var(--paper);padding:3px 0}
+@container (max-width:34px){.cotaChainX .cotaSeg b{display:none}}
+@container (max-height:34px){.cotaChainY .cotaSeg b{display:none}}
+/* En los diagramas de informe el dibujo entero mide 220 px: una cadena de cotas ahi es ruido. */
+.docDiagramBox .cotaChain,.quoteDiagram .cotaChain{display:none}
+
 .dim{position:absolute;color:var(--muted);font-size:10px;letter-spacing:.07em}
 .dim.top{top:40px;left:19%;right:19%;border-top:1px solid var(--line);text-align:center}
 .dim.top .dimLabel{background:var(--paper);padding:0 8px;position:relative;top:-7px}
@@ -542,7 +631,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .docSpecTable td:first-child{color:var(--muted);width:38%}
 .docDiagramBox{display:flex;align-items:center;justify-content:center;padding:16px;background:var(--paper);border-left:1px solid var(--line)}
 .docDiagramBox .window{width:min(100%,220px,calc(140px * var(--ar,1.818)));aspect-ratio:var(--ar,1.818);min-height:0}
-.docDiagramBox .paneHardware,.docDiagramBox .paneRail,.docDiagramBox .paneDim,.docDiagramBox .pane em,.docDiagramBox .hitHerraje,.docDiagramBox .cierreCentral{display:none}
+.docDiagramBox .paneTags,.docDiagramBox .hitHerraje,.docDiagramBox .cierreCentral{display:none}
 .docWarning{margin:0 0 10px;padding:9px 11px;border:1px solid var(--danger-fg);border-radius:8px;background:rgba(190,60,60,.07);color:var(--ink);font-size:11px;line-height:1.45}
 .docWarning code{font-size:10.5px}
 .docTable{border-collapse:collapse;width:100%;font-size:9px;margin-bottom:4px}
@@ -630,7 +719,24 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
     radial-gradient(720px 520px at 34% 72%,rgba(218,201,255,.5),transparent 64%),
     linear-gradient(145deg,#f7f2ff,#edf6ff 52%,#f4fcf8);
   background-attachment:fixed;
+  /* Por que el lienzo 2D salia diminuto (dibujo de 158x123 px dentro de una caja de 316x2080).
+     Es el mismo mecanismo que deformaba el 3D, medido otra vez: .workspace es un grid y su fila
+     toma la altura de la columna mas alta. La de configuracion son diez pasos apilados, 2272 px,
+     asi que el panel visual se estiraba a 2272 y el lienzo a 2080 -- en una ventana de 768. El
+     dibujo se ajusta a la caja disponible, y esa caja no era el viewport sino una columna vecina.
+     Las columnas ya pedian su propio scroll (overflow:auto), pero un overflow no llega a actuar
+     mientras la caja crece con su contenido: hace falta una altura definida de la que colgar.
+     Se acota aqui, en la raiz, en vez de en cada panel: asi las franjas de aviso y el pie ocupan
+     lo suyo y la fila del grid recibe lo que sobra, sea lo que sea. Un calc con la altura del
+     encabezado no valdria porque los avisos aparecen y desaparecen. */
+  display:flex;
+  flex-direction:column;
+  height:100dvh;
 }
+/* min-height:0 es lo que permite que la fila del grid encoja por debajo de su contenido, y
+   entonces si el overflow:auto de cada columna entra en juego. */
+.internalApp .workspace{flex:1 1 auto;min-height:0}
+.internalApp .workspace>*{min-height:0}
 .internalApp button,.internalApp input,.internalApp select,.internalApp textarea{font-family:inherit}
 .internalApp .topbar{
   top:12px;height:auto;min-height:64px;margin:12px 14px 0;padding:10px 14px 10px 18px;
@@ -657,7 +763,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .internalApp .moduleNav button{border:0;border-radius:999px;padding:0 20px;transition:background .2s,box-shadow .2s,color .2s,transform .2s}
 .internalApp .moduleNav button:hover{background:rgba(255,255,255,.48);color:var(--ink)}
 .internalApp .moduleNav button.active{color:#4e43c7;background:radial-gradient(120% 160% at 12% 0,#fff,rgba(255,255,255,.7) 50%,rgba(235,232,255,.7));box-shadow:0 9px 24px -14px rgba(69,55,160,.68),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(98,82,190,.1);border:0}
-.internalApp .workspace{gap:14px;padding:10px 14px 14px;min-height:calc(100vh - 140px)}
+.internalApp .workspace{gap:14px;padding:10px 14px 14px}
 .internalApp .configPanel,.internalApp .quotePanel,.internalApp .visualPanel{
   border:1px solid rgba(255,255,255,.78);border-radius:30px;
   background:radial-gradient(150% 105% at 0 0,var(--ia-panel-hi),transparent 44%),linear-gradient(145deg,var(--ia-panel-mid),var(--ia-panel-low));
@@ -810,13 +916,16 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
   .internalApp .topbar{position:relative;top:auto;margin:8px 8px 0;min-height:0;border-radius:22px;padding:11px 12px}
   .internalApp .headerActions{width:100%;justify-content:flex-end;overflow-x:auto;padding-top:2px;scrollbar-width:none;-ms-overflow-style:none}
   .internalApp .moduleNav{top:8px;margin:8px auto 4px;max-width:calc(100% - 16px);justify-content:flex-start;overflow-x:auto}
-  .internalApp .workspace{padding:8px;display:block}
+  /* En bloque las columnas van una debajo de otra: aqui el alto vuelve a ser el del contenido y
+     manda el scroll de la pagina, que es lo correcto en pantalla estrecha. */
+  .internalApp{height:auto}
+  .internalApp .workspace{padding:8px;display:block;flex:none}
   .internalApp .configPanel,.internalApp .quotePanel,.internalApp .visualPanel{border-radius:22px;margin-bottom:10px;border:1px solid rgba(255,255,255,.68)}
   .internalApp .configPanel,.internalApp .quotePanel{padding:20px}
   .internalApp .canvas{margin:8px}
 }
 @media print{
-  .internalApp{display:block;background:#fff;color:#111}
+  .internalApp{display:block;height:auto;background:#fff;color:#111}
   .internalApp .workspace,.internalApp .quotePanel,.internalApp .reportDoc{background:#fff;box-shadow:none;backdrop-filter:none;border:0}
 }
 
@@ -1701,7 +1810,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .quoteDiagram{display:flex;width:88%;height:92px;align-items:center;justify-content:center}
 .quoteDiagram .window{width:min(100%,210px,calc(115px * var(--ar,1.818)));height:auto;min-height:0;aspect-ratio:var(--ar,1.818)}
 .quoteDiagram .modelStage{width:100%;max-height:92px}
-.quoteDiagram .paneHardware,.quoteDiagram .paneDim,.quoteDiagram .pane em,.quoteDiagram .hitHerraje,.quoteDiagram .cierreCentral{display:none}
+.quoteDiagram .paneTags,.quoteDiagram .hitHerraje,.quoteDiagram .cierreCentral{display:none}
 .quoteDiagram .cotPreview{box-sizing:border-box;width:min(100%,210px);max-height:90px;margin:0;border:0;border-radius:0;padding:5px;background:#f7f9fb;box-shadow:none}
 .quoteDiagram .cotPreviewFrame{min-height:54px;border-radius:2px;padding:4px}
 .quoteDiagram .cotPreviewPane,.quoteDiagram .cotPreviewGlass{border-radius:1px}

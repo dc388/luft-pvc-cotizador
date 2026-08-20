@@ -1,12 +1,13 @@
 "use client";
 
-import type { CSSProperties, MouseEvent } from "react";
+import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import type { ColorItem, FocusScope, FrameNode, System } from "@/types/domain";
 import { flattenToLeafFrames } from "@/lib/tree";
 import { FrameNodeView } from "./FrameNodeView";
 import { CentralLocks } from "./CentralLocks";
 import { AssemblyMarcoHits } from "./AssemblyMarcoHits";
 import { RailGuides } from "./RailGuides";
+import { DimensionChain } from "./DimensionChain";
 import type { PartKind, SideKey } from "./frameTypes";
 
 type Props = {
@@ -28,6 +29,10 @@ type Props = {
   onPartClick: (id: string, part: PartKind, side: SideKey | null, e: MouseEvent<HTMLButtonElement>) => void;
   onAssemblyMarcoClick: (side: SideKey) => void;
   onCentralLockClick: (id: string) => void;
+  /** Cotas totales (editables) del conjunto. Van dentro de .modelStage para que queden pegadas al
+   *  dibujo y no a una esquina del lienzo: el propietario de la medida sigue siendo Workspace, que
+   *  es quien sabe confirmarla, pero el sitio donde se dibuja lo decide el dibujo. */
+  children?: ReactNode;
 };
 
 export function FrameCanvas({
@@ -45,6 +50,7 @@ export function FrameCanvas({
   onPartClick,
   onAssemblyMarcoClick,
   onCentralLockClick,
+  children,
 }: Props) {
   const light = color.name === "Blanco";
   const frames = flattenToLeafFrames(tree, width, height, system);
@@ -69,6 +75,8 @@ export function FrameCanvas({
         <CentralLocks tree={tree} widthMm={width} heightMm={height} onCentralLockClick={onCentralLockClick} />
         <AssemblyMarcoHits showFocus={showFocus} focusScope={focusScope} focusPart={focusPart} focusSide={focusSide} onClick={onAssemblyMarcoClick} />
       </div>
+      <DimensionChain tree={tree} width={width} height={height} />
+      {children}
     </div>
   );
 }
