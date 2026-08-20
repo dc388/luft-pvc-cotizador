@@ -29,6 +29,7 @@ export function WindowDiagram({ tree, width, height, color, system }: Props) {
         <FrameNodeView
           key={frame.id}
           frame={frame}
+          system={system}
           overallWidthMm={width}
           overallHeightMm={height}
           zIndex={i + 1}

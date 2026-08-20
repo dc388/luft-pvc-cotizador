@@ -270,11 +270,17 @@ export function Scene3D({ tree, width, height, sys, color, selectedId, focusScop
     const isAssemblyMarcoSelected = (side: SideKey | undefined) =>
       focusScope === "assembly" && focusPart === "marco" && !!side && focusSide === side;
 
-    const frameMat = new THREE.MeshStandardMaterial({ color: frameHex, roughness: 0.5, metalness: 0.12 });
-    const sashMat = new THREE.MeshStandardMaterial({ color: frameHex, roughness: 0.55, metalness: 0.1 });
+    // Marco, hoja y junquillo compartian frameHex y se distinguian solo por la rugosidad, o sea por
+    // nada: en pantalla eran una masa del color del folio. Cada pieza recibe ahora un tono DERIVADO
+    // de ese color, oscureciendolo hacia dentro igual que en la alzada 2D (ver las capas en
+    // app/globals.css). El folio sigue mandando -- un bronce sigue siendo bronce -- y las dos vistas
+    // cuentan lo mismo, que es lo que permite pasar de una a otra sin volver a orientarse.
+    const tono = (mezcla: number) => new THREE.Color(frameHex).lerp(new THREE.Color(0x1b2a24), mezcla);
+    const frameMat = new THREE.MeshStandardMaterial({ color: tono(0.12), roughness: 0.5, metalness: 0.12 });
+    const sashMat = new THREE.MeshStandardMaterial({ color: tono(0.26), roughness: 0.55, metalness: 0.1 });
     const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xdcecef, roughness: 0.06, transmission: 0.88, thickness: 0.02, ior: 1.5, transparent: true, opacity: 0.95 });
     const handleMat = new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: 0.35, metalness: 0.6 });
-    const beadMat = new THREE.MeshStandardMaterial({ color: frameHex, roughness: 0.62, metalness: 0.06 });
+    const beadMat = new THREE.MeshStandardMaterial({ color: tono(0.42), roughness: 0.62, metalness: 0.06 });
     const selMat = new THREE.MeshStandardMaterial({ color: "#1D6CA6", roughness: 0.35, metalness: 0.2, emissive: "#1D6CA6", emissiveIntensity: 0.22 });
     const glassSelMat = () =>
       new THREE.MeshPhysicalMaterial({ color: "#1D6CA6", roughness: 0.06, transmission: 0.6, thickness: 0.02, ior: 1.5, transparent: true, opacity: 0.95, emissive: "#1D6CA6", emissiveIntensity: 0.15 });
