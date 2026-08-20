@@ -213,20 +213,57 @@ Worker desplegado. Verificado: `/` → 401 (candado interno puesto), `/cotizar` 
 **Va con la subida de precios de la calibración de Aluplast** (+3.68 % a +7.27 % en CORREDERA 96MM,
 mediana +4.84 %). Decisión de dc, advertida dos veces antes de publicar.
 
-## Defecto abierto: un asset viejo tapa la ruta de versión
+## Resuelto: el asset viejo que tapaba la ruta de versión
 
-`/api/version` **sin** barra final devuelve un identificador de un build anterior; **con** barra
-devuelve el correcto. `worker/index.ts:45` atiende las dos formas, y el artefacto construido
-contiene solo el sha nuevo, así que la petición sin barra no está llegando al worker: la capa de
-assets la resuelve antes, con un archivo que quedó en el bucket de un despliegue viejo
-(`wrangler deploy` informa «19 already uploaded»).
+Quedó anotado como defecto abierto porque `/api/version` **sin** barra final devolvía el
+identificador de un build anterior mientras la forma **con** barra devolvía el correcto:
+`worker/index.ts:45` atiende las dos, así que la petición sin barra no llegaba al worker — la
+resolvía antes la capa de assets, con un archivo que había quedado en el bucket.
 
-Mientras no se limpie, **la forma con barra es la autoritativa**:
+**Se resolvió con el despliegue siguiente**, cuyo conjunto de assets reemplazó al viejo. Comprobado:
 
 ```
-curl -s https://luft-pvc-cotizador.luft-pvc.workers.dev/api/version/
+con barra:  {"version":"53f60df"}
+sin barra:  {"version":"53f60df"}
+HEAD local:  53f60df
 ```
 
-No es cosmético: es exactamente el mecanismo que hizo perder una sesión entera revisando tres veces
-un código ya corregido mientras el navegador miraba un build viejo. Merece purgar el bucket de
-assets en el próximo despliegue y comprobar las dos formas.
+Se deja escrito porque el mecanismo sigue siendo posible: un asset huérfano en el bucket puede
+tapar una ruta del worker, y entonces producción miente sobre lo que está sirviendo. Si vuelve a
+pasar, **la forma con barra es la autoritativa** y un despliegue nuevo lo corrige.
+
+## Los cinco paneles que flotaban sobre el dibujo
+
+Al subir 192 tamaños de letra se verificó el dibujo pero **no el marco alrededor**. A 1059×565 —una
+ventana con zoom del 125 %— el resultado se pisaba, medido:
+
+```
+.viewportControls x .editHint     = 66x14 px
+.viewportHint     x .editHint     = 66x14 px
+.specChip         x .elevationKey = 227x28 px
+```
+
+Y la barra superior con la navegación se leían **encima** del panel de configuración: al acotar la
+raíz al viewport, `main` pasó a ser el contenedor que se desplaza, y esas dos barras son pegajosas y
+de vidrio translúcido, así que el contenido pasaba por detrás y se leía a través. Ahora son opacas,
+en claro y en oscuro: una barra pegajosa sobre contenido en movimiento tiene que tapar.
+
+Lo de fondo no era colocar mejor las cajas. Eran **cinco paneles flotando sobre un lienzo de
+441×314 px**, cada uno con un desplazamiento fijo elegido a mano — cinco supuestos sobre dónde queda
+sitio libre. Se consolidaron:
+
+| Panel | Qué se hizo |
+|---|---|
+| Pista de uso | **Eliminada** — repetía lo que dicen los controles de zoom, que ahora llevan ese texto en su `title` |
+| Pista de selección | **Eliminada** — la leyenda ya nombra las piezas. Solo queda pista cuando hay una herramienta armada |
+| Ficha del sistema | **Sube a la cabecera** — la cabecera dice QUÉ estás viendo, el pie dice CÓMO leerlo |
+| Leyenda | **Baja a un pie en flujo**, no flotando |
+| Controles de zoom | Se quedan, en el hueco reservado de arriba |
+
+Sobre el lienzo no queda nada salvo los controles de zoom. Medido después, con dieciocho elementos
+de interfaz comparados entre sí: **cero solapes** a 1366×768 y a 1059×565, nada desborda el panel
+visual, sin scroll de página, y el dibujo pasa de 201×157 a **242×188** al recuperar los 23 px que
+costaba un pie de dos filas. A 1059×565, el tamaño real de la ventana del usuario: **233×182**.
+
+La lección es la misma de la sección anterior, en otra forma: verifiqué lo que había cambiado, no lo
+que el cambio podía romper alrededor.
