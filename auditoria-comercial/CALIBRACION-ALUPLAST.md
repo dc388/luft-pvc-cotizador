@@ -81,6 +81,85 @@ sospecha, y el orden de magnitud es el mismo.
 
 ---
 
+## 2.7 El sistema IS, calibrado con los planos de liberación (2026-08-20)
+
+Los `KS-Konstruktionsfreigabe` --los planos de liberación de construcción, que son el documento de
+ingeniería con el que Aluplast aprueba un sistema-- traen los datos que la ficha de usuario no
+publica. Y corrigen dos cosas que yo había puesto mal.
+
+### Espesor de vidrio: era 24, es 6
+
+```
+020072-01  sliding-window mx   "glazing bead for 3mm glass"   "laminated is not planned"
+020074-01  sliding-door mx     "glazing bead for 6mm glass"   "laminated is not planned"
+```
+
+Los dos usan el **mismo junquillo 020073**. Seis milímetros es el máximo que respalda cualquier
+documento del sistema, así que ése es el valor.
+
+Yo lo había puesto en **24** --el máximo del catálogo de vidrio-- para «no bloquear nada por error».
+Era un error grave y del mismo tipo que D-01: permitía cotizar un DVH de 24 mm en un sistema que
+acepta 6, y el vidrio a medida no se devuelve.
+
+Efecto de la corrección, medido: de las 10 partidas del catálogo de vidrio ahora **caben 3** (las de
+6 mm). Antes cabían las 10.
+
+**Pendiente menor:** el vidrio más delgado del catálogo de la aplicación es de 6 mm. Si el taller
+acristala este sistema con 3 mm --que es lo que dice el plano de la ventana-- hay que agregar esa
+partida a `data/glass.ts`.
+
+### El herraje sí estaba completo, y ahora se sabe por qué
+
+El plano 020072-01 lista los accesorios nuevos del sistema:
+
+```
+locking part  620075   (ap-Mexico lo compra directo a proveedor chino)
+roller        620076   (ap-Mexico lo compra directo a proveedor chino)
+brush-seal    729075
+```
+
+Y anota que **el rodamiento 620076 sirve además de separador para la hoja fija**, así que no hay una
+tercera pieza. Eso explica por qué la lista de precios de Aluplast solo trae dos: son esas dos,
+bajo sus nombres mexicanos (cerradero media luna y carro p/hoja). El paquete de 39 MXN está
+completo para las piezas fijas.
+
+Lo que sigue impreciso no es del IS: sobre ese 39 el motor suma las estimaciones planas y sin
+calibrar de `hardwareLeafCount * 110` y `rail * 165`, que son **D-12** y afectan a todos los
+sistemas.
+
+### Lo más importante: este sistema no tiene prestaciones certificadas
+
+El plano 020072-01 lo dice literalmente:
+
+> `no requirement for compatibility, U-value, water resistance, wind load, burglary resistance and certification`
+
+Aluplast liberó el IS **sin requisitos** de valor U, estanqueidad al agua, resistencia al viento ni
+certificación. Es una línea económica para competir con aluminio sin RPT --lo confirma el propio
+`COMPARACION_ALUPLAST_IS_VS_ALUMINIO_SIN_RPT.pdf` del paquete.
+
+**Consecuencia directa para el objetivo de que un arquitecto diseñe con él:** no se puede especificar
+donde se exija clasificación NMX-R-060 ni prestación térmica o acústica declarada. Sirve para
+proyectos donde el requisito es cerrar el vano a buen precio, no para uno donde haya que declarar
+desempeño.
+
+El campo `uf` del sistema dice ahora «sin requisito de valor U (liberado sin certificacion)» en lugar
+de exhibir un número. Una prueba impide que alguien le ponga un valor `W/m²K` que el fabricante no
+declara.
+
+### Conflicto de medidas máximas, sin resolver
+
+```
+020072-01 rev 03   "max. sizes 1200 x 1200 mm"
+manual ed. 2025-10  max. 1500 mm
+```
+
+Se conserva **1500**: es el documento más reciente y de cara al fabricante, y en la puerta los dos
+documentos **sí** coinciden (2000 y 2000), lo que sugiere que el 1200 del plano quedó superado por
+una revisión posterior. Pero conviene confirmarlo con Aluplast antes de cotizar una ventana IS de
+más de 1200 mm.
+
+---
+
 ## 3. Encontrado en los manuales pero NO aplicado, y por qué
 
 ### 3.1 El descuento del junquillo: 89 mm

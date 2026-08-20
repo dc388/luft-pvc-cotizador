@@ -299,3 +299,40 @@ test("el sistema IS NO se expone en el cotizador público", () => {
   // Y sí tiene que estar disponible internamente, que es el objetivo.
   assert.ok(catalog.Aluplast.some((s) => s.name === IS), "el IS debe existir en el catálogo interno");
 });
+
+test("el galce del IS acepta 6 mm, no los 24 del catálogo de vidrio", () => {
+  // El plano de liberación 020072-01 (sliding-window mx) dice «glazing bead for 3mm glass»; el de la
+  // puerta 020074-01, con el MISMO junquillo 020073, dice «glazing bead for 6mm glass». Los dos
+  // añaden «laminated is not planned». 6 es el máximo que respalda cualquier documento del sistema.
+  //
+  // Estuvo en 24 --el máximo del catálogo de vidrio-- porque la ficha de usuario no publica el dato.
+  // Era un error grave: permitía cotizar DVH de 24 mm en un sistema que acepta 6, y el vidrio a
+  // medida no se devuelve.
+  const sys = catalog.Aluplast.find((s) => s.name === IS)!;
+  assert.equal(sys.glazing, 6, "subirlo permite cotizar vidrio que no entra en el galce");
+});
+
+test("en el IS los vidrios gruesos y los DVH quedan fuera del galce", () => {
+  const sys = catalog.Aluplast.find((s) => s.name === IS)!;
+  const cabe = (nombre: string) => {
+    const g = glassCatalog.find((x) => x.name === nombre);
+    assert.ok(g, `la partida ${nombre} tiene que existir en el catálogo`);
+    return g.thickness <= sys.glazing;
+  };
+  assert.equal(cabe("Cristal recocido claro 6 mm"), true, "el sencillo de 6 mm sí entra");
+  assert.equal(cabe("Cristal templado claro 6 mm"), true, "el templado de 6 mm sí entra");
+  assert.equal(cabe("DVH 20 mm · 4/12/4"), false, "un DVH no entra en este sistema");
+  assert.equal(cabe("DVH 24 mm · 6/12/6"), false, "un DVH no entra en este sistema");
+  assert.equal(cabe("Laminado 6+6 mm"), false, "«laminated is not planned» en la ficha de liberación");
+  assert.equal(cabe("Cristal recocido claro 9.5 mm"), false);
+});
+
+test("el IS no declara prestaciones certificadas", () => {
+  // El plano 020072-01 dice literalmente «no requirement for compatibility, U-value, water
+  // resistance, wind load, burglary resistance and certification». Es una línea económica para
+  // competir con aluminio sin RPT, y NO se puede especificar donde se exija clasificación NMX-R-060
+  // ni prestación térmica declarada. El campo `uf` tiene que decirlo, no mostrar un valor inventado.
+  const sys = catalog.Aluplast.find((s) => s.name === IS)!;
+  assert.doesNotMatch(sys.uf, /W\/m/, "no puede exhibir un valor U que el fabricante no declara");
+  assert.match(sys.uf, /sin requisito|sin certifica/i, "tiene que decir que no hay valor U");
+});

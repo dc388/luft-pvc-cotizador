@@ -63,29 +63,58 @@ export const catalog: Record<Brand, System[]> = {
     { name: "Lift-slide 85 (HS)", category: "Especial", depth: 85, chambers: "umbral especial", glazing: 52, maxW: 6500, maxH: 2800, rails: [2], frame: 320, sash: 285, hardware: 7600, uf: "1.1 W/m²K", frameSeatMm: 8, centerOverlapMm: 32 },
     // IDEAL IS · Corredera mx -- el sistema que aluplastmex suministra hoy, y el unico del catalogo
     // con ficha de fabricacion propia y lista de precios vigente. Anadido el 2026-08-19 desde la
-    // documentacion que entrego dc.
+    // documentacion que entrego dc; calibrado el 2026-08-20 con los planos de liberacion.
     //
     // Precios de "Lista de Precios IS_V1.2.2.2.xlsx" (EXWORK Veracruz, en euros), convertidos con
     // EUR_MXN igual que el resto de los sistemas `sourced`:
     //   Marco de 58 mm 2 rieles IS        1.71 EUR/m  ->  37 MXN/m
     //   Hoja corrediza c/felpillo 19 mm   1.20 EUR/m  ->  26 MXN/m   (el traslape es 1.19, casi igual)
-    //   Cerradero media luna 0.90 + Carro p/hoja 0.90 = 1.80 EUR  ->  39 MXN por ventana
     //
-    // Medidas maximas y numero de rieles vienen del manual «Ventana corredera mx» ed. 2025-10 pag. 2.
+    // HERRAJE: 39 MXN por ventana = cerradero media luna 0.90 EUR + carro p/hoja 0.90 EUR. El plano
+    // 020072-01 confirma que son las dos unicas piezas de herraje del sistema (620075 "locking part"
+    // y 620076 "roller", que ap-Mexico compra directo a proveedor chino y por eso no figuran en la
+    // lista de Aluplast con su codigo aleman). El mismo plano anota que el rodamiento 620076 sirve
+    // ademas de separador para la hoja fija, asi que no hay una tercera pieza.
+    // Nota: sobre este 39 el motor sigue sumando las estimaciones planas y sin calibrar de
+    // `hardwareLeafCount * 110` y `rail * 165` (ver D-12), que no son especificas de este sistema.
     //
     // frameSeatMm y centerOverlapMm van en 0 A PROPOSITO: este sistema NO usa el modelo generico de
     // hoja. Su descuento esta documentado en la ficha y vive en data/glazing.ts (leafSizingFor), que
     // manda sobre esos dos campos. Se dejan en 0 para que quede claro que no se leen.
     //
-    // CALIBRAR, y es importante antes de cotizar vidrio doble en este sistema: `glazing` es el espesor
-    // maximo que acepta el galce, y la ficha que entrego dc NO lo publica. Se pone en 24 --el maximo
-    // del catalogo de vidrio de la aplicacion-- para no bloquear nada por error, pero eso significa
-    // que hoy la aplicacion NO valida el espesor en este sistema. Confirmar contra el catalogo de
-    // junquillos (alturas de 10 a 40 mm) o midiendo el galce.
+    // ------------------------------------------------------------------------------------------
+    // ESPESOR DE VIDRIO: 6 mm, y es un limite REAL, no un placeholder
+    // ------------------------------------------------------------------------------------------
+    // El plano de liberacion 020072-01 (sliding-window mx) dice "glazing bead for 3mm glass", y el
+    // de la puerta 020074-01, que usa el MISMO junquillo 020073, dice "glazing bead for 6mm glass".
+    // Los dos anaden "laminated is not planned".
     //
-    // CALIBRAR: el paquete de herraje puede estar incompleto. La lista de precios del IS solo
-    // documenta cerradero y carro; si el taller monta algo mas, sumarlo aqui.
-    { name: "IDEAL IS · Corredera mx", category: "Corredera", depth: 58, chambers: "no publicado en la ficha", glazing: 24, maxW: 1500, maxH: 1500, rails: [2], frame: 37, sash: 26, hardware: 39, uf: "no publicado", sourced: true, frameSeatMm: 0, centerOverlapMm: 0 },
+    // Se pone 6: es el maximo que respalda cualquier documento del sistema. Con esto la aplicacion
+    // marca correctamente todo lo que no cabe -- templado de 9.5, laminado, y los dos DVH.
+    //
+    // Antes estaba en 24 (el maximo del catalogo de vidrio) porque la ficha de usuario no publica el
+    // dato. Era un error grave: permitia cotizar DVH de 24 mm en un sistema que acepta 6, y el
+    // vidrio a medida no se devuelve.
+    //
+    // OJO: el vidrio mas delgado del catalogo de la aplicacion es de 6 mm. Si el taller acristala
+    // este sistema con 3 mm, hay que agregar esa partida a data/glass.ts.
+    //
+    // ------------------------------------------------------------------------------------------
+    // SIN PRESTACIONES CERTIFICADAS -- leer antes de especificarlo en un proyecto
+    // ------------------------------------------------------------------------------------------
+    // El plano 020072-01 lo dice literalmente: "no requirement for compatibility, U-value, water
+    // resistance, wind load, burglary resistance and certification". Es decir que Aluplast libero
+    // este sistema SIN requisitos de valor U, estanqueidad al agua, resistencia al viento, ni
+    // certificacion. Es una linea economica pensada para competir con aluminio sin RPT.
+    //
+    // Consecuencia: NO se puede especificar donde se exija clasificacion NMX-R-060 ni prestacion
+    // termica o acustica declarada. `uf` lo dice en lugar de mostrar un valor que no existe.
+    //
+    // CONFLICTO DE MEDIDAS MAXIMAS, pendiente de confirmar con Aluplast: el plano de liberacion
+    // 020072-01 rev 03 dice "max. sizes 1200 x 1200 mm", y el manual de usuario ed. 2025-10 dice
+    // 1500 mm. Se conserva 1500 por ser el documento mas reciente y de cara al fabricante --y porque
+    // en la puerta los dos documentos SI coinciden en 2000-- pero conviene verificarlo.
+    { name: "IDEAL IS · Corredera mx", category: "Corredera", depth: 58, chambers: "linea economica, sin camaras publicadas", glazing: 6, maxW: 1500, maxH: 1500, rails: [2], frame: 37, sash: 26, hardware: 39, uf: "sin requisito de valor U (liberado sin certificacion)", sourced: true, frameSeatMm: 0, centerOverlapMm: 0 },
   ],
   Deceuninck: [
     { name: "Sliding 2 rieles", category: "Corredera", depth: 60, chambers: "multicámara", glazing: 24, maxW: 4000, maxH: 2400, rails: [2], frame: 148, sash: 126, hardware: 930, uf: "según configuración", frameSeatMm: 8, centerOverlapMm: 20 },
