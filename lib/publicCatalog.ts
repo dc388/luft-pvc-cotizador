@@ -4,6 +4,7 @@ import { glassCatalog } from "@/data/glass";
 import { typologyDefs } from "@/data/typologies";
 import { createLeaf, walkLeaves } from "@/lib/tree";
 import type { Brand, FrameNode, WingType } from "@/types/domain";
+import { newId } from "@/lib/uuid";
 
 // Catálogo de cara al cliente para app/cotizar.
 //
@@ -15,7 +16,7 @@ import type { Brand, FrameNode, WingType } from "@/types/domain";
 // hacer `import type` de este archivo (los tipos se borran en compilación).
 
 function splitCol(children: FrameNode[]): FrameNode {
-  return { kind: "split", id: crypto.randomUUID(), axis: "col", ratios: Array(children.length).fill(1 / children.length), children };
+  return { kind: "split", id: newId(), axis: "col", ratios: Array(children.length).fill(1 / children.length), children };
 }
 
 function buildExistingTypology(id: string): FrameNode {

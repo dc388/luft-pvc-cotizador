@@ -21,6 +21,7 @@ import type {
   ProjectVersionRow,
   Requester,
 } from "@/types/project";
+import { newId } from "@/lib/uuid";
 
 type Db = DrizzleD1Database<Record<string, unknown>>;
 
@@ -353,8 +354,8 @@ function draftRequester(draft: ProjectDraft, now: string): Requester {
 
 /** Proyecto nuevo creado en la plataforma, con su primera ventana genérica lista para editar. */
 export async function createProject(db: Db, draft: ProjectDraft = { name: "" }): Promise<ProjectRecord> {
-  const projectId = crypto.randomUUID();
-  const componentId = crypto.randomUUID();
+  const projectId = newId();
+  const componentId = newId();
   const now = nowIso();
   const requester = draftRequester(draft, now);
 
@@ -434,7 +435,7 @@ export async function createEmptyProject(
   name: string,
   origin: EmptyProjectOrigin = {}
 ): Promise<ProjectRecord> {
-  const id = crypto.randomUUID();
+  const id = newId();
   const now = nowIso();
   const createdAt = origin.createdAt ?? now;
   // normalizeRequester y no mergeRequester: si la ficha llega de un archivo o de un duplicado, trae
@@ -596,7 +597,7 @@ export async function duplicateProject(db: Db, projectId: string, name?: string)
 
   let firstComponentId = "";
   for (const [index, source] of sourceComponents.entries()) {
-    const id = crypto.randomUUID();
+    const id = newId();
     if (!firstComponentId) firstComponentId = id;
     await db.insert(components).values({
       id,
@@ -629,7 +630,7 @@ export async function createComponent(
 ): Promise<ComponentRecord> {
   const now = nowIso();
   const position = await nextPosition(db, projectId);
-  const id = crypto.randomUUID();
+  const id = newId();
 
   let seed: ComponentSeed;
   if (opts?.duplicateFromId) {
@@ -672,7 +673,7 @@ export async function createComponent(
 export async function createComponentWithData(db: Db, projectId: string, seed: ComponentSeed): Promise<ComponentRecord> {
   const now = nowIso();
   const position = await nextPosition(db, projectId);
-  const id = crypto.randomUUID();
+  const id = newId();
 
   await db.insert(components).values({
     id,
@@ -797,7 +798,7 @@ export async function transferComponents(
   for (const row of rows) {
     if (mode === "copy") {
       await db.insert(components).values({
-        id: crypto.randomUUID(),
+        id: newId(),
         projectId: toProjectId,
         position: position++,
         createdAt: now,
@@ -872,7 +873,7 @@ export async function saveProjectVersion(
   snapshot: string,
   meta: { label?: string; reason?: ProjectVersionReason; componentCount: number; total: number }
 ): Promise<ProjectVersionRow> {
-  const id = crypto.randomUUID();
+  const id = newId();
   const createdAt = nowIso();
   await db.insert(projectVersions).values({
     id,

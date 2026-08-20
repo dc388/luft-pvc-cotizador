@@ -4,6 +4,7 @@ import { customers, projects, quoteEvents, quotes } from "@/db/schema";
 import { INITIAL_QUOTE_STATUS, type QuoteStatus } from "@/lib/quoteStatus";
 import type { QuoteCustomerInput } from "@/lib/quoteDocument";
 import type { QuoteEventRow, QuoteListRow, QuoteSnapshot } from "@/types/quote";
+import { newId } from "@/lib/uuid";
 
 type Db = DrizzleD1Database<Record<string, unknown>>;
 
@@ -61,7 +62,7 @@ export async function upsertCustomer(db: Db, input: QuoteCustomerInput): Promise
     return { id: existing.id, created: false };
   }
 
-  const id = crypto.randomUUID();
+  const id = newId();
   await db.insert(customers).values({
     id,
     name: input.name,
@@ -138,10 +139,10 @@ export async function createQuote(db: Db, input: CreateQuoteInput): Promise<Crea
   for (let attempt = 0; attempt < FOLIO_ATTEMPTS; attempt++) {
     const seq = (await nextSeq(db, year)) + attempt;
     const folio = formatFolio(year, seq);
-    const id = crypto.randomUUID();
+    const id = newId();
     // Dos UUID concatenados: la URL del documento es la única credencial que lo abre, así que
     // se le da margen de sobra contra la fuerza bruta. No es un dato que el cliente teclee.
-    const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, "");
+    const token = `${newId()}${newId()}`.replace(/-/g, "");
     const issuedAt = nowIso();
     const snapshot = input.snapshotFor(folio, issuedAt);
 
@@ -169,7 +170,7 @@ export async function createQuote(db: Db, input: CreateQuoteInput): Promise<Crea
         updatedAt: issuedAt,
       });
       await db.insert(quoteEvents).values({
-        id: crypto.randomUUID(),
+        id: newId(),
         quoteId: id,
         status: INITIAL_QUOTE_STATUS,
         note: "Cotización generada desde el cotizador público.",
@@ -295,7 +296,7 @@ export async function setQuoteStatus(
   const [existing] = await db.select({ id: quotes.id, total: quotes.total }).from(quotes).where(eq(quotes.id, quoteId)).limit(1);
   if (!existing) return null;
   await db.update(quotes).set({ status, updatedAt: now }).where(eq(quotes.id, quoteId));
-  await db.insert(quoteEvents).values({ id: crypto.randomUUID(), quoteId, status, note, createdAt: now });
+  await db.insert(quoteEvents).values({ id: newId(), quoteId, status, note, createdAt: now });
   return { total: existing.total };
 }
 

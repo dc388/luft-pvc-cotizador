@@ -12,6 +12,7 @@ import type {
 } from "@/types/domain";
 import { wingDefs } from "@/data/wings";
 import { leafSizingFor } from "@/data/glazing";
+import { newId } from "@/lib/uuid";
 
 const OPENING_BY_WING: Record<WingType, string> = {
   fixed: "Sin apertura",
@@ -101,7 +102,7 @@ export function defaultMarco(): Marco {
 export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>): LeafNode {
   return {
     kind: "leaf",
-    id: crypto.randomUUID(),
+    id: newId(),
     wing,
     spec: {
       glass: "Heredar vidrio general",
@@ -118,7 +119,7 @@ export function createLeaf(wing: WingType = "fixed", spec?: Partial<PaneSpec>): 
 
 // Default starting shape for a new item: a 2-panel sliding window, the most
 // common opening — the same idea as the app's old "slide2" preset default.
-// Fixed ids (not crypto.randomUUID()): this tree is built inside a useState
+// Fixed ids (not newId()): this tree is built inside a useState
 // initializer that runs once during SSR and again during client hydration —
 // random ids would differ between the two passes and React would flag a
 // hydration mismatch on every load.
@@ -205,8 +206,8 @@ export function splitLeaf(tree: FrameNode, id: string, axis: "row" | "col", frac
     axis,
     ratios: [f, 1 - f],
     children: [
-      { ...leaf, id: crypto.randomUUID() },
-      { ...leaf, id: crypto.randomUUID() },
+      { ...leaf, id: newId() },
+      { ...leaf, id: newId() },
     ],
   }));
 }

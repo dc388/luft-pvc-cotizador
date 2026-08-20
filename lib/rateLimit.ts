@@ -1,6 +1,7 @@
 import { and, eq, gte, lt } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { rateLimitHits } from "@/db/schema";
+import { newId } from "@/lib/uuid";
 
 // Anti-abuso de las rutas públicas (app/api/public-quote). A diferencia de las rutas internas,
 // éstas quedan expuestas a internet abierto sin autenticación, así que necesitan un límite por
@@ -73,7 +74,7 @@ export async function enforceRateLimit(db: Db, scope: string, ip: string, rules:
       }
     }
 
-    await db.insert(rateLimitHits).values({ id: crypto.randomUUID(), bucket, createdAt: now });
+    await db.insert(rateLimitHits).values({ id: newId(), bucket, createdAt: now });
     // Barrido global de lo ya expirado: sin esto la tabla solo crecería, porque un bucket que
     // nunca vuelve no tiene quién limpie sus filas.
     await db.delete(rateLimitHits).where(lt(rateLimitHits.createdAt, now - maxWindowMs));

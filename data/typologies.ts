@@ -1,5 +1,6 @@
 import type { FrameNode } from "@/types/domain";
 import { createLeaf } from "@/lib/tree";
+import { newId } from "@/lib/uuid";
 
 export type TypologyDef = {
   id: string;
@@ -11,11 +12,11 @@ export type TypologyDef = {
 
 function splitCol(children: FrameNode[], ratios?: number[]): FrameNode {
   const n = children.length;
-  return { kind: "split", id: crypto.randomUUID(), axis: "col", ratios: ratios ?? Array(n).fill(1 / n), children };
+  return { kind: "split", id: newId(), axis: "col", ratios: ratios ?? Array(n).fill(1 / n), children };
 }
 function splitRow(children: FrameNode[], ratios?: number[]): FrameNode {
   const n = children.length;
-  return { kind: "split", id: crypto.randomUUID(), axis: "row", ratios: ratios ?? Array(n).fill(1 / n), children };
+  return { kind: "split", id: newId(), axis: "row", ratios: ratios ?? Array(n).fill(1 / n), children };
 }
 
 // Biblioteca original de tipologías Luft PVC: seleccionar una construye el árbol real

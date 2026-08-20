@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import type { AssistantBrief } from "@/lib/assistantBrief";
 import { buildPublicAssistantReply, publicAssistantRequestContext, type PublicAssistantAction, type PublicAssistantContext } from "./publicAssistant";
 import styles from "./QuoteAssistant.module.css";
+import { newId } from "@/lib/uuid";
 
 type Message = { id: string; role: "assistant" | "user"; text: string };
 
@@ -15,7 +16,7 @@ const GREETING = "Hola, soy LUFT Asesor. Puedo ayudarte a elegir, configurar y c
 const QUICK_REPLIES = ["Ayúdame a elegir", "Explícame las aperturas", "Revisa mis medidas", "Revisa mi configuración", "¿Cómo recibo mi cotización?"];
 
 function message(role: Message["role"], text: string): Message {
-  return { id: crypto.randomUUID(), role, text };
+  return { id: newId(), role, text };
 }
 
 export function QuoteAssistant({
