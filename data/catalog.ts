@@ -110,10 +110,31 @@ export const catalog: Record<Brand, System[]> = {
     // Consecuencia: NO se puede especificar donde se exija clasificacion NMX-R-060 ni prestacion
     // termica o acustica declarada. `uf` lo dice en lugar de mostrar un valor que no existe.
     //
-    // CONFLICTO DE MEDIDAS MAXIMAS, pendiente de confirmar con Aluplast: el plano de liberacion
-    // 020072-01 rev 03 dice "max. sizes 1200 x 1200 mm", y el manual de usuario ed. 2025-10 dice
-    // 1500 mm. Se conserva 1500 por ser el documento mas reciente y de cara al fabricante --y porque
-    // en la puerta los dos documentos SI coinciden en 2000-- pero conviene verificarlo.
+    // MEDIDAS MAXIMAS: 1500 x 1500, POR DECISION DE dc el 2026-08-20 -- "ajusta las cosas al manual".
+    // El plano de liberacion 020072-01 rev 03 decia "max. sizes 1200 x 1200 mm" y el manual de
+    // usuario ed. 2025-10 dice 1500. Manda el manual. Refuerza la decision que en la puerta los dos
+    // documentos SI coinciden (2000 y 2000), lo que sugiere que el 1200 del plano quedo superado por
+    // una revision posterior.
+    //
+    // POR QUE ESTE SISTEMA TIENE ESPECIFICACIONES DISTINTAS A TODOS LOS DEMAS
+    //
+    // Es una configuracion especial de linea economica, orientada a vivienda de interes social: mas
+    // barata, sin prestaciones certificadas, y de volumen bajo comparado con el resto del catalogo.
+    // De ahi que su galce acepte 6 mm donde otros aceptan 24 o 52, que no declare valor U, y que su
+    // medida de hoja se exprese con un descuento directo en lugar del modelo de asiento y traslape.
+    // No es una anomalia a corregir: es lo que el sistema es.
+    //
+    // Se comprobo que no entra en conflicto con el resto de la aplicacion (2026-08-20):
+    //   - Su dimensionado propio esta aislado en leafSizingFor; los otros 20 sistemas dan salida
+    //     identica (741 claves doradas sin cambios) y una prueba impide que alguno gane dimensionado
+    //     propio por accidente.
+    //   - frameSeatMm y centerOverlapMm en 0 son seguros: el unico lector es lib/tree.ts, y solo
+    //     cuando el sistema NO trae dimensionado propio.
+    //   - allowedWingsFor lo restringe a aperturas de corredera por su categoria y sus rieles.
+    //   - El editor avisa solo cuando la medida supera 1500 o el vidrio supera el galce de 6 mm, y
+    //     muestra "Valor Uf: sin requisito de valor U" en Prestaciones del sistema. Verificado en
+    //     pantalla.
+    //   - No esta expuesto en el cotizador publico (lista blanca en lib/publicCatalog.ts).
     { name: "IDEAL IS · Corredera mx", category: "Corredera", depth: 58, chambers: "linea economica, sin camaras publicadas", glazing: 6, maxW: 1500, maxH: 1500, rails: [2], frame: 37, sash: 26, hardware: 39, uf: "sin requisito de valor U (liberado sin certificacion)", sourced: true, frameSeatMm: 0, centerOverlapMm: 0 },
   ],
   Deceuninck: [

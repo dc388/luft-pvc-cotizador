@@ -146,17 +146,42 @@ El campo `uf` del sistema dice ahora «sin requisito de valor U (liberado sin ce
 de exhibir un número. Una prueba impide que alguien le ponga un valor `W/m²K` que el fabricante no
 declara.
 
-### Conflicto de medidas máximas, sin resolver
+### Medidas máximas: resuelto, manda el manual
 
 ```
 020072-01 rev 03   "max. sizes 1200 x 1200 mm"
-manual ed. 2025-10  max. 1500 mm
+manual ed. 2025-10  max. 1500 mm      <- este
 ```
 
-Se conserva **1500**: es el documento más reciente y de cara al fabricante, y en la puerta los dos
-documentos **sí** coinciden (2000 y 2000), lo que sugiere que el 1200 del plano quedó superado por
-una revisión posterior. Pero conviene confirmarlo con Aluplast antes de cotizar una ventana IS de
-más de 1200 mm.
+**Decisión de dc el 2026-08-20: «ajusta las cosas al manual».** Queda en 1500. Refuerza la decisión
+que en la puerta los dos documentos **sí** coinciden (2000 y 2000), lo que sugiere que el 1200 del
+plano quedó superado por una revisión posterior.
+
+### Por qué este sistema tiene especificaciones distintas a todos los demás
+
+Es una **configuración especial de línea económica, para vivienda de interés social**: más barata,
+sin prestaciones certificadas, y de volumen bajo comparado con el resto del catálogo. De ahí que su
+galce acepte 6 mm donde otros aceptan 24 o 52, que no declare valor U, y que su medida de hoja se
+exprese con un descuento directo en lugar del modelo de asiento y traslape.
+
+**No es una anomalía a corregir: es lo que el sistema es.**
+
+### Verificación de que no entra en conflicto con la aplicación
+
+dc pidió no agregarlo si creaba un conflicto grave. Se comprobó, y no lo crea:
+
+| Riesgo | Resultado |
+|---|---|
+| Su dimensionado propio contamina a otros sistemas | **No.** Aislado en `leafSizingFor`; los otros 20 dan salida idéntica (741 claves doradas sin cambios) y una prueba impide que alguno gane dimensionado propio por accidente |
+| `frameSeatMm`/`centerOverlapMm` en 0 rompen algo | **No.** El único lector es `lib/tree.ts`, y solo cuando el sistema no trae dimensionado propio |
+| Se pueden diseñar aperturas imposibles | **No.** `allowedWingsFor` lo restringe a corredera por su categoría y sus rieles |
+| Se puede cotizar vidrio que no cabe | **No.** El editor avisa: «supera el galce de referencia (6 mm)». Verificado en pantalla |
+| Se puede exceder su medida máxima sin darse cuenta | **No.** Avisa: «supera el límite de referencia 1500 × 1500 mm» |
+| Un arquitecto le atribuye prestaciones que no tiene | **Cubierto.** Prestaciones del sistema muestra «Valor Uf: sin requisito de valor U (liberado sin certificación)» |
+| Se filtra al cotizador público | **No.** Lista blanca en `lib/publicCatalog.ts`, con prueba dedicada |
+
+**Conclusión: se queda.** Se integra en la red de seguridad que la aplicación ya tenía, sin
+necesidad de mecanismos nuevos.
 
 ---
 
