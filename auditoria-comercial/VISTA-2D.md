@@ -143,3 +143,90 @@ cambia de rama de `@media` y con ella el reparto del grid.
 153 → **164 pruebas unitarias** (las 11 nuevas son `fitBox` y `cotaChain`, ambas enganchadas a
 `test:unit`), **19 de build**, **9 de costeo**. Todas en verde. `eslint` limpio en los archivos
 tocados.
+
+
+---
+
+# Estructura de la ventana · los seis componentes
+
+Fecha: 2026-08-20.
+
+## El diagnóstico
+
+Marco, hoja y junquillo se pintaban los tres con `var(--frame)` y un filtro de brillo. En el 3D,
+`frameMat`, `sashMat` y `beadMat` comparten `frameHex`. Tres piezas del mismo color con un 18 % de
+diferencia de brillo no son tres piezas: son una masa. Y **el junquillo no se dibujaba en 2D**:
+existía en el 3D y en la lista de corte, pero no en la vista donde se lee la estructura.
+
+Físicamente es cierto — una ventana blanca es toda blanca — pero esto es una herramienta de diseño
+técnico. Cada capa recibe ahora un tono **derivado** del color del folio, con su filo visible, así
+que un bronce sigue siendo bronce y las dos vistas cuentan lo mismo.
+
+Medido a 1366×768, las cuatro capas de una hoja de 122 px: **122 → 98 → 86 → 78**. Cada franja se
+distingue de la siguiente por más de 2 px en los dos ejes, a 1366×768 y a 1280×720.
+
+## Qué es medida y qué es convención de dibujo
+
+Esta es la distinción que importa, y está atada con pruebas:
+
+| | Origen | Prueba |
+|---|---|---|
+| **Vidrio** | `glassSizeMm`, la misma función con la que se compra | idéntico para todos los sistemas del catálogo |
+| **Perfil** | complemento exacto del vidrio | `vidrio + perfil×2 = hoja` |
+| **Junquillo** | **proporción de dibujo declarada**, no medida | no aparece en `lib/calc.ts` |
+
+El junquillo no se puede medir con lo que hay: repartir esa franja necesita el ancho de cara del
+perfil, y **`System.frame` y `System.sash` son precios por metro, no anchos**. El único ancho de cara
+en la documentación de Aluplast es el 47,3 mm del Ideal IS, no atribuible al resto. Antes que
+inventar un número de fabricación se dibuja como fracción del perfil, la leyenda lo dice y una
+prueba comprueba que esa proporción no se cuela en el cálculo.
+
+**Sobre la escala, sin exagerar**: los anchos se calculan a escala real, pero a tamaño de pantalla
+caen casi siempre en su mínimo de legibilidad — un perfil de 15 mm en una ventana de 1800 dibujada a
+242 px mide 2 px. El dibujo sirve para ver la estructura y seleccionar piezas; las medidas se leen
+escritas: la cadena de cotas y, nuevo, **la medida del vidrio en la etiqueta de cada hoja**, marcada
+en ámbar cuando el sistema no tiene descuento calibrado.
+
+## Legibilidad
+
+De 344 declaraciones de tamaño de letra, **192 estaban por debajo de 11 px y 117 por debajo de 10**:
+catorce a 7 px, treinta y siete a 8, cuarenta a 9. 7 px no se lee, se adivina. Todo el extremo
+pequeño sube 3 px conservando el orden, así que la jerarquía visual no cambia. Las anotaciones dentro
+del dibujo se quedan aparte y más pequeñas, porque ahí el sitio lo fija el tamaño de la hoja.
+
+Defecto que apareció al subir la letra, medido a 1280×720 y corregido: la hoja seleccionada estaba
+exenta de retirar detalle y en una hoja de 71 px mostraba cinco etiquetas, **las cinco truncadas**.
+Cinco ilegibles informan menos que una legible.
+
+## Despliegue del 2026-08-20
+
+Migraciones 0005, 0006 y 0007 aplicadas a la base de producción. Comprobado antes: las tres son
+aditivas (ADD COLUMN con valor por omisión, CREATE TABLE, CREATE INDEX), ninguna borra datos. La
+0005 crea un índice único de folio, que habría abortado con folios repetidos: se verificó en lectura
+que producción tenía 10 proyectos, 3 con folio y **3 folios distintos**. Después de aplicar, los 10
+proyectos siguen ahí.
+
+Worker desplegado. Verificado: `/` → 401 (candado interno puesto), `/cotizar` → 200 sin importes,
+`/api/projects` → «No autorizado.», y la hoja de estilos publicada trae `beadFrame`, `elevationKey`,
+`paneTags`, `cotaSeg` y `cotaChain`.
+
+**Va con la subida de precios de la calibración de Aluplast** (+3.68 % a +7.27 % en CORREDERA 96MM,
+mediana +4.84 %). Decisión de dc, advertida dos veces antes de publicar.
+
+## Defecto abierto: un asset viejo tapa la ruta de versión
+
+`/api/version` **sin** barra final devuelve un identificador de un build anterior; **con** barra
+devuelve el correcto. `worker/index.ts:45` atiende las dos formas, y el artefacto construido
+contiene solo el sha nuevo, así que la petición sin barra no está llegando al worker: la capa de
+assets la resuelve antes, con un archivo que quedó en el bucket de un despliegue viejo
+(`wrangler deploy` informa «19 already uploaded»).
+
+Mientras no se limpie, **la forma con barra es la autoritativa**:
+
+```
+curl -s https://luft-pvc-cotizador.luft-pvc.workers.dev/api/version/
+```
+
+No es cosmético: es exactamente el mecanismo que hizo perder una sesión entera revisando tres veces
+un código ya corregido mientras el navegador miraba un build viejo. Merece purgar el bucket de
+assets en el próximo despliegue y comprobar las dos formas.
