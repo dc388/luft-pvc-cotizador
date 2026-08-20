@@ -2700,10 +2700,14 @@ export function Workspace({ company, agentActor, agentSignedIn }: { company: Com
               solapes medidos de 227x28 px entre la ficha del sistema y la leyenda, y de 66x14
               entre la pista y los controles de zoom. En una fila compartida el solape es
               imposible por construccion, no por haber elegido bien los desplazamientos. */}
-          <div className="canvasFooter">
-            {view === "2D" && <ElevationKey focusPart={focusPart} hasRail={hasSliding} frameHex={color.hex ?? "#dfe2dc"} />}
-            {toolHint && <div className="editHint">{toolHint}</div>}
-          </div>
+          {/* Solo existe si tiene algo que decir. Sin esta condicion, en 3D y en Seccion quedaba una
+              franja vacia de 40 px con su borde, quitandole alto al dibujo para no mostrar nada. */}
+          {(view === "2D" || toolHint) && (
+            <div className="canvasFooter">
+              {view === "2D" && <ElevationKey focusPart={focusPart} hasRail={hasSliding} frameHex={color.hex ?? "#dfe2dc"} />}
+              {toolHint && <div className="editHint">{toolHint}</div>}
+            </div>
+          )}
           <div className="metricRow">
             <div><span>SUPERFICIE</span><strong>{calc.area.toFixed(3)} m²</strong></div>
             <div><span>VIDRIO ÚTIL</span><strong>{calc.glassArea.toFixed(3)} m²</strong></div>

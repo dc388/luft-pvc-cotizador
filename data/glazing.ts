@@ -190,13 +190,23 @@ export const WELD_ALLOWANCE_MM = 3;
  * Cuánto mide menos el junquillo que la pieza de hoja o marco en la que se aloja, sumando los dos
  * lados del eje. El junquillo no se corta a la medida exterior de la hoja: se aloja dentro del galce.
  *
- * Dato del fabricante, para referencia de calibración: en la hoja de material del sistema Ideal IS,
- * el junquillo sale a `hoja - (47.3 - 2.8) * 2 = hoja - 89 mm`, y a 45°. Ese 47.3 es el ancho de
- * cara del perfil y el 2.8 el solape del galce, que es exactamente la estructura de esta constante.
+ * Dato del fabricante, para referencia: en la hoja de material del sistema Ideal IS el junquillo
+ * sale a `hoja - (47.3 - 2.8) * 2 = hoja - 89 mm`, y a 45°. El 47.3 es el ancho de cara del perfil
+ * y el 2.8 el solape del galce, que es exactamente la estructura de esta constante.
  *
- * El sistema Ideal IS todavía NO está en data/catalog.ts, así que ese 89 no se puede atribuir a
- * ningún sistema del catálogo actual. Sin calibrar queda en 0 --el comportamiento anterior, que
- * corta el junquillo a la medida de la hoja-- y el reporte de corte lo advierte.
+ * ESE 89 ES DE LA PUERTA IS, NO DE LA VENTANA. Se le atribuyó por error a
+ * "IDEAL IS · Corredera mx" el 2026-08-20, y la lista de precios lo desmiente: el 93,5 del marco y
+ * el 27,8 de la hoja que acompañan al 47,3 en ese plano son los códigos 020074 y 020075, ambos
+ * "p/puerta IS". La VENTANA es el 020070, marco de 58 mm, con hoja 020071 de 19 mm.
+ *
+ * Y la geometría lo remata: con hoja de 800 mm, el vidrio del IS entra a 9,7 mm por lado
+ * (descuento 19,4) mientras que un junquillo a 89 quedaría a 44,5 mm por lado, o sea 34,8 mm POR
+ * DENTRO del vidrio que tiene que sujetar -- y en una cara de hoja de 19 mm no cabe. Un junquillo
+ * no puede estar más adentro que su propio vidrio; eso es lo que comprueba ahora
+ * tests/glazing.test.ts, que es la prueba que faltaba para que esto no hubiera pasado.
+ *
+ * Sin calibrar el descuento queda en 0 --el junquillo se corta a la medida de la hoja-- y el
+ * reporte de corte lo advierte. Es peor equivocarse con confianza que avisar de que falta el dato.
  */
 export type BeadSpec = { deductionMm: number; calibrated: boolean; source: string };
 
@@ -206,18 +216,22 @@ const BEAD_UNCALIBRATED: BeadSpec = {
   source: "Sin calibrar: el junquillo sale a la medida de la hoja. Referencia Aluplast (sistema IS): hoja - 89 mm.",
 };
 
-const BEAD_CALIBRATED: Record<string, BeadSpec> = {
-  // 47,3 es el ancho de cara del junquillo 020073, confirmado en el plano del sistema
-  // (HB_Schiebetür_sliding_door_mx, pág. 2, junto a 93,5 del marco y 27,8 de la hoja). El 2,8 es el
-  // solape del galce. La hoja de material de Aluplast lo aplica como (47,3 − 2,8) × 2.
-  "IDEAL IS · Corredera mx": {
-    deductionMm: 89,
-    calibrated: true,
-    source:
-      "Aluplast, hoja «CALCULO DE MATERIAL SISTEMA IS v2.1»: junquillo = hoja − (47,3 − 2,8) × 2, " +
-      "a 45°. El 47,3 es el ancho de cara del perfil 020073, confirmado en el plano del sistema.",
-  },
-};
+/**
+ * Descuentos de junquillo por sistema. Hoy está VACÍO a propósito.
+ *
+ * Aquí había una entrada para "IDEAL IS · Corredera mx" con 89 mm, y era un error: ese 89 sale del
+ * plano de la PUERTA IS (marco 93,5 / hoja 27,8 / cara de junquillo 47,3, códigos 020074 y 020075
+ * "p/puerta IS" en la lista de precios), no de la ventana (020070, marco de 58 mm, hoja 020071 de
+ * 19 mm). Aplicado a la ventana, cortaba el junquillo 89 mm corto y dejaba la pieza 34,8 mm por
+ * dentro del vidrio que sujeta.
+ *
+ * Cuando se cargue la Puerta IS --hacen falta su ancho y alto máximos, su galce y sus rieles, que
+ * están en un plano sin texto extraíble-- este 89 es SU dato, y entra con el nombre de ese sistema.
+ */
+const BEAD_CALIBRATED: Record<string, BeadSpec> = {};
+
+/** El descuento documentado de la Puerta IS, a la espera de que ese sistema exista en el catálogo. */
+export const PUERTA_IS_BEAD_DEDUCTION_MM = 89;
 
 export function beadFor(systemName: string): BeadSpec {
   return BEAD_CALIBRATED[systemName] ?? BEAD_UNCALIBRATED;

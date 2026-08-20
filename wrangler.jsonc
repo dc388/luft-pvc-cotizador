@@ -7,6 +7,15 @@
   "compatibility_date": "2026-01-01",
   "compatibility_flags": ["nodejs_compat"],
   "main": "./worker/index.ts",
+  // La capa de assets responde ANTES que el worker, y por eso /api/version devolvia el
+  // identificador de un build anterior mientras /api/version/ devolvia el correcto: la peticion sin
+  // barra no llegaba al worker. Eso hizo perder una sesion entera -- se reviso tres veces un codigo
+  // ya corregido porque produccion no sabia decir que version servia. Las rutas de API no son
+  // archivos: siempre las atiende el worker.
+  "assets": {
+    "directory": "./dist/client",
+    "run_worker_first": ["/api/*"]
+  },
   "ai": {
     "binding": "AI"
   },

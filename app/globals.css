@@ -488,8 +488,6 @@ button.dimLabel:hover{color:var(--accent-text);outline:1px dashed color-mix(in s
 input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;letter-spacing:inherit;width:6.5em;text-align:center;border-radius:4px}
 .dim.side input.dimLabel{transform:rotate(-90deg)}
 .editHint{position:static;flex:0 1 auto;min-width:0;background:var(--surface);color:var(--accent-text);border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));padding:5px 11px;border-radius:20px;font-size:11px;letter-spacing:.04em;text-align:center;box-shadow:0 4px 14px var(--shadow)}
-.specChip{position:static;flex:0 1 auto;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 11px;display:flex;flex-direction:column;font-size:11.5px;gap:1px;box-shadow:0 4px 12px var(--shadow)}
-.specChip span{color:var(--muted)}
 .metricRow{min-height:74px;display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line)}
 .metricRow div{padding:16px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
 .metricRow strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
@@ -989,7 +987,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
   .internalApp .viewSwitch{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16)}
   .internalApp .presetRow button{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18)}
   .internalApp .fullButton{border-color:color-mix(in srgb,var(--accent-text) 46%,transparent);background:rgba(255,255,255,.05)}
-  .internalApp .viewportControls,.internalApp .scene3dHint,.internalApp .editHint,.internalApp .specChip,.internalApp .toolbox{
+  .internalApp .viewportControls,.internalApp .scene3dHint,.internalApp .editHint,.internalApp .toolbox{
     border-color:rgba(255,255,255,.18);
     background:linear-gradient(145deg,rgba(58,53,88,.9),rgba(36,33,58,.86))
   }

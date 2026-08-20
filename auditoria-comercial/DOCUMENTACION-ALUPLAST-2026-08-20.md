@@ -139,3 +139,57 @@ La imagen compartida anuncia **aludec**, el acabado con aspecto de aluminio y ta
 dato cargable: no trae códigos, referencias ni precios. Si va a venderse, hace falta su ficha con
 código de folio o de perfil y su factor de precio, y entonces entra en `data/colors.ts` como una
 entrada más.
+
+
+---
+
+# Correcciones del 2026-08-20 (segunda pasada)
+
+Al revisar la documentación aparecieron errores propios. Van corregidos.
+
+## El junquillo del IS estaba mal atribuido · afectaba la lista de corte
+
+`beadFor("IDEAL IS · Corredera mx")` devolvía un descuento de **89 mm**, citando «el plano del
+sistema, junto a 93,5 del marco y 27,8 de la hoja». La lista de precios lo desmiente:
+
+| Código | Descripción | Sistema |
+|---|---|---|
+| 020070 | Marco de **58 mm** 2 rieles IS | **VENTANA** |
+| 020071 | Hoja corrediza c/felpillo de **19 mm** | **VENTANA** |
+| 020074 | Marco **93.5 mm** mono riel IS | **PUERTA** |
+| 020075 | Hoja **27.8 mm** p/puerta IS | **PUERTA** |
+
+El 93,5 y el 27,8 son de la **puerta**. El 47,3 de cara de junquillo con el que se calculó el 89
+sale de ese mismo plano, así que el 89 es de la puerta, no de la ventana.
+
+Y la geometría lo remata, con hoja de 800 mm:
+
+```
+vidrio     descuento 19.4 mm  ->   9.7 mm por lado
+junquillo  descuento 89   mm  ->  44.5 mm por lado
+=> el junquillo quedaría 34.8 mm POR DENTRO del vidrio que sujeta
+=> y no cabe: la cara de la hoja de la ventana mide 19 mm
+```
+
+**Consecuencia real:** la lista de corte de la ventana IS cortaba el junquillo 89 mm corto. Ahora el
+sistema queda **sin calibrar** (descuento 0, el junquillo sale a la medida de la hoja) y el reporte
+de corte lo advierte. Es mejor avisar de que falta el dato que equivocarse con confianza. El 89 se
+conserva como `PUERTA_IS_BEAD_DEDUCTION_MM`, para cuando ese sistema exista en el catálogo.
+
+**La prueba que faltaba** ya está: ningún sistema puede tener un descuento de junquillo mayor que el
+de su vidrio. Es una regla geométrica, no depende de ningún documento, y habría cazado esto el primer
+día. Y la prueba que *afirmaba* el error —exigía junquillo de 759 mm— también estaba mal, así que se
+corrigió: una prueba que fija un dato imposible de fabricar no protege nada.
+
+## Tres defectos menores, del mismo día
+
+- **Pie del lienzo vacío en 3D y en Sección.** El `<div>` se dibujaba siempre; con la leyenda y la
+  pista ausentes quedaba una franja de 40 px con su borde, quitándole alto al dibujo para no mostrar
+  nada. Ahora solo existe si tiene contenido.
+- **`.specChip` muerto en el CSS.** Su contenido subió a la cabecera como `.visualSystem`; quedaban
+  tres reglas sin elemento.
+- **`/api/version` tapado por la capa de assets.** Es la causa de que la forma sin barra final
+  devolviera un identificador viejo: los assets responden antes que el worker. Corregido en
+  `wrangler.jsonc` con `assets.run_worker_first: ["/api/*"]` — una ruta de API no es un archivo.
+  Se había dado por resuelto por sí solo en la nota anterior; **eso fue precipitado, reaparecía en
+  cada despliegue**, y esta es la corrección de raíz.
