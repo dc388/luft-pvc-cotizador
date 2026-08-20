@@ -364,12 +364,37 @@ test("en el IS los vidrios gruesos y los DVH quedan fuera del galce", () => {
   assert.equal(cabe("Cristal recocido claro 9.5 mm"), false);
 });
 
-test("el IS no declara prestaciones certificadas", () => {
-  // El plano 020072-01 dice literalmente «no requirement for compatibility, U-value, water
-  // resistance, wind load, burglary resistance and certification». Es una línea económica para
-  // competir con aluminio sin RPT, y NO se puede especificar donde se exija clasificación NMX-R-060
-  // ni prestación térmica declarada. El campo `uf` tiene que decirlo, no mostrar un valor inventado.
-  const sys = catalog.Aluplast.find((s) => s.name === IS)!;
-  assert.doesNotMatch(sys.uf, /W\/m/, "no puede exhibir un valor U que el fabricante no declara");
-  assert.match(sys.uf, /sin requisito|sin certifica/i, "tiene que decir que no hay valor U");
+test("los dos sistemas IS dicen su valor U Y que no esta certificado", () => {
+  // Esta prueba exigia lo contrario: que el campo `uf` NO mostrara ningun valor. Estaba mal, y
+  // subestimaba el producto. El folleto comercial (ed. 10/2024, dentro de los comprimidos que no
+  // se habian abierto) SI publica Uf 1,6 y Uw 4,52 para la ventana y 4,10 para la puerta.
+  //
+  // Los dos documentos no se contradicen: el plano de liberacion 020072-01 dice «no requirement for
+  // [...] U-value [...] and certification», o sea que se libero sin requisito de CERTIFICACION,
+  // mientras el folleto publica valores CALCULADOS. Ocultar el valor engana a quien busca el dato
+  // termico; exhibirlo a secas engana a quien necesita una clasificacion certificada. Hay que decir
+  // las dos cosas, y eso es lo que se comprueba aqui.
+  for (const nombre of [IS, "IDEAL IS · Puerta corredera mx"]) {
+    const sys = catalog.Aluplast.find((s) => s.name === nombre);
+    assert.ok(sys, `falta el sistema ${nombre}`);
+    assert.match(sys!.uf, /Uf 1,6/, `${nombre}: tiene que decir el valor que publica el fabricante`);
+    assert.match(sys!.uf, /W\/m/, `${nombre}: con su unidad`);
+    assert.match(sys!.uf, /sin certifica/i, `${nombre}: y que se libero sin certificacion`);
+  }
+});
+
+test("la Puerta IS entra con los cuatro datos que le faltaban, y ninguno inventado", () => {
+  // Se habia declarado "no cargable por falta de datos" sin abrir "Puerta IS.zip", que es
+  // justamente donde estaban. Cada numero tiene su documento.
+  const puerta = catalog.Aluplast.find((s) => s.name === "IDEAL IS · Puerta corredera mx")!;
+  assert.equal(puerta.maxW, 2000, "plano HB_Schiebetur_sliding_door_mx, pag. 2");
+  assert.equal(puerta.maxH, 2000, "plano HB_Schiebetur_sliding_door_mx, pag. 2");
+  assert.equal(puerta.glazing, 6, "folleto ed. 10/2024: espesor de acristalado hasta 6 mm");
+  assert.deepEqual(puerta.rails, [1], "la lista de precios dice MONO RIEL (020074)");
+  assert.equal(puerta.depth, 93.5, "folleto y plano: 93,5 mm de profundidad de perfil");
+  // Es corredera, no abatible: la categoria decide que hojas se pueden poner.
+  assert.equal(puerta.category, "Corredera");
+  // Y NO tiene descuentos propios inventados: su vidrio y su hoja van por el modelo generico.
+  assert.equal(leafSizingFor(puerta.name), null, "la puerta no tiene dimensionado propio todavia");
+  assert.equal(beadFor(puerta.name).calibrated, false, "ni junquillo calibrado");
 });
