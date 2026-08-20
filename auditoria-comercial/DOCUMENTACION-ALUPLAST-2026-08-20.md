@@ -198,3 +198,66 @@ corrigió: una prueba que fija un dato imposible de fabricar no protege nada.
   commit desplegado**. Sobre este defecto me adelanté dos veces, una dándolo por resuelto solo y otra
   dándolo por no resuelto; la lección es que este endpoint hay que medirlo con varias llamadas y
   dejando pasar la propagación, no con una sola justo tras el deploy.
+
+
+---
+
+# Tercera pasada · lo que estaba dentro de los comprimidos
+
+**dc tenía razón:** declaré «no cargable por falta de datos» dejando cuatro ZIP sin abrir, uno de
+ellos llamado `Puerta IS.zip`. Los cuatro datos que dije que faltaban estaban ahí dentro.
+
+## La Puerta IS, cargada
+
+| Dato | Valor | Documento |
+|---|---|---|
+| Medidas máximas | **2000 × 2000 mm** | `HB_Schiebetür_sliding_door_mx-Modell.pdf`, pág. 2 |
+| Galce | **hasta 6 mm** | `1Flyer IDEAL IS CORREDERAPUERTA.pdf`, ed. 10/2024 |
+| Profundidad de perfil | **93,5 mm** | el mismo folleto, y el plano |
+| Rieles | **1 (mono riel)** | lista de precios, código 020074 |
+| Térmico | **Uf 1,6 · Uw 4,10 W/m²K** | el mismo folleto |
+| Precios | marco 61, hoja 35, herraje 80 MXN | lista de precios × 21.8 |
+
+Entra como **Corredera**, no como «Puerta»: la categoría «Puerta» reparte hojas abatibles y ésta es
+corrediza. Verificado en pantalla: ofrece Fijo, Corrediza, Corredera elevadora, Plegable corrediza,
+Corredera fija e Inactiva.
+
+**Sin descuentos propios inventados.** No tiene entrada en `glazingFor` ni en `leafSizingFor`, así que
+su vidrio y su hoja van por el modelo genérico y el pedido de vidrio lo advierte. El plano trae sus
+fórmulas de reparto en la página 6 —`(B/2)−73,6`, `(B/2)+27`, `(B/2)−93`, `(B/2)−74,3`, `(B/2)−93,7`—
+pero decidir qué letra es la hoja corredera y cuál el panel fijo con el texto desordenado del CAD es
+adivinar, y de eso salió un error esta misma semana.
+
+## Corrección: el IS SÍ tiene valor U publicado
+
+El campo `uf` de la ventana decía **«sin requisito de valor U»**. El folleto comercial (ed. 10/2024,
+dentro de `Ventana IS.zip`) publica **Uf 1,6 · Uw 4,52 W/m²K**, junto con 58 mm de profundidad, galce
+hasta 6 mm y medidas máximas 1500 × 1500 — que confirman lo que ya estaba cargado.
+
+**Los dos documentos no se contradicen**, y por eso el campo dice ahora las dos cosas: el plano de
+liberación 020072-01 declara «no requirement for […] U-value […] and certification» —o sea que se
+liberó **sin requisito de certificación**— mientras el folleto publica valores **calculados**.
+Ocultar el valor engaña a quien busca el dato térmico; exhibirlo a secas engaña a quien necesita una
+clasificación certificada.
+
+La prueba que exigía que el campo **no** mostrara ningún valor también estaba mal. Ahora exige las
+dos afirmaciones a la vez, para los dos sistemas IS.
+
+El folleto añade dos datos más, ya cargados en `chambers`: **«no requiere refuerzo»** y **«pegado de
+vidrio a la hoja»**. El «ni riel» del folleto no contradice el `rails: [2]` de la ventana: su marco
+020070 trae los dos carriles moldeados y no necesita riel de aluminio aparte, al contrario que la
+puerta, que sí lleva el 227174.
+
+## Lo que sigue pendiente, ahora sí con los archivos abiertos
+
+- **Descuento de vidrio y dimensionado de hoja de la Puerta IS**: las fórmulas están en la página 6
+  del plano, en texto CAD desordenado.
+- **Tabla de junquillo por sistema**: sigue en las láminas A0 con texto rotado.
+- Sin abrir por irrelevantes para datos: las 20 fotos de herrajes y detalles de `Ventana IS.zip`, los
+  DXF de geometría de perfil, y `COMPARACION_ALUPLAST_IS_VS_ALUMINIO_SIN_RPT.pdf` (material
+  comercial).
+
+## Lección
+
+Declarar que un dato no existe es una afirmación fuerte, y la hice con cuatro comprimidos sin abrir.
+Antes de decir «falta el dato» hay que haber abierto todo lo que se recibió.

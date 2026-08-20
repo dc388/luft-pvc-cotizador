@@ -135,7 +135,46 @@ export const catalog: Record<Brand, System[]> = {
     //     muestra "Valor Uf: sin requisito de valor U" en Prestaciones del sistema. Verificado en
     //     pantalla.
     //   - No esta expuesto en el cotizador publico (lista blanca en lib/publicCatalog.ts).
-    { name: "IDEAL IS · Corredera mx", category: "Corredera", depth: 58, chambers: "linea economica, sin camaras publicadas", glazing: 6, maxW: 1500, maxH: 1500, rails: [2], frame: 37, sash: 26, hardware: 39, uf: "sin requisito de valor U (liberado sin certificacion)", sourced: true, frameSeatMm: 0, centerOverlapMm: 0 },
+    // CORRECCION 2026-08-20 (segunda revision). El campo `uf` decia "sin requisito de valor U", y
+    // eso subestimaba el producto: el folleto comercial "1.3 Flyer IDEAL IS CORREDERA" (edicion
+    // 10/2024, dentro de "Ventana IS.zip") SI publica valores termicos --Uf 1,6 y Uw 4,52 W/m2K--
+    // junto con 58 mm de profundidad, galce hasta 6 mm y medidas maximas de 1500 x 1500, que es lo
+    // que ya tenia cargado. Un arquitecto que buscara el dato termico se iba con que no existia.
+    //
+    // Los dos documentos NO se contradicen, y por eso el campo dice las dos cosas: el plano de
+    // liberacion 020072-01 declara «no requirement for [...] U-value [...] and certification», o sea
+    // que se libero SIN requisito de certificacion, mientras el folleto publica valores CALCULADOS.
+    // Ocultar el valor era tan enganoso como exhibirlo sin decir que no esta certificado.
+    //
+    // El folleto anade dos datos utiles mas: "no requiere refuerzo, ni riel" y "pegado de vidrio a
+    // la hoja". El "ni riel" no contradice el `rails: [2]`: el marco 020070 trae los dos carriles
+    // moldeados y no necesita un riel de aluminio aparte, al contrario que la puerta, que si lleva
+    // el 227174.
+    { name: "IDEAL IS · Corredera mx", category: "Corredera", depth: 58, chambers: "linea economica, sin camaras publicadas; no requiere refuerzo", glazing: 6, maxW: 1500, maxH: 1500, rails: [2], frame: 37, sash: 26, hardware: 39, uf: "Uf 1,6 · Uw 4,52 W/m²K (publicado por el fabricante; liberado sin certificacion)", sourced: true, frameSeatMm: 0, centerOverlapMm: 0 },
+    // IDEAL IS · Puerta corredera mx -- cargada el 2026-08-20 al abrir "Puerta IS.zip", que es donde
+    // estaban los cuatro datos que faltaban y que yo habia dado por inexistentes sin abrir el
+    // archivo. Fuentes, todas dentro de ese comprimido o de la lista de precios:
+    //
+    //   Medidas maximas 2000 x 2000 mm   plano "HB_Schiebetur_sliding_door_mx-Modell", pag. 2
+    //   Galce hasta 6 mm                 folleto "1Flyer IDEAL IS CORREDERAPUERTA", ed. 10/2024
+    //   Profundidad de perfil 93,5 mm    el mismo folleto, y el plano
+    //   Un solo riel                     lista de precios: "Marco 93.5 mm MONO RIEL IS" (020074)
+    //   Uf 1,6 · Uw 4,10 W/m2K            el mismo folleto
+    //
+    // Precios de "Lista de Precios IS_V1.2.2.2.xlsx" (EXWORK Veracruz, euros), con EUR_MXN:
+    //   020074 Marco 93.5 mm mono riel    2.79 EUR/m  ->  61
+    //   020075 Hoja 27.8 mm p/puerta      1.62 EUR/m  ->  35   (el traslape 020076 va a 2.13 -> 46)
+    //   620078 Broche puerta IS           3.69 EUR/pza -> 80
+    //
+    // Es CORREDERA, no "Puerta": la categoria "Puerta" reparte hojas abatibles (ver allowedWingsFor)
+    // y esta es una puerta corrediza. Con rails [1] recibe las hojas de corredera, que es lo suyo.
+    //
+    // Lo que NO lleva, a proposito: no tiene entrada en `glazingFor` ni en `leafSizingFor`, asi que
+    // su vidrio y su hoja van por el modelo generico y el pedido de vidrio lo advierte. El plano
+    // trae sus formulas de reparto en la pagina 6 --(B/2)-73,6, (B/2)+27, (B/2)-93, (B/2)-74,3,
+    // (B/2)-93,7-- pero decidir que letra es la hoja corredera y cual el panel fijo con el texto
+    // desordenado del CAD es adivinar, y de eso ya salio un error esta misma semana.
+    { name: "IDEAL IS · Puerta corredera mx", category: "Corredera", depth: 93.5, chambers: "linea economica, mono riel con riel de aluminio 227174", glazing: 6, maxW: 2000, maxH: 2000, rails: [1], frame: 61, sash: 35, hardware: 80, uf: "Uf 1,6 · Uw 4,10 W/m²K (publicado por el fabricante; liberado sin certificacion)", sourced: true, frameSeatMm: 0, centerOverlapMm: 0 },
   ],
   Deceuninck: [
     { name: "Sliding 2 rieles", category: "Corredera", depth: 60, chambers: "multicámara", glazing: 24, maxW: 4000, maxH: 2400, rails: [2], frame: 148, sash: 126, hardware: 930, uf: "según configuración", frameSeatMm: 8, centerOverlapMm: 20 },
