@@ -225,7 +225,7 @@ export function PanZoomViewport({ children, onBackgroundClick, aspect }: PanZoom
       onClick={(event) => { if (event.target === event.currentTarget) onBackgroundClick(); }}
     >
       <div className="panZoomLayer" style={layerStyle}>{children}</div>
-      <div className="viewportControls" aria-label="Controles de vista 2D">
+      <div className="viewportControls" aria-label="Controles de vista 2D" title="Rueda para zoom · arrastra el fondo para mover · Espacio + arrastra sobre el modelo">
         <button type="button" onClick={zoomOut} aria-label="Alejar">−</button>
         <button type="button" className="viewportScale" onClick={reset} aria-label="Restablecer zoom">
           {Math.round(viewport.scale * 100)}%
@@ -233,7 +233,6 @@ export function PanZoomViewport({ children, onBackgroundClick, aspect }: PanZoom
         <button type="button" onClick={zoomIn} aria-label="Acercar">+</button>
         <button type="button" className="viewportCenter" onClick={reset}>Centrar</button>
       </div>
-      <div className="viewportHint" title="Rueda para zoom · arrastra el fondo para mover · Espacio + arrastra sobre el modelo">Rueda: zoom · arrastra: mover</div>
     </div>
   );
 }

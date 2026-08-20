@@ -162,8 +162,18 @@ a{color:inherit}
 /* Con el panel visual acotado al viewport, un minimo de 500 px lo desborda en 1366x768 y el
    overflow:hidden del panel recortaba el lienzo por abajo. El lienzo toma lo que hay. */
 .internalApp .canvas{min-height:0}
-/* Hueco para la leyenda, que va anclada al pie del lienzo. Sin esto se monta sobre el dibujo. */
-.canvas.view-2D{padding-bottom:28px}
+/* ---------- Pie del lienzo ----------
+   Aqui flotaban cuatro cajas sobre un lienzo de 441x314 px: los controles de zoom, la pista de uso,
+   la pista de herramienta, la ficha del sistema y la leyenda. Medido a 1059x566, se pisaban:
+   ficha x leyenda 227x28 px, y pista x controles 66x14 px. Cada caja estaba colocada con un
+   desplazamiento fijo elegido a mano, o sea cinco supuestos sobre el sitio libre.
+   En una fila compartida y en flujo el solape no puede ocurrir: si no cabe, envuelve. Los unicos
+   que siguen flotando son los controles de zoom, y viven en el hueco reservado de arriba. */
+.canvasFooter{flex:0 0 auto;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;justify-content:space-between;padding:8px 16px;border-top:1px solid var(--line)}
+/* La ficha del sistema en una linea, no en tres: el pie no puede robarle alto al dibujo. */
+.visualWhat{min-width:0;display:flex;flex-direction:column;gap:2px}
+.visualWhat>span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.visualSystem{color:var(--muted);letter-spacing:.04em;text-transform:none;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .canvasStage{position:relative;flex:1;min-width:0;display:grid;place-items:center;padding:54px;overflow:hidden}
 .panZoomViewport{position:absolute;inset:0;touch-action:none;cursor:grab;background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:var(--viewport-grid-size,28px) var(--viewport-grid-size,28px);background-position:var(--viewport-pan-x,0) var(--viewport-pan-y,0)}
 .panZoomViewport.isPanning,.panZoomViewport.isPanning *{cursor:grabbing!important}
@@ -456,7 +466,7 @@ a{color:inherit}
    Distinguir las piezas por tono resuelve la mitad del problema; la otra mitad es decir como se
    llama cada tono. Las muestras se pintan con las MISMAS variables que las capas del dibujo, asi
    que no pueden desincronizarse: si un tono cambia, la leyenda cambia con el. */
-.elevationKey{position:absolute;left:16px;right:16px;bottom:4px;z-index:7;display:flex;flex-wrap:wrap;gap:2px 12px;align-items:center;justify-content:center;font-size:11px;color:var(--muted)}
+.elevationKey{position:static;flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;gap:2px 12px;align-items:center;justify-content:center;font-size:11px;color:var(--muted)}
 .keyItem{display:inline-flex;align-items:center;gap:6px;padding:2px 7px;border-radius:20px;border:1px solid transparent;white-space:nowrap}
 .keyItem.keyItemActive{color:var(--accent-text);border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 10%,transparent);font-weight:700}
 .keySwatch{width:13px;height:13px;border-radius:3px;border:1px solid var(--filo-leyenda,rgba(12,24,20,.42));flex:0 0 auto}
@@ -478,8 +488,8 @@ button.dimLabel{border:0;font:inherit;letter-spacing:inherit;color:inherit;curso
 button.dimLabel:hover{color:var(--accent-text);outline:1px dashed color-mix(in srgb, var(--accent) 50%, transparent)}
 input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;letter-spacing:inherit;width:6.5em;text-align:center;border-radius:4px}
 .dim.side input.dimLabel{transform:rotate(-90deg)}
-.editHint{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--accent-text);border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));padding:7px 11px;border-radius:20px;font-size:11px;letter-spacing:.06em;text-align:center;max-width:70%;z-index:7;box-shadow:0 4px 14px var(--shadow)}
-.specChip{position:absolute;left:24px;bottom:22px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 13px;display:flex;flex-direction:column;font-size:13px;gap:3px;box-shadow:0 6px 18px var(--shadow)}
+.editHint{position:static;flex:0 1 auto;min-width:0;background:var(--surface);color:var(--accent-text);border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));padding:5px 11px;border-radius:20px;font-size:11px;letter-spacing:.04em;text-align:center;box-shadow:0 4px 14px var(--shadow)}
+.specChip{position:static;flex:0 1 auto;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 11px;display:flex;flex-direction:column;font-size:11.5px;gap:1px;box-shadow:0 4px 12px var(--shadow)}
 .specChip span{color:var(--muted)}
 .metricRow{min-height:74px;display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line)}
 .metricRow div{padding:16px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
@@ -827,7 +837,12 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .internalApp .topbar{
   top:12px;height:auto;min-height:64px;margin:12px 14px 0;padding:10px 14px 10px 18px;
   border:1px solid rgba(255,255,255,.76);border-radius:25px;
-  background:radial-gradient(110% 180% at 0 0,rgba(255,255,255,.82),transparent 52%),linear-gradient(145deg,var(--ia-glass-strong),rgba(255,255,255,.38));
+  /* Opaca a proposito. Con la raiz acotada al viewport, main es el contenedor que se desplaza y
+     estas dos barras se quedan pegadas arriba mientras el contenido pasa por detras. Con vidrio
+     translucido eso se leia como texto encima de texto: el titulo "Diseno" del panel de
+     configuracion aparecia mezclado con la navegacion. Una barra pegajosa sobre contenido en
+     movimiento tiene que tapar, no dejar ver. */
+  background:radial-gradient(110% 180% at 0 0,#ffffff,transparent 52%),linear-gradient(145deg,#f7f5ff,#eef4ff);
   box-shadow:0 18px 46px -28px rgba(61,47,120,.58),inset 0 1px 0 var(--ia-highlight),inset 0 -1px 0 rgba(120,105,190,.08);
   backdrop-filter:blur(32px) saturate(1.9);-webkit-backdrop-filter:blur(32px) saturate(1.9)
 }
@@ -840,7 +855,9 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .internalApp .moduleNav{
   height:50px;top:86px;width:max-content;max-width:calc(100% - 28px);margin:10px auto 4px;gap:5px;padding:5px;
   border:1px solid rgba(255,255,255,.74);border-radius:999px;
-  background:linear-gradient(145deg,rgba(255,255,255,.66),rgba(255,255,255,.36));
+  /* Opaca, por lo mismo que la barra superior: se queda pegada mientras el contenido pasa
+     por detras, y el vidrio lo dejaba leer encima. */
+  background:linear-gradient(145deg,#f4f2ff,#eaf1ff);
   box-shadow:0 16px 38px -26px rgba(61,47,120,.56),inset 0 1px 0 var(--ia-highlight);
   scrollbar-width:none;-ms-overflow-style:none;
   backdrop-filter:blur(28px) saturate(1.85);-webkit-backdrop-filter:blur(28px) saturate(1.85)
@@ -954,7 +971,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
     --ia-panel-hi:rgba(102,94,142,.34);--ia-panel-mid:rgba(43,39,68,.66);--ia-panel-low:rgba(29,35,55,.52);
     background:radial-gradient(950px 600px at 0 -5%,rgba(102,49,92,.52),transparent 58%),radial-gradient(900px 650px at 100% 0,rgba(46,80,130,.6),transparent 60%),radial-gradient(800px 600px at 70% 100%,rgba(35,100,82,.4),transparent 62%),linear-gradient(145deg,#191526,#171d2e 55%,#152720)
   }
-  .internalApp .topbar,.internalApp .moduleNav{background:linear-gradient(145deg,rgba(67,61,98,.72),rgba(28,27,47,.54))}
+  .internalApp .topbar,.internalApp .moduleNav{background:linear-gradient(145deg,#433d62,#1c1b2f)}
   .internalApp .segmented button.selected,.internalApp .moduleNav button.active,.internalApp .viewSwitch button.active{background:rgba(103,94,158,.78);color:#fff}
   /* Superficies de tarjeta y de fila: en claro son blancos translúcidos; heredarlos en oscuro
      dejaba texto claro sobre una lámina casi blanca. */
