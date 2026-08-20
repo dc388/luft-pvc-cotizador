@@ -3,6 +3,8 @@ import test from "node:test";
 import { buildCutList, calcQuote } from "@/lib/calc";
 import { beadFor, glassSizeMm, glazingFor, leafSizingFor, LEGACY_GLASS_DEDUCTION_MM, PUERTA_IS_BEAD_DEDUCTION_MM, WELD_ALLOWANCE_MM } from "@/data/glazing";
 import { typologyDefs } from "@/data/typologies";
+import { createLeaf, flattenToLeafFrames } from "@/lib/tree";
+import type { FrameNode } from "@/types/domain";
 import { catalog, EUR_MXN, IMPORT_FACTOR } from "@/data/catalog";
 import { colors } from "@/data/colors";
 import { glassCatalog } from "@/data/glass";
@@ -288,7 +290,9 @@ test("NINGÚN sistema anterior al IS usa dimensionado propio de hoja", () => {
   // Ésta es la garantía que pidió dc: añadir el IS sin interferir con los demás. Cualquier sistema
   // que gane un dimensionado propio cambia sus medidas de hoja, y por tanto su precio, así que tiene
   // que ser una decisión explícita que rompa esta prueba a propósito.
-  const conDimensionadoPropio = [IS];
+  // Los dos sistemas IS, cada uno con su plano. Cualquier otro que gane dimensionado propio
+  // cambia sus medidas de hoja y por tanto su precio: tiene que romper esta prueba a proposito.
+  const conDimensionadoPropio = [IS, "IDEAL IS · Puerta corredera mx"];
   for (const brand of ["Aluplast", "Deceuninck"] as const) {
     for (const sys of catalog[brand]) {
       const propio = leafSizingFor(sys.name) !== null;
@@ -364,6 +368,41 @@ test("en el IS los vidrios gruesos y los DVH quedan fuera del galce", () => {
   assert.equal(cabe("Cristal recocido claro 9.5 mm"), false);
 });
 
+test("la Puerta IS reproduce la tabla de deduccion de su plano, hoja movil y campo fijo", () => {
+  // Plano «sliding-door mx», edicion 2025-11, paginas 6 a 8. Con B=1800 y H=2000:
+  //   hoja corredera  C  = (B/2) - 73,6 = 826,4    I  = H - 157,8 = 1842,2
+  //   campo fijo      Cf = (B/2) - 74,3 = 825,7    If = H -  56,8 = 1943,2
+  // Los 101 mm de diferencia en alto entre una y otro son la razon de que el modelo tenga que
+  // distinguirlas: aplicarle a un panel fijo el descuento de la hoja movil lo deja 101 mm corto.
+  const puerta = catalog.Aluplast.find((s) => s.name === "IDEAL IS · Puerta corredera mx")!;
+  const B = 1800, H = 2000;
+  const tree: FrameNode = { kind: "split", id: "r", axis: "col", ratios: [0.5, 0.5], children: [createLeaf("sliding"), createLeaf("fixed")] };
+  const frames = flattenToLeafFrames(tree, B, H, puerta);
+  const movil = frames.find((f) => f.wing === "sliding")!;
+  const fijo = frames.find((f) => f.wing === "fixed")!;
+  assert.ok(Math.abs(movil.fabW - (B / 2 - 73.6)) < 1e-9, `hoja movil ancho: ${movil.fabW}`);
+  assert.ok(Math.abs(movil.fabH - (H - 157.8)) < 1e-9, `hoja movil alto: ${movil.fabH}`);
+  assert.ok(Math.abs(fijo.fabW - (B / 2 - 74.3)) < 1e-9, `campo fijo ancho: ${fijo.fabW}`);
+  assert.ok(Math.abs(fijo.fabH - (H - 56.8)) < 1e-9, `campo fijo alto: ${fijo.fabH}`);
+  // Y el vidrio va 19,4 mm por dentro en los cuatro casos, tambien del plano.
+  for (const f of [movil, fijo]) {
+    const g = glassSizeMm(f.fabW, f.fabH, puerta.name, f.wing === "fixed");
+    assert.ok(g.calibrated, "el vidrio de la puerta esta calibrado por su propio plano");
+    assert.ok(Math.abs(f.fabW - g.wMm - 19.4) < 1e-9, `${f.wing}: descuento de vidrio en ancho`);
+    assert.ok(Math.abs(f.fabH - g.hMm - 19.4) < 1e-9, `${f.wing}: descuento de vidrio en alto`);
+  }
+});
+
+test("en la ventana IS la hoja movil y el campo fijo siguen descontando lo mismo", () => {
+  // Su manual (ed. 2025-10) los da iguales: Cf = C y If = I. Distinguirlos en el modelo no puede
+  // haber movido nada aqui, y esta prueba es la que lo garantiza.
+  const v = leafSizingFor(IS)!;
+  assert.equal(v.fixedWidthDeductionMm, v.perLeafWidthDeductionMm);
+  assert.equal(v.fixedHeightDeductionMm, v.perLeafHeightDeductionMm);
+  assert.equal(v.perLeafWidthDeductionMm, 52.2);
+  assert.equal(v.perLeafHeightDeductionMm, 74);
+});
+
 test("los dos sistemas IS dicen su valor U Y que no esta certificado", () => {
   // Esta prueba exigia lo contrario: que el campo `uf` NO mostrara ningun valor. Estaba mal, y
   // subestimaba el producto. El folleto comercial (ed. 10/2024, dentro de los comprimidos que no
@@ -394,7 +433,10 @@ test("la Puerta IS entra con los cuatro datos que le faltaban, y ninguno inventa
   assert.equal(puerta.depth, 93.5, "folleto y plano: 93,5 mm de profundidad de perfil");
   // Es corredera, no abatible: la categoria decide que hojas se pueden poner.
   assert.equal(puerta.category, "Corredera");
-  // Y NO tiene descuentos propios inventados: su vidrio y su hoja van por el modelo generico.
-  assert.equal(leafSizingFor(puerta.name), null, "la puerta no tiene dimensionado propio todavia");
-  assert.equal(beadFor(puerta.name).calibrated, false, "ni junquillo calibrado");
+  // Y sus descuentos NO son inventados: salen de la tabla de su propio plano (ed. 2025-11), que se
+  // encontro al abrir el comprimido. Lo que sigue sin calibrar es el junquillo, y se dice.
+  const sizing = leafSizingFor(puerta.name);
+  assert.ok(sizing, "la puerta tiene dimensionado propio, de su plano");
+  assert.match(sizing!.source, /2025-11/, "y su fuente dice de que edicion sale");
+  assert.equal(beadFor(puerta.name).calibrated, false, "el junquillo sigue sin calibrar, y el corte avisa");
 });

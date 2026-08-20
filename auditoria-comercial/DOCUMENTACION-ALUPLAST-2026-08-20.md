@@ -261,3 +261,64 @@ puerta, que sí lleva el 227174.
 
 Declarar que un dato no existe es una afirmación fuerte, y la hice con cuatro comprimidos sin abrir.
 Antes de decir «falta el dato» hay que haber abierto todo lo que se recibió.
+
+
+---
+
+# Cuarta pasada · las tablas de deducción estaban en los manuales
+
+Buscando dentro de los comprimidos aparecieron las **tablas de deducción completas** de los dos
+sistemas IS, en ediciones más nuevas que cualquier otra fuente del lote.
+
+## Ventana IS · confirmada por su propio manual (ed. 2025-10)
+
+`Manual_ventana_corredera_sliding_window_mx_sp.pdf`, págs. 6 a 8, «Medidas de deducción
+020070 + 020071 + 020072», Esquema A:
+
+```
+ANCHOS    hoja    C  = (B/2) − 52,2      vidrio  E  = (B/2) − 71,6     ⇒ 19,4
+          fijo    Cf = (B/2) − 52,2      vidrio  Ef = (B/2) − 71,6     ⇒ 19,4
+ALTURAS   hoja    I  = H − 74            vidrio  K  = H − 93,4         ⇒ 19,4
+          fijo    If = H − 74            vidrio  Kf = H − 93,4         ⇒ 19,4
+```
+
+**No cambia nada: confirma lo que ya estaba cargado** (52,2 · 74 · 19,4) desde un documento
+independiente y posterior. La tabla no tiene fila de junquillo.
+
+## Puerta IS · su plano da la tabla (ed. 2025-11)
+
+`HB_Schiebetür_sliding_door_mx-Modell.pdf`, págs. 6 a 8, «Abzugsmaße», 020074 + 020075 + 020076:
+
+```
+ANCHOS    hoja    C  = (B/2) − 73,6      vidrio  E  = (B/2) − 93       ⇒ 19,4
+          fijo    Cf = (B/2) − 74,3      vidrio  Ef = (B/2) − 93,7     ⇒ 19,4
+ALTURAS   hoja    I  = H − 157,8         vidrio  K  = H − 177,2        ⇒ 19,4
+          fijo    If = H − 56,8          vidrio  Kf = H − 76,2         ⇒ 19,4
+```
+
+Esto obligó a **ampliar el modelo**: la hoja corredera descuenta **157,8 mm** de alto y el campo fijo
+**56,8** — 101 mm de diferencia. `LeafSizingSpec` pasa de dos números a cuatro, y
+`flattenToLeafFrames` elige según si la hoja es móvil o fija. Aplicarle a un panel fijo el descuento
+de la hoja móvil lo dejaría 101 mm corto, y eso se corta, se suelda y se paga.
+
+En la ventana los dos pares coinciden, así que **no se movió ni un milímetro** ahí; hay una prueba
+dedicada a garantizarlo. Comprobado además que los otros 22 sistemas siguen por el modelo genérico:
+240 casos recorridos sin cambio.
+
+Verificado contra el manual con B=1800 y H=2000:
+
+| | Calculado por la app | Manual |
+|---|---|---|
+| Hoja corredera | 826,4 × 1842,2 | (B/2)−73,6 × H−157,8 |
+| Campo fijo | 825,7 × 1943,2 | (B/2)−74,3 × H−56,8 |
+
+## Lo que sigue sin aparecer
+
+La **tabla de junquillo por sistema**. Ninguno de los dos manuales IS tiene fila de junquillo: sus
+tablas van Elemento · Acristalamiento · Hoja · Ancho/Altura libre, y ahí no está. Sigue viviendo en
+las láminas A0 con texto rotado (`14 Junquillos.pdf` y las fichas mexicanas), y ese formato no se
+reconstruye de forma fiable por programa.
+
+Los manuales grandes que quedan sin abrir por tamaño —el general de elaboración de 225 páginas, el
+IDEAL 2000 alemán ed. 2026-01, la Elevadora 70— son los únicos sitios donde podría estar. Un barrido
+de texto sobre los 39 PDF se pasó de los 10 minutos sin terminar.
