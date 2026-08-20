@@ -193,7 +193,6 @@ a{color:inherit}
 .viewportControls button:last-child{border-right:0}
 .viewportControls .viewportScale{min-width:44px;font-variant-numeric:tabular-nums}
 .viewportControls .viewportCenter{font-size:11px;letter-spacing:.05em;text-transform:uppercase}
-.viewportHint{position:absolute;left:12px;top:10px;z-index:6;max-width:42%;padding:4px 9px;border:1px solid var(--line);border-radius:20px;background:color-mix(in srgb,var(--surface) 92%,transparent);color:var(--muted);font-size:11px;line-height:16px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 /* El tamaño del dibujo lo mide PanZoomViewport y lo entrega en --fit-w/--fit-h: el rectángulo
    más grande con la proporción REAL de la ventana que cabe en el lienzo disponible. Los topes
    fijos que había aquí (650px de ancho y un presupuesto de alto de 420px) no eran un ajuste sino
@@ -906,11 +905,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
 .internalApp .canvas{margin:12px;border:1px solid rgba(255,255,255,.72);border-radius:24px;background:radial-gradient(100% 90% at 70% 100%,rgba(199,245,229,.26),transparent 56%),linear-gradient(145deg,rgba(245,247,255,.45),rgba(225,239,255,.28));box-shadow:inset 0 1px 0 rgba(255,255,255,.8);overflow:hidden}
 .internalApp .canvasStage{border-radius:20px}
 .internalApp .canvas.view-2D .canvasStage{background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px)}
-.internalApp .viewportControls,.internalApp .scene3dHint,.internalApp .viewportHint{
-  border:1px solid rgba(255,255,255,.84);background:linear-gradient(145deg,rgba(255,255,255,.72),rgba(255,255,255,.44));box-shadow:0 14px 30px -18px rgba(61,48,130,.62),inset 0 1px 0 #fff;
-  backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5)
-}
-.internalApp .viewportControls{border-radius:14px}
+.internalApp .viewportControls,.internalApp .scene3dHint,.internalApp .internalApp .viewportControls{border-radius:14px}
 .internalApp .toolbox{
   border:1px solid rgba(255,255,255,.84);border-radius:21px;background:radial-gradient(140% 100% at 0 0,rgba(255,255,255,.82),transparent 52%),rgba(255,255,255,.55);
   box-shadow:0 22px 44px -28px rgba(51,38,112,.72),inset 0 1px 0 #fff;
@@ -994,7 +989,7 @@ input.dimLabel{border:1px solid var(--accent);color:var(--ink);font:inherit;lett
   .internalApp .viewSwitch{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16)}
   .internalApp .presetRow button{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18)}
   .internalApp .fullButton{border-color:color-mix(in srgb,var(--accent-text) 46%,transparent);background:rgba(255,255,255,.05)}
-  .internalApp .viewportControls,.internalApp .scene3dHint,.internalApp .viewportHint,.internalApp .editHint,.internalApp .specChip,.internalApp .toolbox{
+  .internalApp .viewportControls,.internalApp .scene3dHint,.internalApp .editHint,.internalApp .specChip,.internalApp .toolbox{
     border-color:rgba(255,255,255,.18);
     background:linear-gradient(145deg,rgba(58,53,88,.9),rgba(36,33,58,.86))
   }
