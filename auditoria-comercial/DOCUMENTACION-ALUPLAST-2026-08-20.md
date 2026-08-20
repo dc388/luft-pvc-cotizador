@@ -188,8 +188,13 @@ corrigió: una prueba que fija un dato imposible de fabricar no protege nada.
   nada. Ahora solo existe si tiene contenido.
 - **`.specChip` muerto en el CSS.** Su contenido subió a la cabecera como `.visualSystem`; quedaban
   tres reglas sin elemento.
-- **`/api/version` tapado por la capa de assets.** Es la causa de que la forma sin barra final
-  devolviera un identificador viejo: los assets responden antes que el worker. Corregido en
-  `wrangler.jsonc` con `assets.run_worker_first: ["/api/*"]` — una ruta de API no es un archivo.
-  Se había dado por resuelto por sí solo en la nota anterior; **eso fue precipitado, reaparecía en
-  cada despliegue**, y esta es la corrección de raíz.
+- **`/api/version` tapado por la capa de assets.** Los assets responden antes que el worker, así que
+  la petición sin barra final no llegaba a la ruta. Corregido en `wrangler.jsonc` con
+  `assets.run_worker_first: ["/api/*"]`: una ruta de API no es un archivo.
+
+  **Verificado, y con una advertencia sobre cómo verificarlo.** Justo después de desplegar, la forma
+  sin barra seguía devolviendo el identificador anterior y lo tomé por defecto persistente — era
+  propagación. Comprobado luego con 18 llamadas, 12 sin barra y 6 con barra: **todas devuelven el
+  commit desplegado**. Sobre este defecto me adelanté dos veces, una dándolo por resuelto solo y otra
+  dándolo por no resuelto; la lección es que este endpoint hay que medirlo con varias llamadas y
+  dejando pasar la propagación, no con una sola justo tras el deploy.
