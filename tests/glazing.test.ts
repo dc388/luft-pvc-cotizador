@@ -175,42 +175,53 @@ test("el junquillo va a 45° y nunca lleva descuento de soldadura", () => {
   const hojaLens = new Set(cut.hojas.map((p) => p.length));
   for (const pieza of cut.junquillos) {
     assert.equal(pieza.angle, "45°", "Aluplast corta el junquillo a inglete, no a 90°");
-    assert.ok(!hojaLens.has(pieza.length) || beadFor(sys.name).deductionMm === 0,
+    const b = beadFor(sys.name);
+    assert.ok(!hojaLens.has(pieza.length) || (b.widthDeductionMm === 0 && b.heightDeductionMm === 0),
       "con descuento calibrado el junquillo no puede medir lo mismo que la hoja");
   }
 });
 
 test("un junquillo NUNCA puede quedar por dentro del vidrio que sujeta", () => {
-  // La prueba que faltaba. El 2026-08-20 se le atribuyó a la VENTANA IS un descuento de junquillo de
-  // 89 mm que era de la PUERTA IS, y nadie lo detectó: con hoja de 800 el vidrio entra a 9,7 mm por
-  // lado y el junquillo quedaba a 44,5, o sea 34,8 mm DENTRO del vidrio. Eso no se puede fabricar, y
-  // corrompía la lista de corte en silencio.
+  // Esta prueba cazó el error de atribuirle a la VENTANA IS el junquillo de la PUERTA (89 mm) y
+  // sigue siendo la red: el junquillo sujeta el vidrio contra el galce, así que nunca puede
+  // descontarse más que el vidrio. Es geometría, no depende de ningún documento.
   //
-  // La regla es geométrica y no depende de ningún documento: el junquillo sujeta el vidrio contra el
-  // galce, así que su descuento nunca puede ser mayor que el del vidrio.
+  // La tolerancia de 0,1 mm existe porque los manuales redondean a un decimal: en la ventana IS el
+  // junquillo vertical va a 58,42 y el vidrio a 58,4, y esos 2 centésimas son ruido de redondeo,
+  // no una pieza mal cortada.
   const HOJA = 800;
+  const TOL = 0.1;
   for (const sys of Object.values(catalog).flat()) {
     const bead = beadFor(sys.name);
-    if (bead.deductionMm === 0) continue;
+    if (!bead.calibrated) continue;
     for (const enMarco of [true, false]) {
       const vidrio = glassSizeMm(HOJA, HOJA, sys.name, enMarco);
-      const descuentoVidrio = HOJA - vidrio.wMm;
-      assert.ok(
-        bead.deductionMm <= descuentoVidrio,
-        `${sys.name}: el junquillo se descuenta ${bead.deductionMm} mm y el vidrio solo ${descuentoVidrio} mm, ` +
-          `asi que el junquillo quedaria ${(bead.deductionMm - descuentoVidrio) / 2} mm por dentro del vidrio`
-      );
+      const ejes: [string, number, number][] = [
+        ["ancho", bead.widthDeductionMm, HOJA - vidrio.wMm],
+        ["alto", bead.heightDeductionMm, HOJA - vidrio.hMm],
+      ];
+      for (const [eje, dBead, dVidrio] of ejes) {
+        assert.ok(
+          dBead <= dVidrio + TOL,
+          `${sys.name} (${eje}): el junquillo se descuenta ${dBead} mm y el vidrio ${dVidrio}, ` +
+            `así que quedaría ${((dBead - dVidrio) / 2).toFixed(2)} mm por dentro del vidrio`
+        );
+      }
     }
   }
 });
 
-test("el descuento del junquillo se atribuye al sistema del que salio el dato", () => {
-  // El 89 de la Puerta IS no puede volver a colarse en la ventana. Cuando la puerta exista en el
-  // catalogo, este numero es SUYO.
+test("el junquillo de la puerta y el de la ventana no se confunden", () => {
+  // El 89 es de la PUERTA, y ya esta aplicado a su propio sistema. La ventana tiene los suyos.
   assert.equal(PUERTA_IS_BEAD_DEDUCTION_MM, 89);
-  const ventana = beadFor("IDEAL IS · Corredera mx");
-  assert.equal(ventana.deductionMm, 0, "la ventana IS no tiene su junquillo calibrado todavia");
-  assert.equal(ventana.calibrated, false, "y tiene que decir que no lo esta, para que el corte avise");
+  const puerta = beadFor("IDEAL IS · Puerta corredera mx");
+  assert.equal(puerta.widthDeductionMm, 89);
+  assert.equal(puerta.heightDeductionMm, 89);
+  const ventana = beadFor(IS);
+  assert.equal(ventana.widthDeductionMm, 28.2, "hoja Ventana: F12 = F10 − 28.2");
+  assert.equal(ventana.heightDeductionMm, 58.42, "hoja Ventana: I12 = I11 − 58.42");
+  // Y el horizontal es mas largo que el vertical: dos largos y dos cortos, como se corta un cuadro.
+  assert.ok(ventana.widthDeductionMm < ventana.heightDeductionMm);
 });
 
 test("el junquillo se descuenta cuando su sistema está calibrado", () => {
@@ -219,8 +230,12 @@ test("el junquillo se descuenta cuando su sistema está calibrado", () => {
   for (const brand of ["Aluplast", "Deceuninck"] as const) {
     for (const sys of catalog[brand]) {
       const b = beadFor(sys.name);
-      assert.ok(b.deductionMm >= 0, `${sys.name}: descuento de junquillo negativo`);
-      if (!b.calibrated) assert.equal(b.deductionMm, 0, `${sys.name}: sin calibrar debe valer 0`);
+      assert.ok(b.widthDeductionMm >= 0, `${sys.name}: descuento de junquillo negativo en ancho`);
+      assert.ok(b.heightDeductionMm >= 0, `${sys.name}: descuento de junquillo negativo en alto`);
+      if (!b.calibrated) {
+        assert.equal(b.widthDeductionMm, 0, `${sys.name}: sin calibrar debe valer 0`);
+        assert.equal(b.heightDeductionMm, 0, `${sys.name}: sin calibrar debe valer 0`);
+      }
       assert.ok(b.source.length > 10, `${sys.name}: el descuento de junquillo tiene que decir su origen`);
     }
   }
@@ -251,17 +266,22 @@ test("el sistema IS existe en el catálogo con los datos de su ficha", () => {
   assert.equal(sys.sourced, true, "sus precios salen de la lista vigente del proveedor");
 });
 
-test("el IS reproduce exactamente las medidas de deducción de su manual", () => {
-  // Manual Aluplast «Ventana corredera mx», ed. 2025-10, págs. 6 y 7, con B=1800 y H=1400:
-  //   Hoja             C = (B/2) − 52,2 = 847,8      I = H − 74   = 1326
-  //   Acristalamiento  E = (B/2) − 71,6 = 828,4      K = H − 93,4 = 1306,6
+test("la ventana IS corta la hoja como su hoja de material, no como se leyo el manual", () => {
+  // Fuente: «CALCULO DE MATERIAL SISTEMA IS v2.1», hoja Ventana, con B=1800 y H=1400:
+  //   020071 Hoja corrediza   F10 = (B/2) - 12,9 = 887,1      I10 = H - 35   = 1365
+  //   vidrio (del manual)     E   = (B/2) - 71,6 = 828,4      K   = H - 93,4 = 1306,6
+  //
+  // Antes esta prueba exigia 847,8 y 1326, que salen de (B/2)-52,2 y H-74. Esas son OTRAS filas de
+  // la tabla del manual: la hoja de material etiqueta su formula con el codigo 020071 y no admite
+  // ambiguedad. El vidrio no cambia -- sigue siendo 828,4 y 1306,6 -- porque su medida absoluta era
+  // correcta; lo que estaba mal era la hoja, y con ella el descuento entre una y otro.
   const c = quote("corr-2-fija-movil", IS, 1800, 1400);
   assert.equal(c.leaves.length, 2);
   for (const l of c.leaves) {
-    assert.ok(Math.abs(l.wMm - 847.8) < 1e-9, `hoja ancho ${l.wMm} debería ser 847.8`);
-    assert.ok(Math.abs(l.hMm - 1326) < 1e-9, `hoja alto ${l.hMm} debería ser 1326`);
-    assert.ok(Math.abs(l.glassWMm - 828.4) < 1e-9, `vidrio ancho ${l.glassWMm} debería ser 828.4`);
-    assert.ok(Math.abs(l.glassHMm - 1306.6) < 1e-9, `vidrio alto ${l.glassHMm} debería ser 1306.6`);
+    assert.ok(Math.abs(l.wMm - 887.1) < 1e-9, `hoja ancho ${l.wMm} deberia ser 887.1`);
+    assert.ok(Math.abs(l.hMm - 1365) < 1e-9, `hoja alto ${l.hMm} deberia ser 1365`);
+    assert.ok(Math.abs(l.glassWMm - 828.4) < 1e-9, `vidrio ancho ${l.glassWMm} deberia ser 828.4`);
+    assert.ok(Math.abs(l.glassHMm - 1306.6) < 1e-9, `vidrio alto ${l.glassHMm} deberia ser 1306.6`);
     assert.equal(l.glassCalibrated, true);
   }
 });
@@ -277,8 +297,10 @@ test("el marco del IS lleva soldadura y su junquillo va a 45 sin descuento todav
   // Marco: medida del elemento mas la soldadura. Esto si estaba bien y se conserva.
   assert.ok(cut.marco.some((p) => Math.abs(p.length - (1800 + w)) < 1e-9), "marco 1800+6");
   assert.ok(cut.marco.some((p) => Math.abs(p.length - (1400 + w)) < 1e-9), "marco 1400+6");
-  // Junquillo: sin descuento calibrado sale a la medida de la hoja, y el reporte de corte lo avisa.
-  assert.equal(beadFor(IS).deductionMm, 0, "el junquillo de la VENTANA IS no esta calibrado");
+  // Junquillo: ya calibrado con la hoja de material, y con un valor por eje.
+  const b = beadFor(IS);
+  assert.equal(b.widthDeductionMm, 28.2);
+  assert.equal(b.heightDeductionMm, 58.42);
   assert.ok(cut.junquillos.length > 0, "tiene que haber junquillos despiezados");
   assert.ok(!cut.junquillos.some((p) => p.length === 759), "759 era el numero de la puerta aplicado a la ventana");
   // Y nunca lleva soldadura: no se suelda, se aloja.
@@ -368,39 +390,57 @@ test("en el IS los vidrios gruesos y los DVH quedan fuera del galce", () => {
   assert.equal(cabe("Cristal recocido claro 9.5 mm"), false);
 });
 
-test("la Puerta IS reproduce la tabla de deduccion de su plano, hoja movil y campo fijo", () => {
-  // Plano «sliding-door mx», edicion 2025-11, paginas 6 a 8. Con B=1800 y H=2000:
-  //   hoja corredera  C  = (B/2) - 73,6 = 826,4    I  = H - 157,8 = 1842,2
-  //   campo fijo      Cf = (B/2) - 74,3 = 825,7    If = H -  56,8 = 1943,2
-  // Los 101 mm de diferencia en alto entre una y otro son la razon de que el modelo tenga que
-  // distinguirlas: aplicarle a un panel fijo el descuento de la hoja movil lo deja 101 mm corto.
+test("la Puerta IS corta como su hoja de material, incluido el ancho MAYOR que la mitad", () => {
+  // «CALCULO DE MATERIAL SISTEMA IS v2.1», hoja Puerta, con B=1400 y H=2100:
+  //   020075 Hoja            D11 = (B/2) + 27 = 727        D12 = H - 57,2 = 2042,8
+  //   020076 traslape fijo   D14 = H - (25,4-2,8)*2 = H - 45,2 = 2054,8
+  // El ancho de la hoja es MAYOR que la mitad del elemento porque solapa: por eso el descuento es
+  // negativo, y por eso el modelo tuvo que dejar de asumir que siempre se resta.
   const puerta = catalog.Aluplast.find((s) => s.name === "IDEAL IS · Puerta corredera mx")!;
-  const B = 1800, H = 2000;
+  const B = 1400, H = 2100;
   const tree: FrameNode = { kind: "split", id: "r", axis: "col", ratios: [0.5, 0.5], children: [createLeaf("sliding"), createLeaf("fixed")] };
   const frames = flattenToLeafFrames(tree, B, H, puerta);
   const movil = frames.find((f) => f.wing === "sliding")!;
   const fijo = frames.find((f) => f.wing === "fixed")!;
-  assert.ok(Math.abs(movil.fabW - (B / 2 - 73.6)) < 1e-9, `hoja movil ancho: ${movil.fabW}`);
-  assert.ok(Math.abs(movil.fabH - (H - 157.8)) < 1e-9, `hoja movil alto: ${movil.fabH}`);
-  assert.ok(Math.abs(fijo.fabW - (B / 2 - 74.3)) < 1e-9, `campo fijo ancho: ${fijo.fabW}`);
-  assert.ok(Math.abs(fijo.fabH - (H - 56.8)) < 1e-9, `campo fijo alto: ${fijo.fabH}`);
-  // Y el vidrio va 19,4 mm por dentro en los cuatro casos, tambien del plano.
-  for (const f of [movil, fijo]) {
-    const g = glassSizeMm(f.fabW, f.fabH, puerta.name, f.wing === "fixed");
-    assert.ok(g.calibrated, "el vidrio de la puerta esta calibrado por su propio plano");
-    assert.ok(Math.abs(f.fabW - g.wMm - 19.4) < 1e-9, `${f.wing}: descuento de vidrio en ancho`);
-    assert.ok(Math.abs(f.fabH - g.hMm - 19.4) < 1e-9, `${f.wing}: descuento de vidrio en alto`);
-  }
+  assert.ok(Math.abs(movil.fabW - 727) < 1e-9, `hoja movil ancho ${movil.fabW} deberia ser 727`);
+  assert.ok(Math.abs(movil.fabH - 2042.8) < 1e-9, `hoja movil alto ${movil.fabH} deberia ser 2042.8`);
+  assert.ok(movil.fabW > B / 2, "la hoja de una puerta corredera es mas ancha que la mitad del hueco");
+  assert.ok(Math.abs(fijo.fabH - 2054.8) < 1e-9, `campo fijo alto ${fijo.fabH} deberia ser 2054.8`);
+});
+
+test("la hoja de la Puerta IS reproduce los METROS que la propia hoja de material trae calculados", () => {
+  // La prueba mas fuerte que hay para esto: la hoja de calculo del fabricante trae sus totales
+  // consolidados. Con B=1400, H=2100 y 50 unidades declara 175,74 m del codigo 020075 (la hoja),
+  // repartidos en 2 horizontales y 1 vertical, con 6 mm de soldadura en cada pieza.
+  const puerta = catalog.Aluplast.find((s) => s.name === "IDEAL IS · Puerta corredera mx")!;
+  const B = 1400, H = 2100, N = 50, sold = 2 * WELD_ALLOWANCE_MM;
+  const tree: FrameNode = { kind: "split", id: "r", axis: "col", ratios: [0.5, 0.5], children: [createLeaf("sliding"), createLeaf("fixed")] };
+  const movil = flattenToLeafFrames(tree, B, H, puerta).find((f) => f.wing === "sliding")!;
+  const metros = ((2 * (movil.fabW + sold)) + (movil.fabH + sold)) * N / 1000;
+  assert.ok(Math.abs(metros - 175.74) < 0.005, `salen ${metros.toFixed(3)} m y la hoja dice 175.74`);
+});
+
+test("el junquillo de la Puerta IS reproduce sus metros consolidados", () => {
+  // La misma hoja declara 528,39 m del codigo 020073 (junquillo) para esas 50 unidades, en cuatro
+  // piezas por dos: horizontal y vertical de la hoja, y horizontal y vertical del campo fijo.
+  const puerta = catalog.Aluplast.find((s) => s.name === "IDEAL IS · Puerta corredera mx")!;
+  const B = 1400, H = 2100, N = 50;
+  const b = beadFor(puerta.name);
+  const hojaH = (B / 2) + 27, hojaV = H - 57.2;
+  const fijoH = (B / 2) - 62.7, fijoV = H - 45.2;
+  const porUnidad = 2 * ((hojaH - b.widthDeductionMm) + (hojaV - b.heightDeductionMm) + fijoH + fijoV);
+  const metros = porUnidad * N / 1000;
+  assert.ok(Math.abs(metros - 528.39) < 0.005, `salen ${metros.toFixed(3)} m y la hoja dice 528.39`);
 });
 
 test("en la ventana IS la hoja movil y el campo fijo siguen descontando lo mismo", () => {
-  // Su manual (ed. 2025-10) los da iguales: Cf = C y If = I. Distinguirlos en el modelo no puede
-  // haber movido nada aqui, y esta prueba es la que lo garantiza.
+  // Su hoja de material corta el traslape al mismo alto que la hoja (I11 = I10) y no da un ancho
+  // distinto para el campo fijo. Si algun dia lo diera, esta prueba tiene que romperse a proposito.
   const v = leafSizingFor(IS)!;
   assert.equal(v.fixedWidthDeductionMm, v.perLeafWidthDeductionMm);
   assert.equal(v.fixedHeightDeductionMm, v.perLeafHeightDeductionMm);
-  assert.equal(v.perLeafWidthDeductionMm, 52.2);
-  assert.equal(v.perLeafHeightDeductionMm, 74);
+  assert.equal(v.perLeafWidthDeductionMm, 12.9, "hoja Ventana: F10 = (B/2) − 12.9");
+  assert.equal(v.perLeafHeightDeductionMm, 35, "hoja Ventana: I10 = H − 35");
 });
 
 test("los dos sistemas IS dicen su valor U Y que no esta certificado", () => {
@@ -437,6 +477,7 @@ test("la Puerta IS entra con los cuatro datos que le faltaban, y ninguno inventa
   // encontro al abrir el comprimido. Lo que sigue sin calibrar es el junquillo, y se dice.
   const sizing = leafSizingFor(puerta.name);
   assert.ok(sizing, "la puerta tiene dimensionado propio, de su plano");
-  assert.match(sizing!.source, /2025-11/, "y su fuente dice de que edicion sale");
-  assert.equal(beadFor(puerta.name).calibrated, false, "el junquillo sigue sin calibrar, y el corte avisa");
+  assert.match(sizing!.source, /CALCULO DE MATERIAL/, "y su fuente es la hoja de material del fabricante");
+  // Y su junquillo tambien esta ya calibrado, del mismo documento.
+  assert.equal(beadFor(puerta.name).calibrated, true, "el junquillo de la puerta sale de su hoja de material");
 });

@@ -82,21 +82,48 @@ con el código de perfil que se corta**: `020071 Hoja corrediza = (E5/2) − 12.
 Con la letra correcta identificada, los manuales encajan: en la puerta `D = (B/2) + 27` es
 exactamente lo que corta la hoja de material, y `D` es la fila «Flügel».
 
-## Qué no se ha cambiado, y por qué
+## APLICADO el 2026-08-20, con el impacto medido
+
+Ya está en el código. Y el impacto es mucho menor de lo que se advirtió antes de medirlo:
+
+| Elemento | Hoja antes | Hoja ahora | Perímetro | Vidrio | Efecto en el total |
+|---|---|---|---|---|---|
+| 1500 × 1500 | 697,8 × 1426,0 | 737,1 × 1465,0 | +3,69 % | **idéntico** | **+0,086 %** |
+| 1200 × 1200 | 547,8 × 1126,0 | 587,1 × 1165,0 | +4,68 % | **idéntico** | **+0,120 %** |
+
+**El vidrio no cambia: 678,4 × 1406,6 antes y después.** Las dos lecturas aterrizan en el mismo
+E = (B/2) − 71,6 y K = H − 93,4, porque `(B/2) − 52,2 − 19,4` y `(B/2) − 12,9 − 58,7` son el mismo
+número. Lo que estaba mal no era la medida del vidrio: era la de la hoja, y con ella el descuento
+entre una y otra.
+
+Así que el pedido de vidrio de cualquier cotización ya emitida sigue siendo correcto. Lo único que se
+mueve es el **consumo de perfil de hoja**, un 3,7-4,7 % más, que sobre el total del elemento es
+**menos de una décima de porcentaje** porque el perfil del IS es barato (37 y 26 MXN/m).
+
+Se advirtió que esto «subía precios» antes de medirlo. Sube, pero por menos de un 0,12 %: la
+advertencia era correcta en el sentido y exagerada en la magnitud.
+
+## Lo que sigue sin modelarse
 
 **Nada.** Estas correcciones alargan la hoja unos 39 mm en la ventana y unos 100 mm en la puerta, así
 que **suben el consumo de perfil y por tanto el precio**. Es una decisión de negocio sobre un sistema
 que ya está desplegado y cotizando, y la última vez que se corrigió un dato de fabricación del IS con
 una lectura confiada, la lectura estaba mal.
 
-Además hay tres reglas que el modelo actual **no puede expresar** y habría que ampliarlo:
+El modelo se amplió en los tres puntos que hacían falta:
 
-1. **Descuentos por eje.** El junquillo de la ventana va a −28,2 en horizontal y −58,42 en vertical.
-   `beadFor` devuelve un solo número.
+1. **Descuentos por eje.** `BeadSpec` pasa a `widthDeductionMm` / `heightDeductionMm`, y `GlazingSpec`
+   admite un valor de alto propio. Sin él, el alto usa el de ancho — que es como se comportaban todos
+   los sistemas antes de que apareciera un caso con dos valores.
 2. **Descuento negativo.** La hoja horizontal de la puerta es `(B/2) + 27`: más ancha que su mitad,
-   porque solapa. `leafSizingFor` asume que se resta.
-3. **Ángulo de corte por pieza.** El traslape vertical del campo fijo de la puerta va a **90°** y el
-   resto a 45°. `buildCutList` decide el ángulo por categoría, no por pieza.
+   porque solapa. El modelo ya no asume que se resta.
+3. **Ángulo de corte por pieza** — esto sigue pendiente. El traslape vertical del campo fijo de la
+   puerta va a **90°** y el resto a 45°, y `buildCutList` decide el ángulo por categoría. Afecta al
+   documento de corte, no al precio.
+
+Pruebas que lo fijan, y son de la clase más fuerte que se puede escribir aquí: **reproducen los
+metros consolidados que la propia hoja del fabricante trae calculados** — 175,74 m del código 020075
+y 528,39 m del 020073, con B=1400, H=2100 y 50 unidades.
 
 El vidrio queda aparte: **no está en la hoja de material** (el vidrio no es un perfil). Su medida
 sigue saliendo de la tabla del manual, y con la letra de la hoja ya corregida el descuento desde la

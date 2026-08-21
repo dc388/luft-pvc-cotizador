@@ -56,6 +56,15 @@ export type GlazingSpec = {
   marcoDeductionMm: number;
   /** Descuento total (los dos lados del eje) cuando el vidrio se monta en la hoja. */
   sashDeductionMm: number;
+  /**
+   * Los mismos descuentos EN ALTO, cuando no coinciden con los de ancho.
+   *
+   * Ausentes, el alto usa el valor de ancho -- que es como se comportaban todos los sistemas antes
+   * de que apareciera un caso con dos valores. La ventana IS los tiene distintos por muy poco
+   * (58,7 en ancho y 58,4 en alto) y aun asi hay que respetarlos: son medidas de corte.
+   */
+  marcoDeductionHeightMm?: number;
+  sashDeductionHeightMm?: number;
   /** `false` mientras el sistema no tenga ficha de fabricación ni medición en taller. */
   calibrated: boolean;
   /** De dónde salió el número. Obligatorio cuando `calibrated` es `true`. */
@@ -104,26 +113,34 @@ const CALIBRATED: Record<string, GlazingSpec> = {
   // «Ventana corredera mx», edición 2025-10: Hoja C = (B/2) − 52,2 y Acristalamiento E = (B/2) − 71,6
   // en ancho; Hoja I = H − 74 y Acristalamiento K = H − 93,4 en alto. La diferencia es 19,4 mm en los
   // dos ejes, y también para el campo fijo (Cf/Ef y If/Kf dan lo mismo). Cuatro tablas coincidentes.
+    // El vidrio NO esta en la hoja de material -- no es un perfil -- asi que sale del manual, pero
+  // ahora con la letra de la hoja ya identificada: hoja D = (B/2) - 12,9 y vidrio E = (B/2) - 71,6,
+  // o sea 58,7 de descuento; en alto, hoja J = H - 35 y vidrio K = H - 93,4, o sea 58,4. Los 19,4
+  // que habia antes eran la distancia entre el vidrio y la letra C, que no es la hoja.
   "IDEAL IS · Corredera mx": {
-    marcoDeductionMm: 19.4,
-    sashDeductionMm: 19.4,
+    marcoDeductionMm: 58.7,
+    sashDeductionMm: 58.7,
+    marcoDeductionHeightMm: 58.4,
+    sashDeductionHeightMm: 58.4,
     calibrated: true,
     source:
-      "Aluplast «Ventana corredera mx» (sliding-window mx), edición 2025-10, págs. 6, 7 y 8: " +
-      "71,6 − 52,2 = 19,4 en ancho y 93,4 − 74 = 19,4 en alto, idéntico para hoja corrediza y " +
-      "campo fijo.",
+      "Aluplast «Ventana corredera mx» (sliding-window mx), ed. 2025-10, págs. 6 y 7: vidrio " +
+      "E = (B/2) − 71,6 y K = H − 93,4 frente a la hoja D = (B/2) − 12,9 y J = H − 35, que es la " +
+      "que corta la hoja de material. Da 58,7 en ancho y 58,4 en alto.",
   },
   // La PUERTA IS descuenta lo mismo que la ventana, 19,4 mm, y sale de su propia tabla: en el plano
   // «sliding-door mx» ed. 2025-11 la hoja va a (B/2) − 73,6 y su vidrio a (B/2) − 93, o sea 19,4; y
   // en alto, hoja H − 157,8 y vidrio H − 177,2, otra vez 19,4. El campo fijo repite el mismo 19,4
   // (Cf − Ef y If − Kf). No es el numero de la ventana copiado: es el suyo, que coincide.
+    // Puerta: hoja D = (B/2) + 27 y vidrio E = (B/2) - 93 -> 120 en ancho; hoja J = H - 57,2 y
+  // vidrio K = H - 177,2 -> 120 en alto. Los dos ejes coinciden en 120.
   "IDEAL IS · Puerta corredera mx": {
-    marcoDeductionMm: 19.4,
-    sashDeductionMm: 19.4,
+    marcoDeductionMm: 120,
+    sashDeductionMm: 120,
     calibrated: true,
     source:
-      "Aluplast «Puerta corredera mx» (sliding-door mx), edición 2025-11, págs. 6 a 8: la diferencia " +
-      "entre hoja y vidrio es 19,4 mm en ancho y en alto, tanto en la hoja corredera como en el campo fijo.",
+      "Aluplast «Puerta corredera mx» (sliding-door mx), ed. 2025-11, págs. 6 a 8: vidrio " +
+      "E = (B/2) − 93 y K = H − 177,2 frente a la hoja (B/2) + 27 y H − 57,2. Da 120 mm en los dos ejes.",
   },
   // multi-slide 96, calibrado el 2026-08-19 contra los manuales de fabricación de Aluplast que
   // entregó dc. Las tablas oficiales de "Deduction dimensions" dan, en cuatro esquemas distintos:
@@ -168,10 +185,12 @@ export function glassSizeMm(
   glazesIntoFrame: boolean
 ): { wMm: number; hMm: number; calibrated: boolean } {
   const spec = glazingFor(systemName);
-  const deduction = glazesIntoFrame ? spec.marcoDeductionMm : spec.sashDeductionMm;
+  const dW = glazesIntoFrame ? spec.marcoDeductionMm : spec.sashDeductionMm;
+  // Sin valor propio para el alto se usa el de ancho, que es el comportamiento de siempre.
+  const dH = (glazesIntoFrame ? spec.marcoDeductionHeightMm : spec.sashDeductionHeightMm) ?? dW;
   return {
-    wMm: Math.max(0, fabWMm - deduction),
-    hMm: Math.max(0, fabHMm - deduction),
+    wMm: Math.max(0, fabWMm - dW),
+    hMm: Math.max(0, fabHMm - dH),
     calibrated: spec.calibrated,
   };
 }
@@ -220,10 +239,18 @@ export const WELD_ALLOWANCE_MM = 3;
  * Sin calibrar el descuento queda en 0 --el junquillo se corta a la medida de la hoja-- y el
  * reporte de corte lo advierte. Es peor equivocarse con confianza que avisar de que falta el dato.
  */
-export type BeadSpec = { deductionMm: number; calibrated: boolean; source: string };
+export type BeadSpec = {
+  /** Cuanto mide menos el junquillo HORIZONTAL que la pieza que lo aloja. */
+  widthDeductionMm: number;
+  /** Idem en vertical. No tiene por que ser el mismo: en la ventana IS es 28,2 y 58,42. */
+  heightDeductionMm: number;
+  calibrated: boolean;
+  source: string;
+};
 
 const BEAD_UNCALIBRATED: BeadSpec = {
-  deductionMm: 0,
+  widthDeductionMm: 0,
+  heightDeductionMm: 0,
   calibrated: false,
   source: "Sin calibrar: el junquillo sale a la medida de la hoja. Referencia Aluplast (sistema IS): hoja - 89 mm.",
 };
@@ -240,9 +267,39 @@ const BEAD_UNCALIBRATED: BeadSpec = {
  * Cuando se cargue la Puerta IS --hacen falta su ancho y alto máximos, su galce y sus rieles, que
  * están en un plano sin texto extraíble-- este 89 es SU dato, y entra con el nombre de ese sistema.
  */
-const BEAD_CALIBRATED: Record<string, BeadSpec> = {};
+/**
+ * Descuentos de junquillo por sistema, de la hoja de material del fabricante.
+ *
+ * Aqui hubo un 89 atribuido a la ventana que era de la puerta, y antes de eso un 0. La fuente buena
+ * es `CALCULO DE MATERIAL SISTEMA IS v2.1.xlsx` LEIDA CON SUS FORMULAS: no es una tabla de
+ * deducciones que haya que interpretar, es el generador de la lista de corte, con una formula por
+ * codigo de perfil y por orientacion. Reproducida contra los totales que la propia hoja trae
+ * calculados: los cinco codigos de la puerta cuadran al centimo de metro (ver
+ * auditoria-comercial/IS-REGLAS-DE-CORTE-VERIFICADAS.md).
+ */
+const BEAD_CALIBRATED: Record<string, BeadSpec> = {
+  "IDEAL IS · Corredera mx": {
+    // Hoja 'Ventana': F12 = F10 - 28.2 (horizontal) e I12 = I11 - 58.42 (vertical).
+    widthDeductionMm: 28.2,
+    heightDeductionMm: 58.42,
+    calibrated: true,
+    source:
+      "Aluplast «CALCULO DE MATERIAL SISTEMA IS v2.1», hoja Ventana: junquillo 020073 = hoja − 28,2 " +
+      "en horizontal y hoja − 58,42 en vertical, a 45° y sin descuento de soldadura.",
+  },
+  "IDEAL IS · Puerta corredera mx": {
+    // Hoja 'Puerta': D15 = D11 - (47,3-2,8)*2 y D16 = D12 - (47,3-2,8)*2, o sea -89 en los dos ejes.
+    widthDeductionMm: 89,
+    heightDeductionMm: 89,
+    calibrated: true,
+    source:
+      "Aluplast «CALCULO DE MATERIAL SISTEMA IS v2.1», hoja Puerta: junquillo 020073 = hoja − " +
+      "(47,3 − 2,8) × 2 = hoja − 89, en los dos ejes, a 45° y sin soldadura. El 47,3 es el ancho de " +
+      "cara del perfil y el 2,8 el solape del galce.",
+  },
+};
 
-/** El descuento documentado de la Puerta IS, a la espera de que ese sistema exista en el catálogo. */
+/** El descuento documentado de la Puerta IS, ya aplicado arriba a su propio sistema. */
 export const PUERTA_IS_BEAD_DEDUCTION_MM = 89;
 
 export function beadFor(systemName: string): BeadSpec {
@@ -288,28 +345,35 @@ export type LeafSizingSpec = {
 
 const LEAF_SIZING: Record<string, LeafSizingSpec> = {
   "IDEAL IS · Corredera mx": {
-    perLeafWidthDeductionMm: 52.2,
-    perLeafHeightDeductionMm: 74,
-    // En la ventana el campo fijo descuenta lo mismo que la hoja móvil: Cf = C y If = I.
-    fixedWidthDeductionMm: 52.2,
-    fixedHeightDeductionMm: 74,
+    // Hoja 'Ventana': F10 = (B/2) - 12.9 e I10 = H - 35, etiquetadas con el codigo 020071
+    // "Hoja corrediza". Antes habia 52,2 y 74, que salian de leer la tabla del manual asignando la
+    // etiqueta "Hoja" a la letra equivocada: el manual lista varias dimensiones derivadas
+    // (elemento, acristalamiento, hoja, ancho libre) y la hoja de material no admite ambiguedad
+    // porque etiqueta cada formula con el perfil que se corta.
+    perLeafWidthDeductionMm: 12.9,
+    perLeafHeightDeductionMm: 35,
+    // El traslape 020072 se corta al mismo alto (I11 = I10), y la hoja no da un ancho distinto para
+    // el campo fijo, asi que se mantiene el de la hoja movil.
+    fixedWidthDeductionMm: 12.9,
+    fixedHeightDeductionMm: 35,
     source:
-      "Aluplast «Ventana corredera mx» (sliding-window mx), edición 2025-10, págs. 6 a 8: " +
-      "hoja C = (B/2) − 52,2 y I = H − 74; campo fijo Cf = (B/2) − 52,2 y If = H − 74, iguales. " +
-      "El vidrio va 19,4 mm por dentro (E = (B/2) − 71,6, K = H − 93,4). Las tablas indican " +
-      "«¡Añadir soldadura!», que se aplica aparte.",
+      "Aluplast «CALCULO DE MATERIAL SISTEMA IS v2.1», hoja Ventana: 020071 Hoja corrediza = " +
+      "(B/2) − 12,9 en horizontal y H − 35 en vertical, más 6 mm de soldadura (2 × 3).",
   },
   "IDEAL IS · Puerta corredera mx": {
-    perLeafWidthDeductionMm: 73.6,
-    perLeafHeightDeductionMm: 157.8,
-    // Aquí NO coinciden, y es la razón de que este tipo tenga cuatro números en vez de dos.
-    fixedWidthDeductionMm: 74.3,
-    fixedHeightDeductionMm: 56.8,
+    // Hoja 'Puerta': D11 = (B/2) + 27 -- la hoja es MAS ANCHA que su mitad, porque solapa -- y
+    // D12 = H - 57.2. De ahi que el descuento de ancho sea negativo.
+    perLeafWidthDeductionMm: -27,
+    perLeafHeightDeductionMm: 57.2,
+    // Campo fijo: D14 = H - (25,4 - 2,8) x 2 = H - 45,2, y a 90 grados en vez de 45. La hoja no da
+    // un ancho propio para el campo fijo, asi que ahi se conserva el de la hoja movil.
+    fixedWidthDeductionMm: -27,
+    fixedHeightDeductionMm: 45.2,
     source:
-      "Aluplast «Puerta corredera mx» (sliding-door mx), edición 2025-11, págs. 6 a 8: " +
-      "hoja C = (B/2) − 73,6 y I = H − 157,8; campo fijo Cf = (B/2) − 74,3 y If = H − 56,8. " +
-      "El vidrio va 19,4 mm por dentro en los cuatro casos (E = (B/2) − 93, K = H − 177,2, " +
-      "Ef = (B/2) − 93,7, Kf = H − 76,2). Las tablas indican «Schweißzugabe hinzufügen!».",
+      "Aluplast «CALCULO DE MATERIAL SISTEMA IS v2.1», hoja Puerta: 020075 Hoja = (B/2) + 27 en " +
+      "horizontal y H − 57,2 en vertical; 020076 traslape vertical del campo fijo = H − 45,2. " +
+      "Verificado contra los totales de la propia hoja: 175,74 m de 020075 y 205,18 m de 020076 " +
+      "con B=1400, H=2100 y 50 unidades.",
   },
 };
 
