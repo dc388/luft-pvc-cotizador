@@ -368,7 +368,7 @@ export function buildCutList(
   // largas que su medida terminada. Es el `Medida Final + (F5*2)` de la hoja de material de Aluplast,
   // con F5 = 3 mm. Las piezas a 90° no se sueldan y van a su medida, igual que en esa misma hoja.
   const weld = 2 * WELD_ALLOWANCE_MM;
-  const bead = beadFor(sys.name).deductionMm;
+  const bead = beadFor(sys.name);
   const marco: CutPiece[] = [
     { label: "Marco: Abajo", length: width + weld, angle: "45°" },
     { label: "Marco: Arriba", length: width + weld, angle: "45°" },
@@ -406,7 +406,10 @@ export function buildCutList(
     // DENTRO del galce, así que mide menos que la hoja -- `bead` es ese descuento, por sistema.
     // Sin calibrar vale 0 y el junquillo sale a la medida de la hoja, que es como estaba; el reporte
     // de corte lo advierte en vez de callarlo. Nunca lleva descuento de soldadura: no se suelda.
-    const bw = Math.max(0, w - bead), bh = Math.max(0, h - bead);
+    // Un descuento por eje: el junquillo horizontal y el vertical no miden lo mismo. En la hoja de
+    // material de la ventana IS son -28,2 y -58,42, y es el reparto clasico de dos largos y dos
+    // cortos: los horizontales cruzan de lado a lado y los verticales encajan entre ellos.
+    const bw = Math.max(0, w - bead.widthDeductionMm), bh = Math.max(0, h - bead.heightDeductionMm);
     junquillos.push(
       { label: `${label}: Arriba`, length: bw, angle: "45°" },
       { label: `${label}: Abajo`, length: bw, angle: "45°" },
